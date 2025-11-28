@@ -138,13 +138,14 @@ authRoutes.post('/login', async (c) => {
     
     const { email, password } = parsed.data;
     
-    // Find user
+    // Find user with profile
     const user = await prisma.user.findUnique({
       where: { email },
       include: {
         accounts: {
           where: { providerId: 'credential' },
         },
+        profile: true,
       },
     });
     
@@ -159,7 +160,7 @@ authRoutes.post('/login', async (c) => {
     }
     
     // Update last active
-    await prisma.profile.update({
+    const profile = await prisma.profile.update({
       where: { userId: user.id },
       data: { lastActiveAt: new Date() },
     });
@@ -173,6 +174,15 @@ authRoutes.post('/login', async (c) => {
         id: user.id,
         email: user.email,
         name: user.name,
+        displayName: profile.displayName || user.name,
+        username: profile.handle,
+        avatar: profile.avatar,
+        bio: profile.bio,
+        interests: profile.interests ? JSON.parse(profile.interests) : [],
+        trustScore: profile.trustScore,
+        streak: 0,
+        isPremium: profile.subscriptionStatus === 'active',
+        isVerified: user.emailVerified,
         emailVerified: user.emailVerified,
       },
       accessToken,
