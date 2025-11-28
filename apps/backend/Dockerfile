@@ -43,10 +43,6 @@ COPY --from=builder /app/dist ./dist
 
 # Set environment
 ENV NODE_ENV=production
-ENV PORT=3000
-
-# Expose port
-EXPOSE 3000
 
 # Run migrations and start server
 CMD ["sh", "-c", "npx prisma migrate deploy && node dist/index.js"]
