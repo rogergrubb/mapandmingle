@@ -1,11 +1,14 @@
 import { Hono } from 'hono';
-import { prisma } from '../index';
+import { prisma } from '../lib/prisma';
 import { z } from 'zod';
 import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
-import { v4 as uuidv4 } from 'uuid';
+import { nanoid } from 'nanoid';
 
 export const uploadRoutes = new Hono();
+
+// Generate unique ID for uploads
+const generateId = () => nanoid();
 
 // Initialize S3 client (optional - can use local storage for dev)
 const s3Client = process.env.AWS_ACCESS_KEY_ID ? new S3Client({
@@ -40,7 +43,7 @@ uploadRoutes.post('/presigned', async (c) => {
 
     // Generate unique filename
     const ext = filename.split('.').pop() || 'jpg';
-    const key = `${folder}/${userId}/${uuidv4()}.${ext}`;
+    const key = `${folder}/${userId}/${nanoid()}.${ext}`;
 
     if (s3Client) {
       // Use S3
@@ -80,7 +83,7 @@ uploadRoutes.post('/', async (c) => {
     }
 
     const formData = await c.req.formData();
-    const file = formData.get('file') as (Blob & { name?: string }) | null;
+    const file = formData.get('file') as File;
     
     if (!file) {
       return c.json({ error: 'No file provided' }, 400);
@@ -95,8 +98,8 @@ uploadRoutes.post('/', async (c) => {
     }
 
     const folder = (formData.get('folder') as string) || 'general';
-    const ext = file.name?.split('.').pop() || 'jpg';
-    const key = `${folder}/${userId}/${uuidv4()}.${ext}`;
+    const ext = file.name.split('.').pop() || 'jpg';
+    const key = `${folder}/${userId}/${nanoid()}.${ext}`;
 
     if (s3Client) {
       // Upload to S3
@@ -119,7 +122,7 @@ uploadRoutes.post('/', async (c) => {
           userId,
           key,
           url,
-          filename: file.name || 'upload',
+          filename: file.name,
           contentType: file.type,
           size: file.size,
         },
