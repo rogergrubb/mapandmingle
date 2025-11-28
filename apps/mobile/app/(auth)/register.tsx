@@ -15,10 +15,11 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useAuthStore } from '../../src/stores/auth';
 import { HapticButton } from '../../src/components/HapticButton';
+import { API_URL } from '../../src/lib/api';
 
-// Legal document URLs - update these with your actual URLs
-const TERMS_URL = 'https://mapandmingle.app/terms';
-const PRIVACY_URL = 'https://mapandmingle.app/privacy';
+// Legal document URLs - served from the backend
+const TERMS_URL = `${API_URL}/terms`;
+const PRIVACY_URL = `${API_URL}/privacy`;
 
 export default function RegisterScreen() {
   const router = useRouter();
