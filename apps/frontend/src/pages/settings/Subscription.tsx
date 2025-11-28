@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Crown, Check, Zap, Star, Shield, Sparkles } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
+import api from '../../lib/api';
 
 const PLANS = [
   {
@@ -63,13 +64,25 @@ export default function Subscription() {
   const [selectedPlan, setSelectedPlan] = useState('free');
   const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'yearly'>('monthly');
 
-  const handleSubscribe = (planId: string) => {
+  const handleSubscribe = async (planId: string) => {
     if (planId === 'free') {
       alert('You are already on the free plan!');
       return;
     }
-    // TODO: Implement Stripe payment
-    alert(`Subscribing to ${planId} plan... (Stripe integration coming soon)`);
+
+    try {
+      // Create checkout session
+      const response = await api.post('/api/payments/create-checkout', {
+        priceId: `price_${planId}_${billingPeriod}`,
+        plan: planId,
+      });
+
+      // Redirect to Stripe checkout
+      window.location.href = response.checkoutUrl;
+    } catch (error) {
+      console.error('Stripe checkout error:', error);
+      alert('Failed to start checkout. Please try again.');
+    }
   };
 
   return (

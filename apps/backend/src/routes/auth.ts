@@ -3,6 +3,8 @@ import { prisma } from '../index';
 import { z } from 'zod';
 import * as bcrypt from 'bcryptjs';
 import { generateToken, generateRefreshToken, verifyRefreshToken } from '../middleware/auth';
+import { EmailService } from '../services/email.service';
+import { StripeService } from '../services/stripe.service';
 
 export const authRoutes = new Hono();
 
@@ -97,6 +99,29 @@ authRoutes.post('/register', async (c) => {
       },
     });
     
+    // Create Stripe customer
+    try {
+      const stripeCustomerId = await StripeService.createCustomer(
+        user.email,
+        user.name || email.split('@')[0],
+        user.id
+      );
+      
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { stripeCustomerId },
+      });
+    } catch (error) {
+      console.error('Failed to create Stripe customer:', error);
+    }
+
+    // Send welcome email
+    try {
+      await EmailService.sendWelcomeEmail(user.email, user.name || email.split('@')[0]);
+    } catch (error) {
+      console.error('Failed to send welcome email:', error);
+    }
+
     // Generate JWT tokens
     const accessToken = generateToken(user.id, user.email);
     const refreshToken = generateRefreshToken(user.id);

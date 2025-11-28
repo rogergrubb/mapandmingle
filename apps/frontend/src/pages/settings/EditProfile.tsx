@@ -33,13 +33,28 @@ export default function EditProfile() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // TODO: Upload to S3 when implemented
-    // For now, create a local preview
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setFormData(prev => ({ ...prev, avatar: reader.result as string }));
-    };
-    reader.readAsDataURL(file);
+    // Show loading state
+    setLoading(true);
+
+    try {
+      // Upload to S3
+      const formData = new FormData();
+      formData.append('photo', file);
+
+      const response = await api.post('/api/upload/profile', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      // Update avatar with S3 URL
+      setFormData(prev => ({ ...prev, avatar: response.url }));
+    } catch (error) {
+      console.error('Photo upload failed:', error);
+      alert('Failed to upload photo. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const toggleInterest = (interest: string) => {

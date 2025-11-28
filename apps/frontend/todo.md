@@ -353,3 +353,81 @@
 - [ ] Skeleton loaders for content
 - [ ] Toast notifications with smooth animations
 - [ ] Modal/dialog entrance animations
+
+## Session 5: Third-Party Integrations - Full Implementation
+- [x] AWS S3 Integration
+  - [x] Configure S3 credentials in backend
+  - [x] Create S3 service with upload/delete methods
+  - [x] Create S3 upload endpoint for profile photos
+  - [x] Create S3 upload endpoint for event images
+  - [x] Create S3 upload endpoint for pin photos
+  - [x] Update EditProfile to use real S3 uploads
+  - [x] Add file type validation
+  - [x] Add file size limits (10MB)
+  - [ ] Update event creation to use S3 uploads
+  - [ ] Update pin creation to use S3 uploads
+  - [ ] Add image optimization and resizing
+
+- [x] Resend Email Integration
+  - [x] Configure Resend API credentials
+  - [x] Create email service with templates
+  - [x] Create welcome email template
+  - [x] Create password reset email template
+  - [x] Create event reminder email template
+  - [x] Create new message notification email template
+  - [x] Implement welcome email on registration
+  - [ ] Implement password reset email flow
+  - [ ] Implement event reminder emails (scheduled)
+  - [ ] Implement new message notification emails
+  - [ ] Add email preferences management
+
+- [x] Stripe Payment Integration
+  - [x] Configure Stripe API credentials
+  - [x] Create Stripe service with all methods
+  - [x] Create Stripe customer on user registration
+  - [x] Implement checkout session for subscriptions
+  - [x] Create webhook endpoint for payment events
+  - [x] Handle successful payment events
+  - [x] Handle failed payment events
+  - [x] Handle subscription cancellation
+  - [x] Update user premium status in database
+  - [x] Add billing portal for subscription management
+  - [x] Update Subscription page with real Stripe checkout
+  - [ ] Create Stripe products and prices in dashboard
+  - [ ] Test full payment flow with test cards
+
+- [x] Anthropic AI Integration
+  - [x] Configure Anthropic API credentials
+  - [x] Create AI service with all features
+  - [x] Implement content moderation for user posts
+  - [x] Implement smart event recommendations
+  - [x] Implement smart user matching/suggestions
+  - [x] Implement chat message sentiment analysis
+  - [x] Add spam detection for pins and events
+  - [x] Create API routes for all AI features
+  - [ ] Integrate AI moderation into pin/event creation
+  - [ ] Add AI recommendations to Events page
+  - [ ] Add AI matching to Discover page
+  - [ ] Test AI features
+
+- [ ] Web Push Notifications
+  - [ ] Set up service worker for push notifications
+  - [ ] Request notification permissions from users
+  - [ ] Store push subscription tokens in database
+  - [ ] Create backend endpoint to send push notifications
+  - [ ] Implement notification for new messages
+  - [ ] Implement notification for event reminders
+  - [ ] Implement notification for nearby activity
+  - [ ] Add notification preferences UI
+  - [ ] Test push notifications across browsers
+
+- [ ] Integration Testing & Deployment
+  - [ ] Test S3 uploads end-to-end
+  - [ ] Test email delivery
+  - [ ] Test Stripe payment flow
+  - [ ] Test AI features
+  - [ ] Test push notifications
+  - [ ] Update environment variables in production
+  - [ ] Deploy backend to Railway
+  - [ ] Deploy frontend to Vercel
+  - [ ] Verify all integrations in production
