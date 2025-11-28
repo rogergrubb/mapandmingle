@@ -5,14 +5,11 @@ FROM node:18-alpine AS deps
 WORKDIR /app
 
 # Copy package files
-COPY package.json pnpm-lock.yaml ./
+COPY package.json package-lock.json* ./
 COPY apps/backend/package.json ./apps/backend/
 
-# Install pnpm
-RUN npm install -g pnpm
-
 # Install dependencies
-RUN pnpm install --frozen-lockfile
+RUN npm ci --legacy-peer-deps
 
 # Stage 2: Prisma Generation
 FROM node:18-alpine AS prisma
@@ -24,11 +21,8 @@ COPY --from=deps /app/apps/backend/node_modules ./apps/backend/node_modules
 
 # Copy Prisma schema
 COPY apps/backend/prisma ./apps/backend/prisma
-COPY package.json pnpm-lock.yaml ./
+COPY package.json package-lock.json* ./
 COPY apps/backend/package.json ./apps/backend/
-
-# Install pnpm
-RUN npm install -g pnpm
 
 # Generate Prisma Client explicitly
 RUN cd apps/backend && npx prisma generate
@@ -44,18 +38,12 @@ COPY --from=prisma /app/apps/backend/node_modules ./apps/backend/node_modules
 # Copy source code
 COPY . .
 
-# Install pnpm
-RUN npm install -g pnpm
-
 # Build TypeScript
-RUN cd apps/backend && pnpm build
+RUN cd apps/backend && npm run build
 
 # Stage 4: Production
 FROM node:18-alpine AS runner
 WORKDIR /app
-
-# Install pnpm
-RUN npm install -g pnpm
 
 # Copy built application
 COPY --from=builder /app/apps/backend/dist ./apps/backend/dist
@@ -71,4 +59,4 @@ ENV NODE_ENV=production
 EXPOSE 3000
 
 # Start application
-CMD ["pnpm", "workspace", "@mapmingle/backend", "start"]
+CMD ["npm", "run", "--workspace=@mapmingle/backend", "start"]
