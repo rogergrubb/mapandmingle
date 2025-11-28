@@ -1,0 +1,16 @@
+# Railway.toml - Configuration for Railway deployment
+# https://railway.app
+
+[build]
+builder = "nixpacks"
+buildCommand = "cd apps/backend && npm install && npx prisma generate && npm run build"
+
+[deploy]
+startCommand = "cd apps/backend && npx prisma migrate deploy && node dist/index.js"
+healthcheckPath = "/health"
+healthcheckTimeout = 60
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 5
+
+[variables]
+NODE_ENV = "production"
