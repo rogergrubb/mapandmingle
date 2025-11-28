@@ -11,15 +11,14 @@ const requireAdmin = async (c: any, next: any) => {
     return c.json({ error: 'Unauthorized' }, 401);
   }
   
-  // Check if user has admin role (you can customize this logic)
+  // Check if user has admin role
   const dbUser = await prisma.user.findUnique({
     where: { id: userId },
     select: { email: true }
   });
   
-  // For now, check if email contains 'admin' or matches specific admin emails
-  // TODO: Add proper admin role field to User model
-  const isAdmin = dbUser?.email?.includes('admin') || dbUser?.email === process.env.ADMIN_EMAIL;
+  // Check if email matches admin email from env
+  const isAdmin = dbUser?.email === process.env.ADMIN_EMAIL;
   
   if (!isAdmin) {
     return c.json({ error: 'Forbidden: Admin access required' }, 403);
@@ -91,10 +90,9 @@ admin.get('/dashboard/stats', async (c) => {
     const premiumMRR = premiumSubscriptions * 4.99;
     const totalMRR = basicMRR + premiumMRR;
 
-    // Get analytics events count (placeholder - table may not exist)
-    let totalEvents = 0;
-    let recentEvents = 0;
-    // TODO: Implement when analytics_events table is created
+    // Analytics events placeholder
+    const totalEvents = 0;
+    const recentEvents = 0;
 
     return c.json({
       users: {
@@ -135,8 +133,7 @@ admin.get('/users', async (c) => {
     if (search) {
       where.OR = [
         { email: { contains: search, mode: 'insensitive' } },
-        { username: { contains: search, mode: 'insensitive' } },
-        { displayName: { contains: search, mode: 'insensitive' } }
+        { name: { contains: search, mode: 'insensitive' } }
       ];
     }
 
@@ -163,16 +160,24 @@ admin.get('/users', async (c) => {
         orderBy: {
           createdAt: 'desc'
         }
-      }).then(users => users.map(u => ({
-        ...u,
-        username: u.profile?.handle || u.email.split('@')[0],
-        displayName: u.profile?.displayName || u.name || u.email
-      }))),
+      }),
       prisma.user.count({ where })
     ]);
 
+    // Transform to expected format
+    const transformedUsers = users.map(u => ({
+      id: u.id,
+      email: u.email,
+      username: u.profile?.handle || u.email.split('@')[0],
+      displayName: u.profile?.displayName || u.name || u.email,
+      createdAt: u.createdAt.toISOString(),
+      lastActiveAt: u.lastActiveAt?.toISOString() || u.createdAt.toISOString(),
+      subscriptionTier: u.subscriptionTier || 'free',
+      subscriptionStatus: u.subscriptionStatus || 'free'
+    }));
+
     return c.json({
-      users,
+      users: transformedUsers,
       pagination: {
         page,
         limit,
@@ -202,13 +207,10 @@ admin.get('/users/:id', async (c) => {
       return c.json({ error: 'User not found' }, 404);
     }
 
-    // Get user's activity stats (placeholder)
-    const eventsCount = 0; // TODO: Implement when analytics_events table exists
-
     return c.json({
       ...user,
       stats: {
-        eventsCount
+        eventsCount: 0
       }
     });
   } catch (error) {
@@ -226,28 +228,20 @@ admin.get('/subscriptions', async (c) => {
     const tier = c.req.query('tier');
     const skip = (page - 1) * limit;
 
-    const where: any = {};
-    if (status) {
-      where.status = status;
-    }
-    if (tier) {
-      where.tier = tier;
-    }
-
-    // Build where clause for User model
-    const userWhere: any = {
+    const where: any = {
       subscriptionStatus: { not: null }
     };
+    
     if (status) {
-      userWhere.subscriptionStatus = status;
+      where.subscriptionStatus = status;
     }
     if (tier) {
-      userWhere.subscriptionTier = tier;
+      where.subscriptionTier = tier;
     }
 
     const [users, total] = await Promise.all([
       prisma.user.findMany({
-        where: userWhere,
+        where,
         skip,
         take: limit,
         select: {
@@ -271,7 +265,7 @@ admin.get('/subscriptions', async (c) => {
           createdAt: 'desc'
         }
       }),
-      prisma.user.count({ where: userWhere })
+      prisma.user.count({ where })
     ]);
 
     // Transform to subscription format
@@ -282,10 +276,10 @@ admin.get('/subscriptions', async (c) => {
       status: user.subscriptionStatus || 'free',
       stripeCustomerId: user.stripeCustomerId || '',
       stripeSubscriptionId: user.stripeSubscriptionId || '',
-      currentPeriodStart: user.createdAt,
-      currentPeriodEnd: user.subscriptionEnd || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+      currentPeriodStart: user.createdAt.toISOString(),
+      currentPeriodEnd: user.subscriptionEnd?.toISOString() || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
       cancelAtPeriodEnd: false,
-      createdAt: user.createdAt,
+      createdAt: user.createdAt.toISOString(),
       user: {
         id: user.id,
         email: user.email,
@@ -315,7 +309,7 @@ admin.get('/analytics/overview', async (c) => {
     const days = parseInt(c.req.query('days') || '30');
     const startDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
 
-    // Placeholder - analytics_events table doesn't exist yet
+    // Placeholder data - analytics_events table doesn't exist
     const eventsByType: any[] = [];
     const dailyActiveUsers: any[] = [];
 
@@ -354,9 +348,8 @@ admin.get('/analytics/overview', async (c) => {
 admin.get('/analytics/revenue', async (c) => {
   try {
     const days = parseInt(c.req.query('days') || '30');
-    const startDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
 
-    // Calculate daily revenue (simplified)
+    // Simplified daily revenue
     const dailyRevenue: Record<string, number> = {};
 
     // Get current MRR breakdown from User model
@@ -383,10 +376,12 @@ admin.get('/analytics/revenue', async (c) => {
       return acc;
     }, {});
 
+    const totalMRR = Object.values(mrrByTier).reduce((sum: number, tier: any) => sum + tier.mrr, 0);
+
     return c.json({
       dailyRevenue,
       mrrByTier,
-      totalMRR: Object.values(mrrByTier).reduce((sum: number, tier: any) => sum + tier.mrr, 0)
+      totalMRR
     });
   } catch (error) {
     console.error('Error fetching revenue metrics:', error);
@@ -399,7 +394,7 @@ admin.post('/users/:id/subscription', async (c) => {
   try {
     const userId = c.req.param('id');
     const body = await c.req.json();
-    const { action, tier } = body; // action: 'upgrade', 'downgrade', 'cancel'
+    const { action, tier } = body;
 
     const user = await prisma.user.findUnique({
       where: { id: userId }
