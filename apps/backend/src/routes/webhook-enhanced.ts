@@ -7,7 +7,7 @@ const app = new Hono();
 // Initialize Stripe
 const stripeKey = process.env.STRIPE_SECRET_KEY;
 const stripe = stripeKey && stripeKey.startsWith('sk_') ? new Stripe(stripeKey, {
-  apiVersion: '2024-12-18.acacia',
+  apiVersion: '2025-02-24.acacia',
 }) : null;
 
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;

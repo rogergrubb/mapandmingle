@@ -8,7 +8,7 @@ const app = new Hono();
 // Initialize Stripe with API key
 const stripeKey = process.env.STRIPE_SECRET_KEY;
 const stripe = stripeKey && stripeKey.startsWith('sk_') ? new Stripe(stripeKey, {
-  apiVersion: '2024-12-18.acacia',
+  apiVersion: '2025-02-24.acacia',
 }) : null;
 
 // Price IDs for subscription tiers
