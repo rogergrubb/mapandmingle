@@ -80,7 +80,7 @@ uploadRoutes.post('/', async (c) => {
     }
 
     const formData = await c.req.formData();
-    const file = formData.get('file') as Blob | null;
+    const file = formData.get('file') as (Blob & { name?: string }) | null;
     
     if (!file) {
       return c.json({ error: 'No file provided' }, 400);
@@ -95,7 +95,7 @@ uploadRoutes.post('/', async (c) => {
     }
 
     const folder = (formData.get('folder') as string) || 'general';
-    const ext = file.name.split('.').pop() || 'jpg';
+    const ext = file.name?.split('.').pop() || 'jpg';
     const key = `${folder}/${userId}/${uuidv4()}.${ext}`;
 
     if (s3Client) {
@@ -119,7 +119,7 @@ uploadRoutes.post('/', async (c) => {
           userId,
           key,
           url,
-          filename: file.name,
+          filename: file.name || 'upload',
           contentType: file.type,
           size: file.size,
         },

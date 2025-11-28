@@ -9,69 +9,31 @@ const app = new Hono();
 // Apply auth middleware to all routes
 app.use('*', authMiddleware);
 
-// Report schema
+// Report schema - simplified to match actual Prisma schema
 const createReportSchema = z.object({
-  targetType: z.enum(['user', 'pin', 'event', 'message', 'mingle', 'forum_post']),
-  targetId: z.string(),
-  reason: z.enum(['harassment', 'inappropriate', 'spam', 'impersonation', 'safety', 'other']),
-  details: z.string().max(1000).optional(),
+  reportedUserId: z.string(),
+  reason: z.string(),
+  description: z.string().max(500).optional(),
 });
 
-// Create a report
+// Create a report (user reports only, matching schema)
 app.post(
   '/',
   zValidator('json', createReportSchema),
   async (c) => {
     const userId = c.get('userId') as string;
-    const { targetType, targetId, reason, details } = c.req.valid('json');
+    const { reportedUserId, reason, description } = c.req.valid('json');
 
     // Create report
     const report = await prisma.report.create({
       data: {
         reporterId: userId,
-        targetType,
-        targetId,
+        reportedUserId,
         reason,
-        details,
+        description,
         status: 'pending',
       },
     });
-
-    // Auto-flag content if multiple reports
-    const reportCount = await prisma.report.count({
-      where: {
-        targetType,
-        targetId,
-        status: { in: ['pending', 'reviewed'] },
-      },
-    });
-
-    if (reportCount >= 3) {
-      // Flag content for review
-      switch (targetType) {
-        case 'pin':
-          await prisma.pin.update({
-            where: { id: targetId },
-            data: { isFlagged: true },
-          });
-          break;
-        case 'user':
-          await prisma.user.update({
-            where: { id: targetId },
-            data: { isFlagged: true },
-          });
-          break;
-        case 'forum_post':
-          await prisma.forumPost.update({
-            where: { id: targetId },
-            data: { isFlagged: true },
-          });
-          break;
-      }
-    }
-
-    // Send notification to moderators (in production, use a queue)
-    // await notifyModerators(report);
 
     return c.json({
       success: true,
@@ -88,14 +50,14 @@ app.get('/my-reports', async (c) => {
   const reports = await prisma.report.findMany({
     where: { reporterId: userId },
     orderBy: { createdAt: 'desc' },
-    take: 20,
-    select: {
-      id: true,
-      targetType: true,
-      reason: true,
-      status: true,
-      createdAt: true,
-      resolvedAt: true,
+    include: {
+      reportedUser: {
+        select: {
+          id: true,
+          name: true,
+          image: true,
+        },
+      },
     },
   });
 
@@ -111,28 +73,25 @@ app.post('/block/:userId', async (c) => {
     return c.json({ error: 'Cannot block yourself' }, 400);
   }
 
-  // Create block record
-  await prisma.block.upsert({
+  // Check if already blocked
+  const existing = await prisma.block.findUnique({
     where: {
-      blockerId_blockedId: {
+      blockerId_blockedUserId: {
         blockerId: userId,
-        blockedId: targetUserId,
+        blockedUserId: targetUserId,
       },
-    },
-    update: {},
-    create: {
-      blockerId: userId,
-      blockedId: targetUserId,
     },
   });
 
-  // Remove any existing connections/conversations
-  await prisma.conversation.deleteMany({
-    where: {
-      AND: [
-        { participants: { some: { userId } } },
-        { participants: { some: { userId: targetUserId } } },
-      ],
+  if (existing) {
+    return c.json({ error: 'User already blocked' }, 400);
+  }
+
+  // Create block
+  await prisma.block.create({
+    data: {
+      blockerId: userId,
+      blockedUserId: targetUserId,
     },
   });
 
@@ -147,7 +106,7 @@ app.delete('/block/:userId', async (c) => {
   await prisma.block.deleteMany({
     where: {
       blockerId: userId,
-      blockedId: targetUserId,
+      blockedUserId: targetUserId,
     },
   });
 
@@ -161,7 +120,7 @@ app.get('/blocked', async (c) => {
   const blocks = await prisma.block.findMany({
     where: { blockerId: userId },
     include: {
-      blocked: {
+      blockedUser: {
         select: {
           id: true,
           name: true,
@@ -174,9 +133,9 @@ app.get('/blocked', async (c) => {
 
   return c.json(
     blocks.map((b: any) => ({
-      id: b.blocked.id,
-      displayName: b.blocked.name,
-      avatar: b.blocked.image,
+      id: b.blockedUser.id,
+      displayName: b.blockedUser.name,
+      avatar: b.blockedUser.image,
       blockedAt: b.createdAt,
     }))
   );
