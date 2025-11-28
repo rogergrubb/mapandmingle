@@ -59,28 +59,28 @@ admin.get('/dashboard/stats', async (c) => {
       }
     });
 
-    // Get subscription stats
-    const totalSubscriptions = await prisma.subscription.count({
+    // Get subscription stats from User model
+    const totalSubscriptions = await prisma.user.count({
       where: {
-        status: {
+        subscriptionStatus: {
           in: ['active', 'trialing']
         }
       }
     });
 
-    const basicSubscriptions = await prisma.subscription.count({
+    const basicSubscriptions = await prisma.user.count({
       where: {
-        tier: 'basic',
-        status: {
+        subscriptionTier: 'basic',
+        subscriptionStatus: {
           in: ['active', 'trialing']
         }
       }
     });
 
-    const premiumSubscriptions = await prisma.subscription.count({
+    const premiumSubscriptions = await prisma.user.count({
       where: {
-        tier: 'premium',
-        status: {
+        subscriptionTier: 'premium',
+        subscriptionStatus: {
           in: ['active', 'trialing']
         }
       }
@@ -91,16 +91,10 @@ admin.get('/dashboard/stats', async (c) => {
     const premiumMRR = premiumSubscriptions * 4.99;
     const totalMRR = basicMRR + premiumMRR;
 
-    // Get analytics events count
-    const totalEvents = await prisma.analyticsEvent.count();
-    
-    const recentEvents = await prisma.analyticsEvent.count({
-      where: {
-        createdAt: {
-          gte: sevenDaysAgo
-        }
-      }
-    });
+    // Get analytics events count (placeholder - table may not exist)
+    let totalEvents = 0;
+    let recentEvents = 0;
+    // TODO: Implement when analytics_events table is created
 
     return c.json({
       users: {
@@ -154,17 +148,26 @@ admin.get('/users', async (c) => {
         select: {
           id: true,
           email: true,
-          username: true,
-          displayName: true,
+          name: true,
           createdAt: true,
           lastActiveAt: true,
           subscriptionTier: true,
-          subscriptionStatus: true
+          subscriptionStatus: true,
+          profile: {
+            select: {
+              handle: true,
+              displayName: true
+            }
+          }
         },
         orderBy: {
           createdAt: 'desc'
         }
-      }),
+      }).then(users => users.map(u => ({
+        ...u,
+        username: u.profile?.handle || u.email.split('@')[0],
+        displayName: u.profile?.displayName || u.name || u.email
+      }))),
       prisma.user.count({ where })
     ]);
 
@@ -191,7 +194,7 @@ admin.get('/users/:id', async (c) => {
     const user = await prisma.user.findUnique({
       where: { id: userId },
       include: {
-        subscription: true
+        profile: true
       }
     });
 
@@ -199,10 +202,8 @@ admin.get('/users/:id', async (c) => {
       return c.json({ error: 'User not found' }, 404);
     }
 
-    // Get user's activity stats
-    const eventsCount = await prisma.analyticsEvent.count({
-      where: { userId }
-    });
+    // Get user's activity stats (placeholder)
+    const eventsCount = 0; // TODO: Implement when analytics_events table exists
 
     return c.json({
       ...user,
@@ -233,17 +234,35 @@ admin.get('/subscriptions', async (c) => {
       where.tier = tier;
     }
 
-    const [subscriptions, total] = await Promise.all([
-      prisma.subscription.findMany({
-        where,
+    // Build where clause for User model
+    const userWhere: any = {
+      subscriptionStatus: { not: null }
+    };
+    if (status) {
+      userWhere.subscriptionStatus = status;
+    }
+    if (tier) {
+      userWhere.subscriptionTier = tier;
+    }
+
+    const [users, total] = await Promise.all([
+      prisma.user.findMany({
+        where: userWhere,
         skip,
         take: limit,
-        include: {
-          user: {
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          subscriptionTier: true,
+          subscriptionStatus: true,
+          stripeCustomerId: true,
+          stripeSubscriptionId: true,
+          subscriptionEnd: true,
+          createdAt: true,
+          profile: {
             select: {
-              id: true,
-              email: true,
-              username: true,
+              handle: true,
               displayName: true
             }
           }
@@ -252,8 +271,28 @@ admin.get('/subscriptions', async (c) => {
           createdAt: 'desc'
         }
       }),
-      prisma.subscription.count({ where })
+      prisma.user.count({ where: userWhere })
     ]);
+
+    // Transform to subscription format
+    const subscriptions = users.map(user => ({
+      id: user.stripeSubscriptionId || user.id,
+      userId: user.id,
+      tier: user.subscriptionTier || 'free',
+      status: user.subscriptionStatus || 'free',
+      stripeCustomerId: user.stripeCustomerId || '',
+      stripeSubscriptionId: user.stripeSubscriptionId || '',
+      currentPeriodStart: user.createdAt,
+      currentPeriodEnd: user.subscriptionEnd || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+      cancelAtPeriodEnd: false,
+      createdAt: user.createdAt,
+      user: {
+        id: user.id,
+        email: user.email,
+        username: user.profile?.handle || user.email.split('@')[0],
+        displayName: user.profile?.displayName || user.name || user.email
+      }
+    }));
 
     return c.json({
       subscriptions,
@@ -276,40 +315,21 @@ admin.get('/analytics/overview', async (c) => {
     const days = parseInt(c.req.query('days') || '30');
     const startDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
 
-    // Get events by type
-    const eventsByType = await prisma.analyticsEvent.groupBy({
-      by: ['eventType'],
-      where: {
-        createdAt: {
-          gte: startDate
-        }
-      },
-      _count: {
-        id: true
-      }
-    });
+    // Placeholder - analytics_events table doesn't exist yet
+    const eventsByType: any[] = [];
+    const dailyActiveUsers: any[] = [];
 
-    // Get daily active users
-    const dailyActiveUsers = await prisma.$queryRaw`
-      SELECT DATE(created_at) as date, COUNT(DISTINCT user_id) as count
-      FROM analytics_events
-      WHERE created_at >= ${startDate}
-      GROUP BY DATE(created_at)
-      ORDER BY date DESC
-    `;
-
-    // Get conversion funnel
-    const signups = await prisma.analyticsEvent.count({
+    // Get conversion funnel from User model
+    const signups = await prisma.user.count({
       where: {
-        eventType: 'signup',
         createdAt: { gte: startDate }
       }
     });
 
-    const subscriptions = await prisma.analyticsEvent.count({
+    const subscriptions = await prisma.user.count({
       where: {
-        eventType: 'subscription_created',
-        createdAt: { gte: startDate }
+        createdAt: { gte: startDate },
+        subscriptionStatus: { in: ['active', 'trialing'] }
       }
     });
 
@@ -336,57 +356,30 @@ admin.get('/analytics/revenue', async (c) => {
     const days = parseInt(c.req.query('days') || '30');
     const startDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
 
-    // Get subscription events
-    const subscriptionEvents = await prisma.analyticsEvent.findMany({
-      where: {
-        eventType: {
-          in: ['subscription_created', 'subscription_renewed', 'subscription_cancelled']
-        },
-        createdAt: {
-          gte: startDate
-        }
-      },
-      orderBy: {
-        createdAt: 'asc'
-      }
-    });
-
-    // Calculate daily revenue
+    // Calculate daily revenue (simplified)
     const dailyRevenue: Record<string, number> = {};
-    subscriptionEvents.forEach(event => {
-      const date = event.createdAt.toISOString().split('T')[0];
-      const metadata = event.metadata as any;
-      const amount = metadata?.amount || 0;
-      
-      if (!dailyRevenue[date]) {
-        dailyRevenue[date] = 0;
-      }
-      
-      if (event.eventType === 'subscription_created' || event.eventType === 'subscription_renewed') {
-        dailyRevenue[date] += amount;
-      }
-    });
 
-    // Get current MRR breakdown
-    const subscriptions = await prisma.subscription.findMany({
+    // Get current MRR breakdown from User model
+    const users = await prisma.user.findMany({
       where: {
-        status: {
+        subscriptionStatus: {
           in: ['active', 'trialing']
         }
       },
       select: {
-        tier: true,
+        subscriptionTier: true,
         createdAt: true
       }
     });
 
-    const mrrByTier = subscriptions.reduce((acc: any, sub) => {
-      const amount = sub.tier === 'premium' ? 4.99 : 0.99;
-      if (!acc[sub.tier]) {
-        acc[sub.tier] = { count: 0, mrr: 0 };
+    const mrrByTier = users.reduce((acc: any, user) => {
+      const tier = user.subscriptionTier || 'free';
+      const amount = tier === 'premium' ? 4.99 : tier === 'basic' ? 0.99 : 0;
+      if (!acc[tier]) {
+        acc[tier] = { count: 0, mrr: 0 };
       }
-      acc[sub.tier].count++;
-      acc[sub.tier].mrr += amount;
+      acc[tier].count++;
+      acc[tier].mrr += amount;
       return acc;
     }, {});
 
@@ -409,23 +402,14 @@ admin.post('/users/:id/subscription', async (c) => {
     const { action, tier } = body; // action: 'upgrade', 'downgrade', 'cancel'
 
     const user = await prisma.user.findUnique({
-      where: { id: userId },
-      include: { subscription: true }
+      where: { id: userId }
     });
 
     if (!user) {
       return c.json({ error: 'User not found' }, 404);
     }
 
-    if (action === 'cancel' && user.subscription) {
-      await prisma.subscription.update({
-        where: { id: user.subscription.id },
-        data: {
-          status: 'cancelled',
-          cancelledAt: new Date()
-        }
-      });
-
+    if (action === 'cancel') {
       await prisma.user.update({
         where: { id: userId },
         data: {
@@ -437,13 +421,6 @@ admin.post('/users/:id/subscription', async (c) => {
     }
 
     if ((action === 'upgrade' || action === 'downgrade') && tier) {
-      if (user.subscription) {
-        await prisma.subscription.update({
-          where: { id: user.subscription.id },
-          data: { tier }
-        });
-      }
-
       await prisma.user.update({
         where: { id: userId },
         data: {
