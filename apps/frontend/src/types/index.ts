@@ -64,17 +64,24 @@ export interface Event {
   id: string;
   userId: string;
   user?: User;
+  host: User;
   title: string;
   description: string;
   category: string;
   latitude: number;
   longitude: number;
+  location: string;
   address?: string;
+  date: Date;
+  time: string;
   startTime: string;
   endTime?: string;
+  maxAttendees?: number;
   capacity?: number;
+  attendeeCount: number;
   attendees: number;
   isAttending?: boolean;
+  isPublic: boolean;
   image?: string;
   createdAt: string;
 }
@@ -107,8 +114,9 @@ export interface Message {
     longitude?: number;
     imageUrl?: string;
   };
-  createdAt: string;
+  createdAt: Date;
   read: boolean;
+  isRead: boolean;
 }
 
 export interface Conversation {
