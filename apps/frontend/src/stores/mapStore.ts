@@ -21,6 +21,7 @@ interface MapState {
   setUserLocation: (location: { latitude: number; longitude: number }) => void;
   likePin: (pinId: string) => Promise<void>;
   savePin: (pinId: string) => Promise<void>;
+  addPin: (pinData: Partial<Pin>) => Promise<Pin>;
 }
 
 export const useMapStore = create<MapState>((set, get) => ({
@@ -95,6 +96,19 @@ export const useMapStore = create<MapState>((set, get) => ({
       }));
     } catch (error) {
       console.error('Error saving pin:', error);
+    }
+  },
+
+  addPin: async (pinData) => {
+    try {
+      const newPin: any = await api.post('/api/pins', pinData);
+      set((state) => ({
+        pins: [...state.pins, newPin],
+      }));
+      return newPin;
+    } catch (error) {
+      console.error('Error creating pin:', error);
+      throw error;
     }
   },
 }));

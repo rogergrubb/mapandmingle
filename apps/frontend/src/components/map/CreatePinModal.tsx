@@ -108,14 +108,15 @@ export const CreatePinModal: React.FC<CreatePinModalProps> = ({
           required
         />
 
-        <Select
-          label="Category"
-          name="category"
-          value={formData.category}
-          onChange={handleChange}
-          options={PIN_CATEGORIES}
-          fullWidth
-        />
+        <div className="w-full">
+          <Select
+            label="Category"
+            name="category"
+            value={formData.category}
+            onChange={handleChange}
+            options={PIN_CATEGORIES}
+          />
+        </div>
 
         <div className="w-full">
           <Textarea
