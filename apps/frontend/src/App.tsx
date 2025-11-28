@@ -17,6 +17,13 @@ import { Mingles } from './pages/Mingles';
 import { MingleDetail } from './pages/MingleDetail';
 import ProfilePage from './pages/ProfilePage';
 import { UserProfile } from './pages/UserProfile';
+import EditProfile from './pages/settings/EditProfile';
+import SavedPins from './pages/settings/SavedPins';
+import PrivacySafety from './pages/settings/PrivacySafety';
+import NotificationsSettings from './pages/settings/NotificationsSettings';
+import Subscription from './pages/settings/Subscription';
+import AccountSettings from './pages/settings/AccountSettings';
+import HelpSupport from './pages/settings/HelpSupport';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
@@ -51,6 +58,13 @@ function App() {
           <Route path="/mingles/:id" element={<MingleDetail />} />
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/profile/:userId" element={<UserProfile />} />
+          <Route path="/settings/edit-profile" element={<EditProfile />} />
+          <Route path="/settings/saved-pins" element={<SavedPins />} />
+          <Route path="/settings/privacy" element={<PrivacySafety />} />
+          <Route path="/settings/notifications" element={<NotificationsSettings />} />
+          <Route path="/settings/subscription" element={<Subscription />} />
+          <Route path="/settings/account" element={<AccountSettings />} />
+          <Route path="/settings/help" element={<HelpSupport />} />
         </Route>
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
