@@ -4,9 +4,10 @@ import Stripe from 'stripe';
 
 export const subscriptionRoutes = new Hono();
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
-  apiVersion: '2025-02-24.acacia',
-});
+const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY;
+const stripe = STRIPE_SECRET_KEY && STRIPE_SECRET_KEY !== 'sk_test_placeholder' 
+  ? new Stripe(STRIPE_SECRET_KEY, { apiVersion: '2025-02-24.acacia' })
+  : null;
 
 // GET /api/subscription/status - Get subscription status
 subscriptionRoutes.get('/status', async (c) => {
