@@ -80,7 +80,7 @@ uploadRoutes.post('/', async (c) => {
     }
 
     const formData = await c.req.formData();
-    const file = formData.get('file') as File;
+    const file = formData.get('file') as Blob | null;
     
     if (!file) {
       return c.json({ error: 'No file provided' }, 400);

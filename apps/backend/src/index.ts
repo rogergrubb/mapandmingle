@@ -211,7 +211,7 @@ wss.on('connection', (ws, req) => {
       const message = JSON.parse(data.toString());
       
       // Handle authentication
-      if (message.type === 'auth') {
+      if (message.type === 'auth' && message.userId) {
         userId = message.userId;
         wsConnections.set(userId, ws);
         ws.send(JSON.stringify({ type: 'auth_success' }));

@@ -1,8 +1,13 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
 import { zValidator } from '@hono/zod-validator';
+import { authMiddleware } from '../middleware/auth';
+import { prisma } from '../index';
 
 const app = new Hono();
+
+// Apply auth middleware to all routes
+app.use('*', authMiddleware);
 
 // Report schema
 const createReportSchema = z.object({
@@ -17,9 +22,8 @@ app.post(
   '/',
   zValidator('json', createReportSchema),
   async (c) => {
-    const userId = c.get('userId');
+    const userId = c.get('userId') as string;
     const { targetType, targetId, reason, details } = c.req.valid('json');
-    const prisma = c.get('prisma');
 
     // Create report
     const report = await prisma.report.create({
@@ -79,8 +83,7 @@ app.post(
 
 // Get user's reports (for transparency)
 app.get('/my-reports', async (c) => {
-  const userId = c.get('userId');
-  const prisma = c.get('prisma');
+  const userId = c.get('userId') as string;
 
   const reports = await prisma.report.findMany({
     where: { reporterId: userId },
@@ -101,9 +104,8 @@ app.get('/my-reports', async (c) => {
 
 // Block a user
 app.post('/block/:userId', async (c) => {
-  const userId = c.get('userId');
+  const userId = c.get('userId') as string;
   const targetUserId = c.req.param('userId');
-  const prisma = c.get('prisma');
 
   if (userId === targetUserId) {
     return c.json({ error: 'Cannot block yourself' }, 400);
@@ -139,9 +141,8 @@ app.post('/block/:userId', async (c) => {
 
 // Unblock a user
 app.delete('/block/:userId', async (c) => {
-  const userId = c.get('userId');
+  const userId = c.get('userId') as string;
   const targetUserId = c.req.param('userId');
-  const prisma = c.get('prisma');
 
   await prisma.block.deleteMany({
     where: {
@@ -155,8 +156,7 @@ app.delete('/block/:userId', async (c) => {
 
 // Get blocked users
 app.get('/blocked', async (c) => {
-  const userId = c.get('userId');
-  const prisma = c.get('prisma');
+  const userId = c.get('userId') as string;
 
   const blocks = await prisma.block.findMany({
     where: { blockerId: userId },
@@ -173,7 +173,7 @@ app.get('/blocked', async (c) => {
   });
 
   return c.json(
-    blocks.map((b) => ({
+    blocks.map((b: any) => ({
       id: b.blocked.id,
       displayName: b.blocked.name,
       avatar: b.blocked.image,

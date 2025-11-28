@@ -58,12 +58,11 @@ locationRoutes.post('/share', async (c) => {
           content: JSON.stringify({
             type: 'location',
             shareType: type,
-            latitude,
-            longitude,
-            address,
-          }),
-          type: 'location',
-        },
+          latitude,
+          longitude,
+          address,
+        }),
+      },
       });
 
       // Notify recipient via WebSocket
@@ -116,7 +115,6 @@ locationRoutes.post('/share', async (c) => {
             address,
             expiresAt: expiresAt.toISOString(),
           }),
-          type: 'location',
         },
       });
 
