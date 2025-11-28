@@ -52,6 +52,9 @@ subscriptionRoutes.post('/checkout', async (c) => {
     // Create or get Stripe customer
     let customerId = profile.stripeCustomerId;
     if (!customerId) {
+      if (!stripe) {
+        return c.json({ error: 'Stripe not configured' }, 503);
+      }
       const customer = await stripe.customers.create({
         email: profile.user.email,
         metadata: { userId },
@@ -61,6 +64,10 @@ subscriptionRoutes.post('/checkout', async (c) => {
         where: { userId },
         data: { stripeCustomerId: customerId },
       });
+    }
+    
+    if (!stripe) {
+      return c.json({ error: 'Stripe not configured' }, 503);
     }
     
     const priceId = process.env.STRIPE_PRICE_ID;
@@ -89,6 +96,10 @@ subscriptionRoutes.post('/checkout', async (c) => {
 // GET /api/subscription/success - Handle successful checkout
 subscriptionRoutes.get('/success', async (c) => {
   try {
+    if (!stripe) {
+      return c.json({ error: 'Stripe not configured' }, 503);
+    }
+    
     const sessionId = c.req.query('session_id');
     if (!sessionId) return c.json({ error: 'Missing session ID' }, 400);
     
@@ -125,6 +136,10 @@ subscriptionRoutes.post('/cancel', async (c) => {
     const userId = c.req.header('X-User-Id');
     if (!userId) return c.json({ error: 'Unauthorized' }, 401);
     
+    if (!stripe) {
+      return c.json({ error: 'Stripe not configured' }, 503);
+    }
+    
     const profile = await prisma.profile.findUnique({ where: { userId } });
     if (!profile?.stripeSubscriptionId) {
       return c.json({ error: 'No active subscription' }, 400);
@@ -151,6 +166,10 @@ subscriptionRoutes.post('/portal', async (c) => {
   try {
     const userId = c.req.header('X-User-Id');
     if (!userId) return c.json({ error: 'Unauthorized' }, 401);
+    
+    if (!stripe) {
+      return c.json({ error: 'Stripe not configured' }, 503);
+    }
     
     const profile = await prisma.profile.findUnique({ where: { userId } });
     if (!profile?.stripeCustomerId) {

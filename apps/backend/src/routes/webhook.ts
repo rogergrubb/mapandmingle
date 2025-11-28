@@ -15,6 +15,10 @@ stripeWebhookRoutes.post('/stripe', async (c) => {
     const body = await c.req.text();
     const signature = c.req.header('stripe-signature');
     
+    if (!stripe) {
+      return c.json({ error: 'Stripe not configured' }, 503);
+    }
+    
     if (!signature || !process.env.STRIPE_WEBHOOK_SECRET) {
       return c.json({ error: 'Missing signature or webhook secret' }, 400);
     }
