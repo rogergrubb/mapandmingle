@@ -1,0 +1,44 @@
+{
+  "name": "@mapmingle/backend",
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc && cp -r prisma dist/",
+    "start": "node dist/index.js",
+    "vercel-build": "prisma generate && tsc",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:push": "prisma db push",
+    "db:studio": "prisma studio",
+    "db:seed": "tsx prisma/seed.ts"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.30.0",
+    "@aws-sdk/client-s3": "^3.650.0",
+    "@aws-sdk/s3-request-presigner": "^3.650.0",
+    "@hono/node-server": "^1.13.0",
+    "@hono/zod-validator": "^0.2.0",
+    "@prisma/client": "^5.22.0",
+    "bcryptjs": "^2.4.3",
+    "expo-server-sdk": "^3.10.0",
+    "hono": "^4.6.0",
+    "jsonwebtoken": "^9.0.2",
+    "nanoid": "^5.0.7",
+    "resend": "^4.0.0",
+    "stripe": "^17.0.0",
+    "uuid": "^13.0.0",
+    "ws": "^8.18.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/jsonwebtoken": "^9.0.6",
+    "@types/node": "^22.0.0",
+    "@types/uuid": "^10.0.0",
+    "@types/ws": "^8.5.12",
+    "@vercel/node": "^3.0.0",
+    "prisma": "^5.22.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.3.3"
+  }
+}
