@@ -29,6 +29,9 @@ model User {
   subscriptionTier      String?   @default("free") // free, basic, premium
   subscriptionStatus    String?   // trialing, active, past_due, canceled, etc.
   trialEndsAt           DateTime?
+  subscriptionEnd       DateTime?
+  lastActiveAt          DateTime?
+  pushToken             String?
 
   // Relations
   profile               Profile?
