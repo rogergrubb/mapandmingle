@@ -1,0 +1,25 @@
+{
+  "name": "mapmingle",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:app\"",
+    "dev:backend": "cd apps/backend && npm run dev",
+    "dev:app": "cd apps/mobile && npm run start",
+    "build": "npm run build:backend && npm run build:app",
+    "build:backend": "cd apps/backend && npm run build",
+    "build:app": "cd apps/mobile && npm run build",
+    "db:generate": "cd apps/backend && npx prisma generate",
+    "db:migrate": "cd apps/backend && npx prisma migrate dev",
+    "db:push": "cd apps/backend && npx prisma db push",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "typescript": "^5.3.3"
+  }
+}

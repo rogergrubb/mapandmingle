@@ -1,0 +1,64 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: mapmingle-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: mapmingle
+      POSTGRES_PASSWORD: mapmingle_dev_password
+      POSTGRES_DB: mapmingle
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mapmingle"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Redis (for production caching - optional for dev)
+  redis:
+    image: redis:7-alpine
+    container_name: mapmingle-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Backend API (optional - can run locally with npm run dev)
+  # api:
+  #   build:
+  #     context: ./apps/backend
+  #     dockerfile: Dockerfile
+  #   container_name: mapmingle-api
+  #   restart: unless-stopped
+  #   ports:
+  #     - "3000:3000"
+  #   environment:
+  #     DATABASE_URL: postgresql://mapmingle:mapmingle_dev_password@postgres:5432/mapmingle
+  #     NODE_ENV: development
+  #     PORT: 3000
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+  #   volumes:
+  #     - ./apps/backend:/app
+  #     - /app/node_modules
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  default:
+    name: mapmingle-network
