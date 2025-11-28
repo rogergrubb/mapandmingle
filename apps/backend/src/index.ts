@@ -212,8 +212,8 @@ wss.on('connection', (ws, req) => {
       
       // Handle authentication
       if (message.type === 'auth' && message.userId) {
-        userId = message.userId;
-        wsConnections.set(userId, ws);
+        userId = message.userId as string;
+        wsConnections.set(userId as string, ws);
         ws.send(JSON.stringify({ type: 'auth_success' }));
         console.log(`✅ WebSocket authenticated: ${userId}`);
       }

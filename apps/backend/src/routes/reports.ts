@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
 import { zValidator } from '@hono/zod-validator';
-import { authMiddleware } from '../middleware/auth';
+import { authMiddleware, getUserId, requireUserId } from '../middleware/auth';
 import { prisma } from '../index';
 
 const app = new Hono();
@@ -21,7 +21,7 @@ app.post(
   '/',
   zValidator('json', createReportSchema),
   async (c) => {
-    const userId = c.get('userId') as string;
+    const userId = requireUserId(c);
     const { reportedUserId, reason, description } = c.req.valid('json');
 
     // Create report
@@ -45,7 +45,7 @@ app.post(
 
 // Get user's reports (for transparency)
 app.get('/my-reports', async (c) => {
-  const userId = c.get('userId') as string;
+  const userId = requireUserId(c);
 
   const reports = await prisma.report.findMany({
     where: { reporterId: userId },
@@ -66,7 +66,7 @@ app.get('/my-reports', async (c) => {
 
 // Block a user
 app.post('/block/:userId', async (c) => {
-  const userId = c.get('userId') as string;
+  const userId = requireUserId(c);
   const targetUserId = c.req.param('userId');
 
   if (userId === targetUserId) {
@@ -100,7 +100,7 @@ app.post('/block/:userId', async (c) => {
 
 // Unblock a user
 app.delete('/block/:userId', async (c) => {
-  const userId = c.get('userId') as string;
+  const userId = requireUserId(c);
   const targetUserId = c.req.param('userId');
 
   await prisma.block.deleteMany({
@@ -115,7 +115,7 @@ app.delete('/block/:userId', async (c) => {
 
 // Get blocked users
 app.get('/blocked', async (c) => {
-  const userId = c.get('userId') as string;
+  const userId = requireUserId(c);
 
   const blocks = await prisma.block.findMany({
     where: { blockerId: userId },
