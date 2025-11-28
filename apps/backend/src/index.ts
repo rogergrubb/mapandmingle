@@ -1,11 +1,11 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
-import { serve } from '@hono/node-server';
-import { PrismaClient } from '@prisma/client';
 import { WebSocketServer, WebSocket } from 'ws';
 import { createServer } from 'http';
-import { createInMemoryRateLimiter } from './middleware/rate-limit';
+
+// Import Prisma client
+import { prisma } from './lib/prisma';
 
 // Import routes
 import { authRoutes } from './routes/auth';
@@ -36,71 +36,170 @@ import { notificationRoutes } from './routes/notifications';
 import { waveRoutes } from './routes/waves';
 import { locationRoutes } from './routes/location';
 
-// Initialize Prisma
-export const prisma = new PrismaClient();
+// Import websocket utilities
+import { wsConnections, broadcastToUser, broadcastToAll } from './lib/websocket';
+
+// Re-export for routes
+export { prisma, wsConnections, broadcastToUser, broadcastToAll };
 
 // Initialize Hono app
 const app = new Hono();
 
-// Middleware - Improved CORS configuration
-const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || [
-  'http://localhost:8081', // Expo dev
-  'http://localhost:19000', // Expo dev
-  'http://localhost:19006', // Expo web
-];
-
-// Add production domains from environment
-if (process.env.FRONTEND_URL) {
-  allowedOrigins.push(process.env.FRONTEND_URL);
-}
-
+// Middleware
 app.use('*', logger());
 app.use('*', cors({
-  origin: (origin) => {
-    // Allow requests with no origin (mobile apps, Postman, etc.)
-    if (!origin) return origin;
-    
-    // Check if origin is in allowed list
-    if (allowedOrigins.includes(origin)) return origin;
-    
-    // In development, allow localhost with any port
-    if (process.env.NODE_ENV === 'development' && origin.includes('localhost')) {
-      return origin;
-    }
-    
-    // Reject all other origins
-    return allowedOrigins[0];
-  },
+  origin: '*',
   allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowHeaders: ['Content-Type', 'Authorization', 'X-User-Id'],
+  allowHeaders: ['Content-Type', 'Authorization'],
   credentials: true,
-  maxAge: 86400, // 24 hours
 }));
-
-// Rate limiting - Use in-memory for development, Redis for production
-// For production, uncomment and configure Redis:
-// import Redis from 'ioredis';
-// import { createRedisRateLimiter } from './middleware/rate-limit';
-// const redis = new Redis(process.env.REDIS_URL);
-// app.use('*', createRedisRateLimiter(redis, { maxRequests: 100, windowMs: 60000 }));
-
-// Development rate limiter
-if (process.env.NODE_ENV !== 'production') {
-  app.use('*', createInMemoryRateLimiter({ maxRequests: 100, windowMs: 60000 }));
-}
 
 // Health check
-app.get('/', (c) => c.json({ 
-  status: 'ok', 
-  message: 'Map Mingle API v1.0',
-  environment: process.env.NODE_ENV || 'development',
-}));
+app.get('/', (c) => c.json({ status: 'ok', message: 'Map Mingle API v1.0' }));
+app.get('/health', (c) => c.json({ status: 'healthy', timestamp: new Date().toISOString() }));
 
-app.get('/health', (c) => c.json({ 
-  status: 'healthy', 
-  timestamp: new Date().toISOString(),
-  uptime: process.uptime(),
-}));
+// Static legal pages
+app.get('/terms', async (c) => {
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Terms of Service - Map Mingle</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      line-height: 1.6;
+      color: #333;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background: #fff;
+      border-radius: 16px;
+      padding: 40px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+    }
+    .logo { text-align: center; margin-bottom: 30px; }
+    .logo span { font-size: 32px; background: linear-gradient(135deg, #ec4899, #f97316); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: bold; }
+    h1 { color: #1a1a2e; font-size: 28px; margin-bottom: 10px; text-align: center; }
+    .updated { text-align: center; color: #666; margin-bottom: 30px; font-size: 14px; }
+    h2 { color: #ec4899; font-size: 20px; margin: 30px 0 15px; padding-bottom: 8px; border-bottom: 2px solid #fce7f3; }
+    p { margin-bottom: 15px; color: #444; }
+    ul { margin: 15px 0 15px 25px; }
+    li { margin-bottom: 8px; color: #444; }
+    .highlight { background: #fce7f3; padding: 15px 20px; border-radius: 10px; border-left: 4px solid #ec4899; margin: 20px 0; }
+    .footer { text-align: center; margin-top: 40px; padding-top: 20px; border-top: 1px solid #eee; color: #666; font-size: 14px; }
+    a { color: #ec4899; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="logo"><span>🗺️ Map Mingle</span></div>
+    <h1>Terms of Service</h1>
+    <p class="updated">Last Updated: November 28, 2024</p>
+    <div class="highlight"><strong>Welcome to Map Mingle!</strong> By using our app, you agree to these terms.</div>
+    <h2>1. Acceptance of Terms</h2>
+    <p>By accessing or using Map Mingle, you agree to be bound by these Terms of Service.</p>
+    <h2>2. Eligibility</h2>
+    <p>You must be at least 18 years old to use Map Mingle.</p>
+    <h2>3. Account Registration</h2>
+    <p>You agree to provide accurate information, keep credentials secure, and be responsible for all activity under your account.</p>
+    <h2>4. Acceptable Use</h2>
+    <p>You agree NOT to: harass others, post inappropriate content, impersonate others, use the app illegally, spam, or attempt to hack the service.</p>
+    <h2>5. User Content</h2>
+    <p>You retain ownership of content you post. By posting, you grant us a license to display your content within the app.</p>
+    <h2>6. Location Services</h2>
+    <p>Map Mingle uses location data to provide its services. By using location features, you consent to the collection and use of your location.</p>
+    <h2>7. Premium Subscription</h2>
+    <p>Premium features are available at $4.99/month. Subscriptions auto-renew unless cancelled.</p>
+    <h2>8. Safety</h2>
+    <p>Always exercise caution when meeting people. Meet in public places and inform someone of your plans.</p>
+    <h2>9. Termination</h2>
+    <p>We may suspend accounts for violations. You may delete your account anytime.</p>
+    <h2>10. Disclaimers</h2>
+    <p>Map Mingle is provided "as is" without warranties.</p>
+    <h2>11. Contact Us</h2>
+    <p>Email: <a href="mailto:support@mapandmingle.app">support@mapandmingle.app</a></p>
+    <div class="footer"><p>© 2024 Map Mingle. All rights reserved.</p><p><a href="/privacy">Privacy Policy</a></p></div>
+  </div>
+</body>
+</html>`;
+  return c.html(html);
+});
+
+app.get('/privacy', async (c) => {
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Privacy Policy - Map Mingle</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      line-height: 1.6;
+      color: #333;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background: #fff;
+      border-radius: 16px;
+      padding: 40px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+    }
+    .logo { text-align: center; margin-bottom: 30px; }
+    .logo span { font-size: 32px; background: linear-gradient(135deg, #ec4899, #f97316); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: bold; }
+    h1 { color: #1a1a2e; font-size: 28px; margin-bottom: 10px; text-align: center; }
+    .updated { text-align: center; color: #666; margin-bottom: 30px; font-size: 14px; }
+    h2 { color: #ec4899; font-size: 20px; margin: 30px 0 15px; padding-bottom: 8px; border-bottom: 2px solid #fce7f3; }
+    p { margin-bottom: 15px; color: #444; }
+    ul { margin: 15px 0 15px 25px; }
+    li { margin-bottom: 8px; color: #444; }
+    .highlight { background: #fce7f3; padding: 15px 20px; border-radius: 10px; border-left: 4px solid #ec4899; margin: 20px 0; }
+    .footer { text-align: center; margin-top: 40px; padding-top: 20px; border-top: 1px solid #eee; color: #666; font-size: 14px; }
+    a { color: #ec4899; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="logo"><span>🗺️ Map Mingle</span></div>
+    <h1>Privacy Policy</h1>
+    <p class="updated">Last Updated: November 28, 2024</p>
+    <div class="highlight"><strong>Your privacy matters.</strong> This policy explains what data we collect and how we use it.</div>
+    <h2>1. Information We Collect</h2>
+    <p>We collect: Account info (name, email), Profile info (bio, photos), Location data, Messages, and Usage data.</p>
+    <h2>2. How We Use Your Data</h2>
+    <p>We use your data to: provide features, connect you with nearby users, send notifications, ensure safety, process payments, and respond to support.</p>
+    <h2>3. Location Data</h2>
+    <p>Location is core to Map Mingle. We collect location when you view the map, create pins, or share location with others.</p>
+    <h2>4. Data Sharing</h2>
+    <p>We do NOT sell your data. We share with: other users (public profile), service providers (hosting, payments), and legal authorities when required.</p>
+    <h2>5. Data Security</h2>
+    <p>We protect data using encrypted connections, secure password hashing, and limited access.</p>
+    <h2>6. Your Rights</h2>
+    <p>You can: access your data, correct inaccuracies, delete your account, and withdraw consent.</p>
+    <h2>7. Data Retention</h2>
+    <p>We keep data while your account is active. After deletion, most data is removed within 30 days.</p>
+    <h2>8. Children's Privacy</h2>
+    <p>Map Mingle is not for users under 18. We do not knowingly collect data from minors.</p>
+    <h2>9. Contact Us</h2>
+    <p>Email: <a href="mailto:privacy@mapandmingle.app">privacy@mapandmingle.app</a></p>
+    <div class="footer"><p>© 2024 Map Mingle. All rights reserved.</p><p><a href="/terms">Terms of Service</a></p></div>
+  </div>
+</body>
+</html>`;
+  return c.html(html);
+});
 
 // API Routes
 app.route('/api/auth', authRoutes);
@@ -131,43 +230,17 @@ app.route('/api/waves', waveRoutes);
 app.route('/api/location', locationRoutes);
 app.route('/webhook', stripeWebhookRoutes);
 
-// WebSocket connections store
-const wsConnections = new Map<string, WebSocket>();
-
-// Export for use in routes
-export { wsConnections };
-
-// Broadcast to specific user
-export function broadcastToUser(userId: string, message: object) {
-  const ws = wsConnections.get(userId);
-  if (ws && ws.readyState === WebSocket.OPEN) {
-    ws.send(JSON.stringify(message));
-  }
-}
-
-// Broadcast to all users
-export function broadcastToAll(message: object) {
-  wsConnections.forEach((ws) => {
-    if (ws.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify(message));
-    }
-  });
-}
-
 // Start server
 const PORT = process.env.PORT || 3000;
 
 const server = createServer((req, res) => {
-  // Let Hono handle HTTP requests
   const url = new URL(req.url || '/', `http://${req.headers.host}`);
   
-  // Collect body data
   const chunks: Buffer[] = [];
   req.on('data', chunk => chunks.push(chunk));
   req.on('end', async () => {
     const body = Buffer.concat(chunks);
     
-    // Create a proper Request object for Hono
     const headers = new Headers();
     Object.entries(req.headers).forEach(([key, value]) => {
       if (value) headers.set(key, Array.isArray(value) ? value[0] : value);
@@ -182,14 +255,11 @@ const server = createServer((req, res) => {
     try {
       const response = await app.fetch(request);
       
-      // Copy headers from Hono response
       response.headers.forEach((value, key) => {
         res.setHeader(key, value);
       });
       
       res.statusCode = response.status;
-      
-      // Send body
       const responseBody = await response.arrayBuffer();
       res.end(Buffer.from(responseBody));
     } catch (error) {
@@ -211,17 +281,16 @@ wss.on('connection', (ws, req) => {
       const message = JSON.parse(data.toString());
       
       // Handle authentication
-      if (message.type === 'auth' && message.userId) {
-        userId = message.userId as string;
-        wsConnections.set(userId as string, ws);
+      if (message.type === 'auth' && typeof message.userId === 'string') {
+        userId = message.userId;
+        wsConnections.set(message.userId, ws);
         ws.send(JSON.stringify({ type: 'auth_success' }));
-        console.log(`✅ WebSocket authenticated: ${userId}`);
+        console.log(`✅ WebSocket authenticated: ${message.userId}`);
       }
       
       // Handle typing indicators
       if (message.type === 'typing' && userId) {
         const { conversationId, isTyping } = message;
-        // Broadcast to conversation participants
         broadcastToAll({
           type: 'typing',
           conversationId,
@@ -244,6 +313,12 @@ wss.on('connection', (ws, req) => {
       // Handle presence/heartbeat
       if (message.type === 'ping') {
         ws.send(JSON.stringify({ type: 'pong' }));
+      }
+      
+      // Handle location updates
+      if (message.type === 'location_update' && userId) {
+        const { latitude, longitude } = message;
+        console.log(`📍 Location update from ${userId}: ${latitude}, ${longitude}`);
       }
       
     } catch (error) {
@@ -269,35 +344,15 @@ server.listen(PORT, () => {
 ║                    🗺️  MAP MINGLE API                      ║
 ╠═══════════════════════════════════════════════════════════╣
 ║  Server running on port ${PORT}                              ║
-║  Environment: ${process.env.NODE_ENV || 'development'}                            ║
 ║  WebSocket ready for real-time connections                ║
 ║  Database: PostgreSQL via Prisma                          ║
-║  Rate Limiting: ${process.env.NODE_ENV === 'production' ? 'Redis' : 'In-Memory (Dev)'}                      ║
 ╚═══════════════════════════════════════════════════════════╝
   `);
 });
 
 // Graceful shutdown
 process.on('SIGTERM', async () => {
-  console.log('Shutting down gracefully...');
-  
-  // Close WebSocket connections
-  wsConnections.forEach((ws) => {
-    ws.close(1000, 'Server shutting down');
-  });
-  
-  // Disconnect Prisma
-  await prisma.$disconnect();
-  
-  // Close server
-  server.close(() => {
-    console.log('Server closed');
-    process.exit(0);
-  });
-});
-
-process.on('SIGINT', async () => {
-  console.log('Received SIGINT, shutting down...');
+  console.log('Shutting down...');
   await prisma.$disconnect();
   server.close();
   process.exit(0);
