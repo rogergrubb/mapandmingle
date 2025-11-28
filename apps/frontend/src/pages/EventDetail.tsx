@@ -113,12 +113,15 @@ export function EventDetail() {
 
   const handleAddComment = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newComment.trim() || !event) ret    try {
+    if (!newComment.trim() || !event) return;
+
+    try {
       const response = await api.post(`/api/events/${event.id}/comments`, {
         text: newComment,
       });
 
-      setComments((prev) => [...prev, response.data]);      setNewComment('');
+      setComments((prev) => [...prev, response.data]);
+      setNewComment('');
     } catch (error) {
       console.error('Failed to add comment:', error);
     }
