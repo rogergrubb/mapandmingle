@@ -7,7 +7,6 @@
     "packages/*"
   ],
   "scripts": {
-    "postinstall": "npm run db:generate",
     "dev": "concurrently \"npm run dev:backend\" \"npm run dev:app\"",
     "dev:backend": "cd apps/backend && npm run dev",
     "dev:app": "cd apps/mobile && npm run start",
