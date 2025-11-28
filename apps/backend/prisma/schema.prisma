@@ -1,0 +1,758 @@
+// This is your Prisma schema file for Map Mingle
+// Learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================================
+// AUTHENTICATION (Better Auth)
+// ============================================================================
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String?
+  image         String?
+  emailVerified Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  profile               Profile?
+  sessions              Session[]
+  accounts              Account[]
+  pins                  Pin[]
+  pinLikes              PinLike[]
+  savedPins             SavedPin[]
+  conversations         ConversationParticipant[]
+  messages              Message[]
+  eventsHosted          Event[]               @relation("EventHost")
+  eventAttendees        EventAttendee[]
+  forumThreads          ForumThread[]
+  forumPosts            ForumPost[]
+  forumComments         ForumComment[]
+  minglesHosted         MingleEvent[]         @relation("MingleHost")
+  mingleParticipants    MingleParticipant[]
+  videoCallsInitiated   VideoCall[]           @relation("Caller")
+  videoCallsReceived    VideoCall[]           @relation("Receiver")
+  videoRoomsHosted      VideoRoom[]           @relation("RoomHost")
+  roomParticipants      RoomParticipant[]
+  streaks               UserStreak[]
+  dailyActivities       DailyActivity[]
+  blocksInitiated       Block[]               @relation("BlockInitiator")
+  blocksReceived        Block[]               @relation("BlockTarget")
+  reportsInitiated      Report[]              @relation("ReportInitiator")
+  reportsReceived       Report[]              @relation("ReportTarget")
+  proximityAlerts       ProximityAlert[]
+  proximityAlertMatches ProximityAlertMatch[]
+  hotspotActivities     HotspotActivity[]
+  notifications         Notification[]
+  uploads               Upload[]
+  wavesSent             Wave[]               @relation("WaveSender")
+  wavesReceived         Wave[]               @relation("WaveReceiver")
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  accountId         String
+  providerId        String
+  accessToken       String?
+  refreshToken      String?
+  accessTokenExpiresAt DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope             String?
+  idToken           String?
+  password          String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([providerId, accountId])
+}
+
+model Verification {
+  id         String   @id @default(cuid())
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([identifier, value])
+}
+
+// ============================================================================
+// USER PROFILE
+// ============================================================================
+
+model Profile {
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Basic Info
+  handle      String?  @unique
+  displayName String?
+  bio         String?  @db.VarChar(300)
+  avatar      String?
+
+  // Demographics
+  age                Int?
+  gender             String?  // male, female, nonbinary, prefer_not
+  relationshipStatus String?  // single, dating, committed, married, open, complicated, prefer_not
+  openness           String?  // monogamous, open, flexible, exploring, prefer_not
+
+  // Interests & Preferences
+  interests            String?  @db.Text // JSON array
+  lookingFor           String?
+  chatReadiness        String?  @default("browsing_only") // open_to_chat, open_to_meet, browsing_only, busy
+  activityIntent       String?
+  activityIntentActive Boolean  @default(false)
+  activityIntentSetAt  DateTime?
+
+  // Current Location
+  currentLocationLat Float?
+  currentLocationLng Float?
+
+  // Matching Preferences
+  preferredAgeMin    Int?     @default(18)
+  preferredAgeMax    Int?     @default(99)
+  preferredDistanceKm Int?    @default(50)
+  maxDistance        Int?     @default(50)
+  minAge             Int?
+  maxAge             Int?
+
+  // Privacy Settings
+  visibilityMode     String   @default("public") // public, friends_only, hidden
+  whoCanMessage      String   @default("everyone") // everyone, verified, none
+  whoCanSeePins      String   @default("everyone") // everyone, connections, none
+  whoCanSeeProfile   String   @default("everyone") // everyone, connections, none
+  showActivityStatus Boolean  @default(true)
+  hideLastOnline     Boolean  @default(false)
+
+  // Premium Privacy Features
+  ghostMode        Boolean @default(false)
+  incognitoMode    Boolean @default(false)
+  showAvailability Boolean @default(true)
+
+  // Selective Visibility (Smart Invisibility)
+  selectiveVisibilityEnabled Boolean @default(false)
+  visibilityMinAge           Int?
+  visibilityMaxAge           Int?
+  visibilityRequireInterests Boolean @default(false)
+  visibilityMinSharedInterests Int?
+  visibilityMaxDistance      Int?
+  visibilityMinReputation    Int?
+  visibilityPremiumOnly      Boolean @default(false)
+  visibilityHideFromBlocked  Boolean @default(true)
+
+  // Trust & Reputation
+  trustScore           Int     @default(50)
+  trustLevel           String  @default("new") // new, trusted, verified, vip, flagged, restricted
+  positiveInteractions Int     @default(0)
+  negativeInteractions Int     @default(0)
+  spamReports          Int     @default(0)
+  behaviorFlags        Int     @default(0)
+  pinsCreated          Int     @default(0)
+  likesReceived        Int     @default(0)
+  messagesSent         Int     @default(0)
+  messagesReceived     Int     @default(0)
+  eventsAttended       Int     @default(0)
+  minglesAttended      Int     @default(0)
+
+  // Subscription
+  subscriptionStatus    String    @default("trial") // trial, active, expired, canceled
+  subscriptionStartedAt DateTime  @default(now())
+  subscriptionExpiresAt DateTime?
+  stripeCustomerId      String?
+  stripeSubscriptionId  String?
+
+  // Boost & Premium Features
+  boostActive        Boolean  @default(false)
+  boostExpiresAt     DateTime?
+  featuredBadgeColor String   @default("none") // gold, blue, purple, none
+
+  // Activity Tracking
+  lastActiveAt DateTime?
+  lastSeenAt   DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ============================================================================
+// PINS (MISSED CONNECTIONS)
+// ============================================================================
+
+model Pin {
+  id          String   @id @default(cuid())
+  userId      String
+  latitude    Float
+  longitude   Float
+  description String   @db.VarChar(500)
+  image       String?
+  likesCount  Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  likes     PinLike[]
+  savedBy   SavedPin[]
+
+  @@index([latitude, longitude])
+  @@index([createdAt])
+}
+
+model PinLike {
+  id        String   @id @default(cuid())
+  pinId     String
+  userId    String
+  createdAt DateTime @default(now())
+
+  pin  Pin  @relation(fields: [pinId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([pinId, userId])
+}
+
+model SavedPin {
+  id        String   @id @default(cuid())
+  userId    String
+  pinId     String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  pin  Pin  @relation(fields: [pinId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, pinId])
+}
+
+// ============================================================================
+// MESSAGING
+// ============================================================================
+
+model Conversation {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  participants ConversationParticipant[]
+  messages     Message[]
+}
+
+model ConversationParticipant {
+  id             String   @id @default(cuid())
+  conversationId String
+  userId         String
+  joinedAt       DateTime @default(now())
+  lastReadAt     DateTime?
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([conversationId, userId])
+}
+
+model Message {
+  id             String   @id @default(cuid())
+  conversationId String
+  senderId       String
+  content        String   @db.Text
+  type           String   @default("text") // text, location, image, etc.
+  readAt         DateTime?
+  createdAt      DateTime @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender       User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, createdAt])
+}
+
+// ============================================================================
+// EVENTS
+// ============================================================================
+
+model Event {
+  id           String    @id @default(cuid())
+  hostId       String
+  title        String    @db.VarChar(100)
+  description  String?   @db.Text
+  category     String    @default("social") // social, dating, networking, activity, other
+  image        String?
+  venueName    String
+  venueAddress String?
+  latitude     Float
+  longitude    Float
+  startTime    DateTime
+  endTime      DateTime?
+  maxAttendees Int?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  host      User            @relation("EventHost", fields: [hostId], references: [id], onDelete: Cascade)
+  attendees EventAttendee[]
+
+  @@index([latitude, longitude])
+  @@index([startTime])
+}
+
+model EventAttendee {
+  id        String   @id @default(cuid())
+  eventId   String
+  userId    String
+  status    String   @default("going") // going, maybe, not_going
+  createdAt DateTime @default(now())
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, userId])
+}
+
+// ============================================================================
+// FORUMS (COMMUNITY)
+// ============================================================================
+
+model ForumThread {
+  id        String   @id @default(cuid())
+  userId    String
+  title     String   @db.VarChar(200)
+  venueName String?
+  venueType String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user  User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  posts ForumPost[]
+}
+
+model ForumPost {
+  id          String   @id @default(cuid())
+  authorId    String
+  title       String   @db.VarChar(200)
+  content     String   @db.Text
+  category    String   @default("general") // general, meetups, events, places, tips, questions
+  isPinned    Boolean  @default(false)
+  likesCount  Int      @default(0)
+  
+  // Optional location
+  locationName String?
+  latitude     Float?
+  longitude    Float?
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  author   User           @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  comments ForumComment[]
+  likes    ForumPostLike[]
+  
+  // Legacy - keep for migration
+  threadId String?
+  thread   ForumThread?   @relation(fields: [threadId], references: [id], onDelete: SetNull)
+
+  @@index([category])
+  @@index([createdAt])
+  @@index([likesCount])
+}
+
+model ForumComment {
+  id         String   @id @default(cuid())
+  postId     String
+  authorId   String
+  content    String   @db.VarChar(1000)
+  parentId   String?  // For nested replies
+  likesCount Int      @default(0)
+  createdAt  DateTime @default(now())
+
+  post   ForumPost       @relation(fields: [postId], references: [id], onDelete: Cascade)
+  author User            @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  parent ForumComment?   @relation("CommentReplies", fields: [parentId], references: [id], onDelete: SetNull)
+  replies ForumComment[] @relation("CommentReplies")
+  likes  ForumCommentLike[]
+}
+
+model ForumPostLike {
+  id        String   @id @default(cuid())
+  postId    String
+  userId    String
+  createdAt DateTime @default(now())
+
+  post ForumPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, userId])
+}
+
+model ForumCommentLike {
+  id        String   @id @default(cuid())
+  commentId String
+  userId    String
+  createdAt DateTime @default(now())
+
+  comment ForumComment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+
+  @@unique([commentId, userId])
+}
+
+// ============================================================================
+// MINGLES (PLANNED MEETUPS)
+// ============================================================================
+
+model MingleEvent {
+  id              String    @id @default(cuid())
+  hostId          String
+  title           String    @db.VarChar(100)
+  description     String?   @db.VarChar(500)
+  intentCard      String
+  latitude        Float
+  longitude       Float
+  locationName    String?
+  radius          Int       @default(200) // meters
+  startTime       DateTime
+  duration        Int       @default(30) // minutes
+  endTime         DateTime
+  status          String    @default("scheduled") // scheduled, live, ended, cancelled
+  maxParticipants Int?
+  isRecurring     Boolean   @default(false)
+  isPremiumOnly   Boolean   @default(false)
+  viewCount       Int       @default(0)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  host         User                @relation("MingleHost", fields: [hostId], references: [id], onDelete: Cascade)
+  participants MingleParticipant[]
+  views        MingleView[]
+
+  @@index([latitude, longitude])
+  @@index([startTime])
+}
+
+model MingleParticipant {
+  id           String    @id @default(cuid())
+  mingleId     String
+  userId       String
+  status       String    @default("interested") // interested, confirmed, declined
+  joinedAt     DateTime  @default(now())
+  notifiedAt   DateTime?
+
+  mingle MingleEvent @relation(fields: [mingleId], references: [id], onDelete: Cascade)
+  user   User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([mingleId, userId])
+}
+
+model MingleView {
+  id        String   @id @default(cuid())
+  mingleId  String
+visitorId String?  // null for anonymous
+  viewedAt  DateTime @default(now())
+
+  mingle MingleEvent @relation(fields: [mingleId], references: [id], onDelete: Cascade)
+}
+
+// ============================================================================
+// VIDEO CALLS (1-on-1)
+// ============================================================================
+
+model VideoCall {
+  id         String    @id @default(cuid())
+  callerId   String
+  receiverId String
+  status     String    @default("pending") // pending, active, ended, missed, declined
+  startedAt  DateTime?
+  endedAt    DateTime?
+  duration   Int?      // seconds
+  createdAt  DateTime  @default(now())
+
+  caller   User @relation("Caller", fields: [callerId], references: [id], onDelete: Cascade)
+  receiver User @relation("Receiver", fields: [receiverId], references: [id], onDelete: Cascade)
+}
+
+// ============================================================================
+// VIDEO ROOMS (GROUP CALLS)
+// ============================================================================
+
+model VideoRoom {
+  id              String   @id @default(cuid())
+  hostId          String
+  title           String   @db.VarChar(100)
+  description     String?  @db.VarChar(500)
+  status          String   @default("waiting") // waiting, active, ended
+  maxParticipants Int      @default(10)
+  isPremiumOnly   Boolean  @default(false)
+  latitude        Float?
+  longitude       Float?
+  createdAt       DateTime @default(now())
+  endedAt         DateTime?
+
+  host         User              @relation("RoomHost", fields: [hostId], references: [id], onDelete: Cascade)
+  participants RoomParticipant[]
+}
+
+model RoomParticipant {
+  id        String    @id @default(cuid())
+  roomId    String
+  userId    String
+  joinedAt  DateTime  @default(now())
+  leftAt    DateTime?
+  isPriority Boolean  @default(false)
+
+  room VideoRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  user User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([roomId, userId])
+}
+
+// ============================================================================
+// STREAKS & GAMIFICATION
+// ============================================================================
+
+model UserStreak {
+  id               String    @id @default(cuid())
+  userId           String
+  streakType       String    // login, social, explorer, event
+  currentStreak    Int       @default(0)
+  longestStreak    Int       @default(0)
+  lastActivityDate DateTime?
+  totalActivities  Int       @default(0)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, streakType])
+}
+
+model DailyActivity {
+  id           String   @id @default(cuid())
+  userId       String
+  activityType String   // login, message, pin, event, mingle
+  activityDate DateTime @db.Date
+  count        Int      @default(1)
+  createdAt    DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, activityType, activityDate])
+}
+
+// ============================================================================
+// SAFETY & MODERATION
+// ============================================================================
+
+model Block {
+  id            String   @id @default(cuid())
+  blockerId     String
+  blockedUserId String
+  reason        String?
+  createdAt     DateTime @default(now())
+
+  blocker     User @relation("BlockInitiator", fields: [blockerId], references: [id], onDelete: Cascade)
+  blockedUser User @relation("BlockTarget", fields: [blockedUserId], references: [id], onDelete: Cascade)
+
+  @@unique([blockerId, blockedUserId])
+}
+
+model Report {
+  id             String   @id @default(cuid())
+  reporterId     String
+  reportedUserId String
+  reason         String   // spam, harassment, inappropriate, fake, other
+  description    String?  @db.VarChar(500)
+  status         String   @default("pending") // pending, reviewed, resolved, dismissed
+  createdAt      DateTime @default(now())
+  reviewedAt     DateTime?
+
+  reporter     User @relation("ReportInitiator", fields: [reporterId], references: [id], onDelete: Cascade)
+  reportedUser User @relation("ReportTarget", fields: [reportedUserId], references: [id], onDelete: Cascade)
+}
+
+// ============================================================================
+// HOTSPOTS (ACTIVITY AGGREGATION)
+// ============================================================================
+
+model Hotspot {
+  id            String   @id @default(cuid())
+  geohash       String   @unique
+  centerLat     Float
+  centerLng     Float
+  activeUsers   Int      @default(0)
+  totalActivity Int      @default(0)
+  trendScore    Float    @default(0)
+  peakHour      Int?
+  lastUpdated   DateTime @default(now())
+
+  activities HotspotActivity[]
+
+  @@index([geohash])
+  @@index([trendScore])
+}
+
+model HotspotActivity {
+  id         String   @id @default(cuid())
+  hotspotId  String
+  userId     String?  // null for anonymized
+  activityType String // pin, mingle, event
+  createdAt  DateTime @default(now())
+
+  hotspot Hotspot @relation(fields: [hotspotId], references: [id], onDelete: Cascade)
+  user    User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt])
+}
+
+// ============================================================================
+// PROXIMITY ALERTS
+// ============================================================================
+
+model ProximityAlert {
+  id             String    @id @default(cuid())
+  userId         String
+  name           String    @db.VarChar(50)
+  latitude       Float
+  longitude      Float
+  radiusMeters   Int       @default(1000)
+  isActive       Boolean   @default(true)
+
+  // Criteria
+  minAge         Int?
+  maxAge         Int?
+  gender         String?
+  interests      String?   @db.Text // JSON array
+  activityIntent String?
+  minTrustScore  Int?
+
+  // Limits
+  cooldownMinutes Int      @default(60)
+  maxAlertsPerDay Int      @default(10)
+  alertsToday     Int      @default(0)
+  lastTriggeredAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user    User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  matches ProximityAlertMatch[]
+}
+
+model ProximityAlertMatch {
+  id           String   @id @default(cuid())
+  alertId      String
+  matchedUserId String
+  distance     Float
+  matchedAt    DateTime @default(now())
+  notified     Boolean  @default(false)
+
+  alert       ProximityAlert @relation(fields: [alertId], references: [id], onDelete: Cascade)
+  matchedUser User           @relation(fields: [matchedUserId], references: [id], onDelete: Cascade)
+
+  @@unique([alertId, matchedUserId])
+}
+
+// ============================================================================
+// NOTIFICATIONS
+// ============================================================================
+
+model PushToken {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  platform  String   // ios, android
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model NotificationSettings {
+  id              String  @id @default(cuid())
+  userId          String  @unique
+  messages        Boolean @default(true)
+  waves           Boolean @default(true)
+  nearbyUsers     Boolean @default(true)
+  events          Boolean @default(true)
+  mingles         Boolean @default(true)
+  pinActivity     Boolean @default(true)
+  forumReplies    Boolean @default(true)
+  streakReminders Boolean @default(true)
+  marketing       Boolean @default(false)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Notification {
+  id         String   @id @default(cuid())
+  userId     String
+  fromUserId String?
+  type       String   // message, wave, proximity, event_reminder, etc.
+  title      String
+  body       String
+  data       Json?
+  read       Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  fromUser User? @relation(fields: [fromUserId], references: [id], onDelete: SetNull)
+
+  @@index([userId, read])
+  @@index([createdAt])
+}
+
+// ============================================================================
+// UPLOADS
+// ============================================================================
+
+model Upload {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  key         String   @unique
+  url         String
+  filename    String
+  contentType String
+  size        Int
+  createdAt   DateTime @default(now())
+
+  @@index([userId])
+}
+
+// ============================================================================
+// WAVES (POKES)
+// ============================================================================
+
+model Wave {
+  id         String   @id @default(cuid())
+  fromUserId String
+  toUserId   String
+  message    String?  @db.VarChar(100)
+  status     String   @default("sent") // sent, seen, waved_back
+  createdAt  DateTime @default(now())
+  seenAt     DateTime?
+
+  fromUser User @relation("WaveSender", fields: [fromUserId], references: [id], onDelete: Cascade)
+  toUser   User @relation("WaveReceiver", fields: [toUserId], references: [id], onDelete: Cascade)
+
+  @@unique([fromUserId, toUserId])
+  @@index([toUserId])
+}
