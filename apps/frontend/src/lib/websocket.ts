@@ -7,6 +7,7 @@ class WebSocketClient {
   private maxReconnectAttempts = 5;
   private reconnectDelay = 1000;
   private url: string;
+  public isConnected = false;
 
   constructor() {
     const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -24,6 +25,7 @@ class WebSocketClient {
     this.ws.onopen = () => {
       console.log('WebSocket connected');
       this.reconnectAttempts = 0;
+      this.isConnected = true;
     };
 
     this.ws.onmessage = (event) => {
@@ -40,6 +42,7 @@ class WebSocketClient {
 
     this.ws.onclose = () => {
       console.log('WebSocket disconnected');
+      this.isConnected = false;
       this.attemptReconnect(token);
     };
 
@@ -88,21 +91,31 @@ class WebSocketClient {
 export const wsClient = new WebSocketClient();
 
 // React hook for using WebSocket
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuthStore } from '../stores/authStore';
 
 export function useWebSocket() {
   const token = useAuthStore((state) => state.token);
+  const [isConnected, setIsConnected] = useState(false);
 
   useEffect(() => {
     if (token) {
       wsClient.connect(token);
     }
 
+    // Poll for connection status changes
+    const interval = setInterval(() => {
+      setIsConnected(wsClient.isConnected);
+    }, 100);
+
     return () => {
+      clearInterval(interval);
       // Don't disconnect on unmount as other components might be using it
     };
   }, [token]);
 
-  return wsClient;
+  return {
+    socket: wsClient,
+    isConnected
+  };
 }
