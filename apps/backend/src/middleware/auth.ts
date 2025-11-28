@@ -18,8 +18,8 @@ export async function authMiddleware(c: Context, next: Next) {
     try {
       const decoded = jwt.verify(token, JWT_SECRET) as { userId: string; email: string };
       
-      // Set user ID in header for downstream routes
-      c.req.raw.headers.set('x-user-id', decoded.userId);
+      // Set user ID in context for downstream routes
+      c.set('userId', decoded.userId);
       
       // Optionally verify user still exists
       const user = await prisma.user.findUnique({
@@ -54,7 +54,7 @@ export async function optionalAuthMiddleware(c: Context, next: Next) {
       
       try {
         const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
-        c.req.raw.headers.set('x-user-id', decoded.userId);
+        c.set('userId', decoded.userId);
       } catch {
         // Ignore invalid tokens for optional auth
       }
@@ -68,7 +68,7 @@ export async function optionalAuthMiddleware(c: Context, next: Next) {
 
 // Helper to get user ID from request
 export function getUserId(c: Context): string | null {
-  return c.req.header('x-user-id') || null;
+  return c.get('userId') || null;
 }
 
 // Helper to require user ID
