@@ -11,6 +11,8 @@ const registerSchema = z.object({
   email: z.string().email(),
   password: z.string().min(8),
   name: z.string().min(1).optional(),
+  displayName: z.string().min(1).optional(),
+  username: z.string().min(1).optional(),
 });
 
 const loginSchema = z.object({
@@ -41,12 +43,20 @@ authRoutes.post('/register', async (c) => {
       return c.json({ error: 'Invalid data', details: parsed.error.errors }, 400);
     }
     
-    const { email, password, name } = parsed.data;
+    const { email, password, name, displayName, username } = parsed.data;
     
     // Check if user exists
     const existingUser = await prisma.user.findUnique({ where: { email } });
     if (existingUser) {
       return c.json({ error: 'Email already registered' }, 409);
+    }
+    
+    // Check if username is taken
+    if (username) {
+      const existingUsername = await prisma.user.findFirst({ where: { name: username } });
+      if (existingUsername) {
+        return c.json({ error: 'Username already taken' }, 409);
+      }
     }
     
     // Hash password with bcrypt
@@ -56,7 +66,7 @@ authRoutes.post('/register', async (c) => {
     const user = await prisma.user.create({
       data: {
         email,
-        name,
+        name: displayName || name || username || email.split('@')[0],
         emailVerified: false,
       },
     });
@@ -75,12 +85,15 @@ authRoutes.post('/register', async (c) => {
     const trialEnd = new Date();
     trialEnd.setDate(trialEnd.getDate() + 30);
     
-    await prisma.profile.create({
+    const profile = await prisma.profile.create({
       data: {
         userId: user.id,
+        displayName: displayName || name,
+        handle: username,
         subscriptionStatus: 'trial',
         subscriptionStartedAt: new Date(),
         subscriptionExpiresAt: trialEnd,
+        trustScore: 50,
       },
     });
     
@@ -93,6 +106,15 @@ authRoutes.post('/register', async (c) => {
         id: user.id,
         email: user.email,
         name: user.name,
+        displayName: profile.displayName || user.name,
+        username: profile.handle || username,
+        avatar: profile.avatar,
+        bio: profile.bio,
+        interests: profile.interests ? JSON.parse(profile.interests) : [],
+        trustScore: profile.trustScore,
+        streak: 0,
+        isPremium: profile.subscriptionStatus === 'active',
+        isVerified: user.emailVerified,
         emailVerified: user.emailVerified,
       },
       accessToken,
