@@ -182,4 +182,5 @@ app.get('/blocked', async (c) => {
   );
 });
 
+export const reportRoutes = app;
 export default app;
