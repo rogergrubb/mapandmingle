@@ -28,13 +28,15 @@ export function NotificationsCenter() {
   useEffect(() => {
     if (!socket || !isConnected) return;
 
-    socket.on('new_notification', (notification: Notification) => {
+    const handleNotification = (notification: Notification) => {
       setNotifications((prev) => [notification, ...prev]);
       setUnreadCount((prev) => prev + 1);
-    });
+    };
+
+    socket.on('new_notification', handleNotification);
 
     return () => {
-      socket.off('new_notification');
+      socket.off('new_notification', handleNotification);
     };
   }, [socket, isConnected]);
 

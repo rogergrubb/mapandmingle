@@ -29,36 +29,40 @@ export function ChatBox({
     if (!socket || !isConnected) return;
 
     // Join conversation room
-    socket.emit('join_conversation', { conversationId });
+    socket.send('join_conversation', { conversationId });
 
     // Listen for new messages
-    socket.on('new_message', (message: Message) => {
+    const handleNewMessage = (message: Message) => {
       setMessages((prev) => [...prev, message]);
       scrollToBottom();
-    });
+    };
 
     // Listen for typing indicators
-    socket.on('user_typing', ({ userId }: { userId: string }) => {
+    const handleTyping = ({ userId }: { userId: string }) => {
       if (userId !== currentUser.id) {
         setIsTyping(true);
         setTimeout(() => setIsTyping(false), 3000);
       }
-    });
+    };
 
     // Listen for read receipts
-    socket.on('message_read', ({ messageId }: { messageId: string }) => {
+    const handleMessageRead = ({ messageId }: { messageId: string }) => {
       setMessages((prev) =>
         prev.map((msg) =>
           msg.id === messageId ? { ...msg, isRead: true } : msg
         )
       );
-    });
+    };
+
+    socket.on('new_message', handleNewMessage);
+    socket.on('user_typing', handleTyping);
+    socket.on('message_read', handleMessageRead);
 
     return () => {
-      socket.off('new_message');
-      socket.off('user_typing');
-      socket.off('message_read');
-      socket.emit('leave_conversation', { conversationId });
+      socket.off('new_message', handleNewMessage);
+      socket.off('user_typing', handleTyping);
+      socket.off('message_read', handleMessageRead);
+      socket.send('leave_conversation', { conversationId });
     };
   }, [socket, isConnected, conversationId, currentUser.id]);
 
@@ -82,7 +86,7 @@ export function ChatBox({
 
   const handleTyping = () => {
     if (socket && isConnected) {
-      socket.emit('typing', {
+      socket.send('typing', {
         conversationId,
         userId: currentUser.id,
       });
