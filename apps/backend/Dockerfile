@@ -1,5 +1,7 @@
 # Build stage
-FROM node:20-alpine AS builder
+FROM node:20-slim AS builder
+
+RUN apt-get update && apt-get install -y openssl libssl-dev ca-certificates && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
@@ -20,7 +22,9 @@ COPY . .
 RUN npm run build
 
 # Production stage
-FROM node:20-alpine AS production
+FROM node:20-slim AS production
+
+RUN apt-get update && apt-get install -y openssl ca-certificates && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
@@ -43,10 +47,6 @@ ENV PORT=3000
 
 # Expose port
 EXPOSE 3000
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:3000/health || exit 1
 
 # Run migrations and start server
 CMD ["sh", "-c", "npx prisma migrate deploy && node dist/index.js"]
