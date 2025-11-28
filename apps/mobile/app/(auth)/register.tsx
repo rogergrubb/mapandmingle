@@ -7,12 +7,18 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Linking,
+  Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { useAuthStore } from '../../src/stores/auth';
 import { HapticButton } from '../../src/components/HapticButton';
+
+// Legal document URLs - update these with your actual URLs
+const TERMS_URL = 'https://mapandmingle.app/terms';
+const PRIVACY_URL = 'https://mapandmingle.app/privacy';
 
 export default function RegisterScreen() {
   const router = useRouter();
@@ -195,29 +201,51 @@ export default function RegisterScreen() {
             </View>
 
             {/* Terms Checkbox */}
-            <TouchableOpacity
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                setAcceptedTerms(!acceptedTerms);
-              }}
-              className="flex-row items-start mt-2"
-            >
-              <View
-                className={`w-6 h-6 rounded-md border-2 items-center justify-center mr-3 ${
-                  acceptedTerms ? 'bg-primary-500 border-primary-500' : 'border-gray-300'
-                }`}
+            <View className="flex-row items-start mt-2">
+              <TouchableOpacity
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  setAcceptedTerms(!acceptedTerms);
+                }}
+                className="mt-0.5"
               >
-                {acceptedTerms && (
-                  <Ionicons name="checkmark" size={16} color="white" />
-                )}
-              </View>
-              <Text className="flex-1 text-gray-600 text-sm">
-                I agree to the{' '}
-                <Text className="text-primary-500">Terms of Service</Text>
+                <View
+                  className={`w-6 h-6 rounded-md border-2 items-center justify-center mr-3 ${
+                    acceptedTerms ? 'bg-pink-500 border-pink-500' : 'border-gray-300'
+                  }`}
+                >
+                  {acceptedTerms && (
+                    <Ionicons name="checkmark" size={16} color="white" />
+                  )}
+                </View>
+              </TouchableOpacity>
+              <Text className="flex-1 text-gray-600 text-sm leading-5">
+                I accept the{' '}
+                <Text
+                  className="text-pink-500 font-semibold underline"
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    Linking.openURL(TERMS_URL).catch(() => {
+                      Alert.alert('Error', 'Could not open Terms of Service');
+                    });
+                  }}
+                >
+                  Terms of Service
+                </Text>
                 {' '}and{' '}
-                <Text className="text-primary-500">Privacy Policy</Text>
+                <Text
+                  className="text-pink-500 font-semibold underline"
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    Linking.openURL(PRIVACY_URL).catch(() => {
+                      Alert.alert('Error', 'Could not open Privacy Policy');
+                    });
+                  }}
+                >
+                  Privacy Policy
+                </Text>
               </Text>
-            </TouchableOpacity>
+            </View>
 
             {/* Error Message */}
             {error ? (
