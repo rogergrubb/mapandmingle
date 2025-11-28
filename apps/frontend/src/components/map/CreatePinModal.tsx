@@ -117,17 +117,18 @@ export const CreatePinModal: React.FC<CreatePinModalProps> = ({
           fullWidth
         />
 
-        <Textarea
-          label="Description"
-          name="description"
-          value={formData.description}
-          onChange={handleChange}
-          error={errors.description}
-          placeholder="Tell us more about this place..."
-          rows={4}
-          fullWidth
-          required
-        />
+        <div className="w-full">
+          <Textarea
+            label="Description"
+            name="description"
+            value={formData.description}
+            onChange={handleChange}
+            error={errors.description}
+            placeholder="Tell us more about this place..."
+            rows={4}
+            required
+          />
+        </div>
 
         <Input
           label="Address"

@@ -3,6 +3,7 @@ export interface User {
   id: string;
   email: string;
   username: string;
+  name: string;
   displayName: string;
   avatar?: string;
   bio?: string;
@@ -31,6 +32,8 @@ export interface Pin {
   category: PinCategory;
   title: string;
   description?: string;
+  address?: string;
+  tags?: string[];
   image?: string;
   likes: number;
   comments: number;
@@ -43,12 +46,19 @@ export interface Pin {
 export type PinCategory = 
   | 'social'
   | 'food'
+  | 'entertainment'
+  | 'outdoors'
   | 'sports'
   | 'music'
+  | 'culture'
+  | 'nightlife'
+  | 'shopping'
+  | 'community'
   | 'travel'
   | 'gaming'
   | 'art'
-  | 'study';
+  | 'study'
+  | 'other';
 
 export interface Event {
   id: string;
