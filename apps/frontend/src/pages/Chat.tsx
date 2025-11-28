@@ -45,7 +45,7 @@ export function Chat() {
   const [isTyping, setIsTyping] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const typingTimeoutRef = useRef<number>();
+  const typingTimeoutRef = useRef<number | undefined>(undefined);
 
   useEffect(() => {
     if (params.conversationId) {
