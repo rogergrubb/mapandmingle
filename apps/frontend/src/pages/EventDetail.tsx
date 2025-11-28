@@ -66,9 +66,9 @@ export function EventDetail() {
 
   const fetchEventDetails = async () => {
     try {
-      const data = await api.get(`/api/events/${params.id}`);
-      setEvent(data);
-      if (data.isAttending) {
+      const response = await api.get(`/api/events/${params.id}`);
+      setEvent(response.data);
+      if (response.data.isAttending) {
         setRsvpStatus('going');
       }
     } catch (error) {
@@ -80,8 +80,8 @@ export function EventDetail() {
 
   const fetchComments = async () => {
     try {
-      const data = await api.get(`/api/events/${params.id}/comments`);
-      setComments(data);
+      const response = await api.get(`/api/events/${params.id}/comments`);
+      setComments(response.data);
     } catch (error) {
       console.error('Failed to fetch comments:', error);
     }
@@ -113,14 +113,12 @@ export function EventDetail() {
 
   const handleAddComment = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newComment.trim() || !event) return;
-
-    try {
-      const comment = await api.post(`/api/events/${event.id}/comments`, {
+    if (!newComment.trim() || !event) ret    try {
+      const response = await api.post(`/api/events/${event.id}/comments`, {
         text: newComment,
       });
-      setComments([...comments, comment]);
-      setNewComment('');
+
+      setComments((prev) => [...prev, response.data]);      setNewComment('');
     } catch (error) {
       console.error('Failed to add comment:', error);
     }

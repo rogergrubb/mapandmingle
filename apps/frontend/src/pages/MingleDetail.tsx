@@ -109,8 +109,8 @@ export function MingleDetail() {
 
   const fetchMingle = async () => {
     try {
-      const data = await api.get(`/api/mingles/${params.id}`);
-      setMingle(data);
+      const response = await api.get(`/api/mingles/${params.id}`);
+      setMingle(response.data);
     } catch (error) {
       console.error('Failed to fetch mingle:', error);
     } finally {

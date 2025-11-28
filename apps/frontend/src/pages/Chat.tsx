@@ -117,8 +117,8 @@ export function Chat() {
 
   const fetchConversation = async () => {
     try {
-      const data = await api.get(`/api/conversations/${params.conversationId}`);
-      setConversation(data);
+      const response = await api.get(`/api/conversations/${params.conversationId}`);
+      setConversation(response.data);
     } catch (error) {
       console.error('Failed to fetch conversation:', error);
     }
@@ -126,8 +126,8 @@ export function Chat() {
 
   const fetchMessages = async () => {
     try {
-      const data = await api.get(`/api/conversations/${params.conversationId}/messages`);
-      setMessages(data);
+      const response = await api.get(`/api/conversations/${params.conversationId}/messages`);
+      setMessages(response.data);
       scrollToBottom();
     } catch (error) {
       console.error('Failed to fetch messages:', error);
@@ -156,12 +156,12 @@ export function Chat() {
     scrollToBottom();
 
     try {
-      const message = await api.post(`/api/conversations/${params.conversationId}/messages`, {
+      const response = await api.post(`/api/conversations/${params.conversationId}/messages`, {
         text: newMessage,
       });
 
       setMessages((prev) =>
-        prev.map((msg) => (msg.id === tempMessage.id ? message : msg))
+        prev.map((msg) => (msg.id === tempMessage.id ? response.data : msg))
       );
     } catch (error) {
       console.error('Failed to send message:', error);
