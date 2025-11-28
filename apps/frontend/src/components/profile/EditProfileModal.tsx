@@ -22,7 +22,7 @@ export function EditProfileModal({
   const [formData, setFormData] = useState({
     name: user.name || '',
     bio: user.bio || '',
-    location: user.location || '',
+    location: typeof user.location === 'string' ? user.location : '',
     interests: user.interests?.join(', ') || '',
   });
   const [avatar, setAvatar] = useState<File | null>(null);

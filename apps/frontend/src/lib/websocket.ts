@@ -86,3 +86,23 @@ class WebSocketClient {
 }
 
 export const wsClient = new WebSocketClient();
+
+// React hook for using WebSocket
+import { useEffect } from 'react';
+import { useAuthStore } from '../stores/authStore';
+
+export function useWebSocket() {
+  const token = useAuthStore((state) => state.token);
+
+  useEffect(() => {
+    if (token) {
+      wsClient.connect(token);
+    }
+
+    return () => {
+      // Don't disconnect on unmount as other components might be using it
+    };
+  }, [token]);
+
+  return wsClient;
+}
