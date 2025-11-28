@@ -79,8 +79,8 @@ export function Mingles() {
 
   const fetchMingles = async () => {
     try {
-      const data = await api.get('/api/mingles');
-      setMingles(data);
+      const response = await api.get('/api/mingles');
+      setMingles(response.data);
     } catch (error) {
       console.error('Failed to fetch mingles:', error);
     } finally {

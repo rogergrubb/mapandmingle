@@ -33,8 +33,8 @@ export function MyEvents() {
         api.get('/api/events/my-attending'),
         api.get('/api/events/my-created'),
       ]);
-      setAttendingEvents(attending);
-      setCreatedEvents(created);
+      setAttendingEvents(attending.data);
+      setCreatedEvents(created.data);
     } catch (error) {
       console.error('Failed to fetch events:', error);
     } finally {

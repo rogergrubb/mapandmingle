@@ -52,8 +52,8 @@ export function UserProfile() {
 
   const fetchProfile = async () => {
     try {
-      const data = await api.get(`/api/users/${params.userId}`);
-      setProfile(data);
+      const response = await api.get(`/api/users/${params.userId}`);
+      setProfile(response.data);
     } catch (error) {
       console.error('Failed to fetch profile:', error);
     } finally {
@@ -186,7 +186,7 @@ export function UserProfile() {
                 {!profile.isOwnProfile && (
                   <div className="flex gap-2">
                     <Button
-                      variant={profile.isFollowing ? 'outline' : 'default'}
+                      variant={profile.isFollowing ? 'outline' : 'primary'}
                       onClick={handleFollow}
                     >
                       {profile.isFollowing ? (

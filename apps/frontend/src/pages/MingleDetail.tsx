@@ -120,8 +120,8 @@ export function MingleDetail() {
 
   const fetchMessages = async () => {
     try {
-      const data = await api.get(`/api/mingles/${params.id}/messages`);
-      setMessages(data);
+      const response = await api.get(`/api/mingles/${params.id}/messages`);
+      setMessages(response.data);
       scrollToBottom();
     } catch (error) {
       console.error('Failed to fetch messages:', error);
@@ -174,12 +174,12 @@ export function MingleDetail() {
     scrollToBottom();
 
     try {
-      const message = await api.post(`/api/mingles/${mingle.id}/messages`, {
+      const response = await api.post(`/api/mingles/${mingle.id}/messages`, {
         text: newMessage,
       });
 
       setMessages((prev) =>
-        prev.map((msg) => (msg.id === tempMessage.id ? message : msg))
+        prev.map((msg) => (msg.id === tempMessage.id ? response.data : msg))
       );
     } catch (error) {
       console.error('Failed to send message:', error);
