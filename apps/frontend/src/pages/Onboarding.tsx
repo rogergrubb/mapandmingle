@@ -1,8 +1,7 @@
 import { useState } from 'react';
-import { useLocation } from 'wouter';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/common/Button';
 import { Input } from '../components/common/Input';
-import { Textarea } from '../components/common/Textarea';
 import api from '../lib/api';
 import { User, Heart, Target, Lock, Bell, CheckCircle } from 'lucide-react';
 
@@ -18,7 +17,7 @@ const ACTIVITIES = ['Socializing', 'Dating', 'Networking', 'Making Friends', 'Ex
 const LOOKING_FOR = ['Friends', 'Dating', 'Activity Partners', 'Professional Network', 'Just Exploring'];
 
 export function Onboarding() {
-  const [, setLocation] = useLocation();
+  const navigate = useNavigate();
   const [step, setStep] = useState<Step>('basics');
   const [formData, setFormData] = useState({
     name: '',
@@ -55,7 +54,7 @@ export function Onboarding() {
   const handleComplete = async () => {
     try {
       await api.put('/api/users/profile', formData);
-      setLocation('/map');
+      navigate('/map');
     } catch (error) {
       console.error('Failed to complete onboarding:', error);
     }
@@ -105,13 +104,16 @@ export function Onboarding() {
                   placeholder="John Doe"
                   required
                 />
-                <Textarea
-                  label="Bio"
-                  value={formData.bio}
-                  onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
-                  placeholder="Tell us a bit about yourself..."
-                  rows={4}
-                />
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Bio</label>
+                  <textarea
+                    value={formData.bio}
+                    onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
+                    placeholder="Tell us a bit about yourself..."
+                    rows={4}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent resize-none"
+                  />
+                </div>
                 <Button onClick={handleNext} className="w-full">Continue</Button>
               </div>
             </div>

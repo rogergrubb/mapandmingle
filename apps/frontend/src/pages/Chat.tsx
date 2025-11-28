@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useRoute, Link } from 'wouter';
+import { useParams, Link } from 'react-router-dom';
 import {
   Send, Image, MapPin, Smile, MoreVertical, Archive,
   VolumeX, Trash2, ArrowLeft, Check, CheckCheck
@@ -36,7 +36,7 @@ interface Conversation {
 }
 
 export function Chat() {
-  const [, params] = useRoute('/chat/:conversationId');
+  const params = useParams<{ conversationId: string }>();
   const user = useAuthStore((state) => state.user);
   const { socket, isConnected } = useWebSocket();
   const [conversation, setConversation] = useState<Conversation | null>(null);
@@ -48,14 +48,14 @@ export function Chat() {
   const typingTimeoutRef = useRef<NodeJS.Timeout>();
 
   useEffect(() => {
-    if (params?.conversationId) {
+    if (params.conversationId) {
       fetchConversation();
       fetchMessages();
     }
-  }, [params?.conversationId]);
+  }, [params.conversationId]);
 
   useEffect(() => {
-    if (!socket || !isConnected || !params?.conversationId) return;
+    if (!socket || !isConnected || !params.conversationId) return;
 
     // Join conversation room
     socket.send('join_conversation', { conversationId: params.conversationId });
@@ -113,11 +113,11 @@ export function Chat() {
       socket.off('user_online_status', handleOnlineStatus);
       socket.send('leave_conversation', { conversationId: params.conversationId });
     };
-  }, [socket, isConnected, params?.conversationId, user?.id, conversation]);
+  }, [socket, isConnected, params.conversationId, user?.id, conversation]);
 
   const fetchConversation = async () => {
     try {
-      const data = await api.get(`/api/conversations/${params?.conversationId}`);
+      const data = await api.get(`/api/conversations/${params.conversationId}`);
       setConversation(data);
     } catch (error) {
       console.error('Failed to fetch conversation:', error);
@@ -126,7 +126,7 @@ export function Chat() {
 
   const fetchMessages = async () => {
     try {
-      const data = await api.get(`/api/conversations/${params?.conversationId}/messages`);
+      const data = await api.get(`/api/conversations/${params.conversationId}/messages`);
       setMessages(data);
       scrollToBottom();
     } catch (error) {
@@ -140,7 +140,7 @@ export function Chat() {
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newMessage.trim() || !params?.conversationId) return;
+    if (!newMessage.trim() || !params.conversationId) return;
 
     const tempMessage: Message = {
       id: `temp-${Date.now()}`,
@@ -171,7 +171,7 @@ export function Chat() {
   };
 
   const handleTyping = () => {
-    if (socket && isConnected && params?.conversationId) {
+    if (socket && isConnected && params.conversationId) {
       socket.send('typing', {
         conversationId: params.conversationId,
         userId: user?.id,

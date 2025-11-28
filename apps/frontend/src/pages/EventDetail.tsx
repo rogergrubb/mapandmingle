@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useRoute, useLocation, Link } from 'wouter';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
   Calendar, MapPin, Users, Clock, Share2, Bookmark, MessageCircle,
   UserPlus, UserMinus, AlertCircle, CheckCircle, X
@@ -47,8 +47,8 @@ interface Comment {
 }
 
 export function EventDetail() {
-  const [, params] = useRoute('/events/:id');
-  const [, setLocation] = useLocation();
+  const params = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
   const [event, setEvent] = useState<Event | null>(null);
   const [comments, setComments] = useState<Comment[]>([]);
@@ -58,15 +58,15 @@ export function EventDetail() {
   const [showAttendeesModal, setShowAttendeesModal] = useState(false);
 
   useEffect(() => {
-    if (params?.id) {
+    if (params.id) {
       fetchEventDetails();
       fetchComments();
     }
-  }, [params?.id]);
+  }, [params.id]);
 
   const fetchEventDetails = async () => {
     try {
-      const data = await api.get(`/api/events/${params?.id}`);
+      const data = await api.get(`/api/events/${params.id}`);
       setEvent(data);
       if (data.isAttending) {
         setRsvpStatus('going');
@@ -80,7 +80,7 @@ export function EventDetail() {
 
   const fetchComments = async () => {
     try {
-      const data = await api.get(`/api/events/${params?.id}/comments`);
+      const data = await api.get(`/api/events/${params.id}/comments`);
       setComments(data);
     } catch (error) {
       console.error('Failed to fetch comments:', error);

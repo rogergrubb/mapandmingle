@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'wouter';
+import { Link } from 'react-router-dom';
 import { MapPin, Users, Clock, Plus, Map as MapIcon, List, Zap } from 'lucide-react';
 import { Button } from '../components/common/Button';
 import { MapView } from '../components/Map';
@@ -30,8 +30,8 @@ export function Mingles() {
   const [mingles, setMingles] = useState<Mingle[]>([]);
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
   const [loading, setLoading] = useState(true);
-  const [map, setMap] = useState<google.maps.Map | null>(null);
-  const [markers, setMarkers] = useState<google.maps.Marker[]>([]);
+  const [map, setMap] = useState<any>(null);
+  const [markers, setMarkers] = useState<any[]>([]);
 
   useEffect(() => {
     fetchMingles();
@@ -44,7 +44,7 @@ export function Mingles() {
 
       // Add new markers
       const newMarkers = mingles.map((mingle) => {
-        const marker = new google.maps.Marker({
+        const marker = new (window as any).google.maps.Marker({
           position: { lat: mingle.latitude, lng: mingle.longitude },
           map,
           title: mingle.title,
@@ -55,7 +55,7 @@ export function Mingles() {
                 <circle cx="16" cy="16" r="6" fill="white"/>
               </svg>
             `),
-            scaledSize: new google.maps.Size(32, 40),
+            scaledSize: new (window as any).google.maps.Size(32, 40),
           },
         });
 
@@ -69,7 +69,7 @@ export function Mingles() {
       setMarkers(newMarkers);
 
       // Fit bounds to show all markers
-      const bounds = new google.maps.LatLngBounds();
+      const bounds = new (window as any).google.maps.LatLngBounds();
       mingles.forEach((mingle) => {
         bounds.extend({ lat: mingle.latitude, lng: mingle.longitude });
       });

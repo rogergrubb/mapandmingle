@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'wouter';
+import { Link } from 'react-router-dom';
 import { Calendar, MapPin, Users, Plus } from 'lucide-react';
 import { Button } from '../components/common/Button';
 import api from '../lib/api';

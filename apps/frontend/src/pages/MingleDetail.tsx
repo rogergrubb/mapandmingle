@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useRoute, Link } from 'wouter';
+import { useParams, Link } from 'react-router-dom';
 import {
   MapPin, Users, Clock, Zap, Send, UserPlus, UserMinus, X
 } from 'lucide-react';
@@ -45,7 +45,7 @@ interface ChatMessage {
 }
 
 export function MingleDetail() {
-  const [, params] = useRoute('/mingles/:id');
+  const params = useParams<{ id: string }>();
   const user = useAuthStore((state) => state.user);
   const { socket, isConnected } = useWebSocket();
   const [mingle, setMingle] = useState<Mingle | null>(null);
@@ -56,14 +56,14 @@ export function MingleDetail() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (params?.id) {
+    if (params.id) {
       fetchMingle();
       fetchMessages();
     }
-  }, [params?.id]);
+  }, [params.id]);
 
   useEffect(() => {
-    if (!socket || !isConnected || !params?.id) return;
+    if (!socket || !isConnected || !params.id) return;
 
     // Join mingle chat room
     socket.send('join_mingle', { mingleId: params.id });
@@ -105,11 +105,11 @@ export function MingleDetail() {
       socket.off('participant_left', handleParticipantLeft);
       socket.send('leave_mingle', { mingleId: params.id });
     };
-  }, [socket, isConnected, params?.id, mingle]);
+  }, [socket, isConnected, params.id, mingle]);
 
   const fetchMingle = async () => {
     try {
-      const data = await api.get(`/api/mingles/${params?.id}`);
+      const data = await api.get(`/api/mingles/${params.id}`);
       setMingle(data);
     } catch (error) {
       console.error('Failed to fetch mingle:', error);
@@ -120,7 +120,7 @@ export function MingleDetail() {
 
   const fetchMessages = async () => {
     try {
-      const data = await api.get(`/api/mingles/${params?.id}/messages`);
+      const data = await api.get(`/api/mingles/${params.id}/messages`);
       setMessages(data);
       scrollToBottom();
     } catch (error) {
