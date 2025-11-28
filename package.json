@@ -7,10 +7,11 @@
     "packages/*"
   ],
   "scripts": {
+    "postinstall": "npm run db:generate",
     "dev": "concurrently \"npm run dev:backend\" \"npm run dev:app\"",
     "dev:backend": "cd apps/backend && npm run dev",
     "dev:app": "cd apps/mobile && npm run start",
-    "build": "npm run build:backend && npm run build:app",
+    "build": "npm run db:generate && npm run build:backend && npm run build:app",
     "build:backend": "cd apps/backend && npm run build",
     "build:app": "cd apps/mobile && npm run build",
     "db:generate": "cd apps/backend && npx prisma generate",
