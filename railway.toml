@@ -1,16 +1,25 @@
-# Railway.toml - Configuration for Railway deployment
-# https://railway.app
-
 [build]
-builder = "nixpacks"
-buildCommand = "cd apps/backend && npm install && npx prisma generate && npm run build"
+builder = "NIXPACKS"
+buildCommand = "npm install && cd apps/backend && npm install && npx prisma generate && npm run build"
 
 [deploy]
-startCommand = "cd apps/backend && npx prisma migrate deploy && node dist/index.js"
-healthcheckPath = "/health"
-healthcheckTimeout = 60
+startCommand = "cd apps/backend && npm start"
 restartPolicyType = "ON_FAILURE"
-restartPolicyMaxRetries = 5
+restartPolicyMaxRetries = 10
 
-[variables]
+[env]
 NODE_ENV = "production"
+PORT = "3000"
+
+# Health check configuration
+[healthcheck]
+path = "/health"
+port = 3000
+interval = 30
+timeout = 10
+retries = 3
+
+# Database migration on deploy
+[[deploy.hooks]]
+command = "cd apps/backend && npx prisma migrate deploy"
+when = "beforeStart"

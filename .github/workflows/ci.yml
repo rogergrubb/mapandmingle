@@ -1,0 +1,125 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  # Backend Tests and Linting
+  backend:
+    name: Backend CI
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: mapmingle_test
+          POSTGRES_PASSWORD: test_password
+          POSTGRES_DB: mapmingle_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: |
+          npm ci
+          cd apps/backend && npm ci
+      
+      - name: Run ESLint
+        run: cd apps/backend && npm run lint
+        continue-on-error: true
+      
+      - name: Generate Prisma Client
+        run: cd apps/backend && npx prisma generate
+        env:
+          DATABASE_URL: postgresql://mapmingle_test:test_password@localhost:5432/mapmingle_test
+      
+      - name: Run database migrations
+        run: cd apps/backend && npx prisma migrate deploy
+        env:
+          DATABASE_URL: postgresql://mapmingle_test:test_password@localhost:5432/mapmingle_test
+      
+      - name: Run tests
+        run: cd apps/backend && npm test
+        env:
+          DATABASE_URL: postgresql://mapmingle_test:test_password@localhost:5432/mapmingle_test
+          JWT_SECRET: test-jwt-secret-key
+          JWT_REFRESH_SECRET: test-refresh-secret-key
+          NODE_ENV: test
+      
+      - name: Build backend
+        run: cd apps/backend && npm run build
+
+  # Mobile App Linting and Type Checking
+  mobile:
+    name: Mobile App CI
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: |
+          npm ci
+          cd apps/mobile && npm ci
+      
+      - name: Run ESLint
+        run: cd apps/mobile && npm run lint
+        continue-on-error: true
+      
+      - name: Type check
+        run: cd apps/mobile && npx tsc --noEmit
+      
+      - name: Run tests
+        run: cd apps/mobile && npm test
+        continue-on-error: true
+
+  # Contracts Package
+  contracts:
+    name: Contracts Package CI
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: |
+          npm ci
+          cd packages/contracts && npm ci
+      
+      - name: Build contracts
+        run: cd packages/contracts && npm run build
+      
+      - name: Type check
+        run: cd packages/contracts && npx tsc --noEmit
