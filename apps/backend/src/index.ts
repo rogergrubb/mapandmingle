@@ -35,6 +35,7 @@ import { uploadRoutes } from './routes/upload';
 import { notificationRoutes } from './routes/notifications';
 import { waveRoutes } from './routes/waves';
 import { locationRoutes } from './routes/location';
+import { analytics } from './routes/analytics';
 
 // Import websocket utilities
 import { wsConnections, broadcastToUser, broadcastToAll } from './lib/websocket';
@@ -228,6 +229,7 @@ app.route('/api/upload', uploadRoutes);
 app.route('/api/notifications', notificationRoutes);
 app.route('/api/waves', waveRoutes);
 app.route('/api/location', locationRoutes);
+app.route('/api/analytics', analytics);
 app.route('/webhook', stripeWebhookRoutes);
 
 // Start server
