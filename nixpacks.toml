@@ -1,0 +1,14 @@
+[phases.setup]
+nixPkgs = ["nodejs-18_x", "npm-9_x"]
+
+[phases.install]
+cmds = ["npm ci --workspace=apps/backend"]
+
+[phases.build]
+cmds = [
+  "cd apps/backend && npx prisma generate",
+  "npm run build --workspace=apps/backend"
+]
+
+[start]
+cmd = "npm run start --workspace=apps/backend"
