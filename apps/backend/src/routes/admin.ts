@@ -1,19 +1,19 @@
 import { Hono } from 'hono';
-import { prisma } from '../services/prisma';
-import { requireAuth } from '../middleware/auth';
+import { prisma } from '../lib/prisma';
+import { authMiddleware } from '../middleware/auth';
 
 const admin = new Hono();
 
 // Middleware to check if user is admin
 const requireAdmin = async (c: any, next: any) => {
-  const user = c.get('user');
-  if (!user) {
+  const userId = c.get('userId');
+  if (!userId) {
     return c.json({ error: 'Unauthorized' }, 401);
   }
   
   // Check if user has admin role (you can customize this logic)
   const dbUser = await prisma.user.findUnique({
-    where: { id: user.userId },
+    where: { id: userId },
     select: { email: true }
   });
   
@@ -29,7 +29,7 @@ const requireAdmin = async (c: any, next: any) => {
 };
 
 // Apply auth middleware to all admin routes
-admin.use('*', requireAuth, requireAdmin);
+admin.use('*', authMiddleware, requireAdmin);
 
 // Dashboard overview statistics
 admin.get('/dashboard/stats', async (c) => {
