@@ -14,6 +14,16 @@ export default function ProfilePage() {
     );
   }
 
+  // Provide graceful defaults for missing profile data
+  const displayName = user.displayName || user.name || user.email?.split('@')[0] || 'User';
+  const username = user.username || user.email?.split('@')[0] || 'user';
+  const bio = user.bio || '';
+  const avatar = user.avatar || '';
+  const trustScore = user.trustScore || 0;
+  const streak = user.streak || 0;
+  const isPremium = user.isPremium || false;
+  const isVerified = user.isVerified || false;
+
   const stats = [
     { label: 'Pins', value: '24', icon: MapPin },
     { label: 'Events', value: '8', icon: Calendar },
@@ -43,23 +53,23 @@ export default function ProfilePage() {
           <div className="relative">
             {user.avatar ? (
               <img
-                src={user.avatar}
-                alt={user.displayName}
+                src={avatar}
+                alt={displayName}
                 className="w-24 h-24 rounded-full border-4 border-white object-cover"
               />
             ) : (
               <div className="w-24 h-24 rounded-full border-4 border-white bg-primary-100 flex items-center justify-center">
                 <span className="text-primary-600 font-bold text-3xl">
-                  {user.displayName[0].toUpperCase()}
+                  {displayName[0].toUpperCase()}
                 </span>
               </div>
             )}
-            {user.isPremium && (
+            {isPremium && (
               <div className="absolute -top-1 -right-1 bg-yellow-400 rounded-full p-1">
                 <Crown size={16} className="text-white" />
               </div>
             )}
-            {user.isVerified && (
+            {isVerified && (
               <div className="absolute bottom-0 right-0 bg-blue-500 rounded-full p-1">
                 <Award size={16} className="text-white" />
               </div>
@@ -67,23 +77,23 @@ export default function ProfilePage() {
           </div>
 
           {/* Name and Username */}
-          <h1 className="text-2xl font-bold text-gray-900 mt-4">{user.displayName}</h1>
-          <p className="text-gray-600">@{user.username}</p>
+          <h1 className="text-2xl font-bold text-gray-900 mt-4">{displayName}</h1>
+          <p className="text-gray-600">@{username}</p>
 
           {/* Bio */}
-          {user.bio && (
-            <p className="text-gray-700 text-center mt-2 max-w-md">{user.bio}</p>
+          {bio && (
+            <p className="text-gray-700 text-center mt-2 max-w-md">{bio}</p>
           )}
 
           {/* Trust Score & Streak */}
           <div className="flex items-center space-x-4 mt-4">
             <div className="flex items-center space-x-1">
               <Award size={16} className="text-yellow-500" />
-              <span className="text-sm font-medium">{user.trustScore} Trust</span>
+              <span className="text-sm font-medium">{trustScore} Trust</span>
             </div>
             <div className="flex items-center space-x-1">
               <Flame size={16} className="text-orange-500" />
-              <span className="text-sm font-medium">{user.streak} Day Streak</span>
+              <span className="text-sm font-medium">{streak} Day Streak</span>
             </div>
           </div>
         </div>
