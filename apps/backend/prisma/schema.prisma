@@ -23,6 +23,13 @@ model User {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
+  // Stripe subscription fields
+  stripeCustomerId      String?   @unique
+  stripeSubscriptionId  String?   @unique
+  subscriptionTier      String?   @default("free") // free, basic, premium
+  subscriptionStatus    String?   // trialing, active, past_due, canceled, etc.
+  trialEndsAt           DateTime?
+
   // Relations
   profile               Profile?
   sessions              Session[]
