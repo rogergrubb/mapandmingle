@@ -237,7 +237,7 @@ app.route('/api/admin', admin);
 app.route('/webhook', stripeWebhookRoutes);
 
 // Start server
-const PORT = process.env.PORT || 3000;
+const PORT = Number(process.env.PORT) || 3000;
 
 const server = createServer((req, res) => {
   const url = new URL(req.url || '/', `http://${req.headers.host}`);
