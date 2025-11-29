@@ -1,8 +1,9 @@
 import { Context, Next } from 'hono';
 import { prisma } from '../index';
 import * as jwt from 'jsonwebtoken';
+import { config } from '../config';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-in-production';
+const JWT_SECRET = config.jwtSecret;
 
 // Middleware to verify JWT token
 export async function authMiddleware(c: Context, next: Next) {
@@ -91,10 +92,9 @@ export function generateToken(userId: string, email: string): string {
 
 // Generate refresh token
 export function generateRefreshToken(userId: string): string {
-  const REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || JWT_SECRET + '-refresh';
   return jwt.sign(
     { userId, type: 'refresh' },
-    REFRESH_SECRET,
+    config.jwtRefreshSecret,
     { expiresIn: '30d' }
   );
 }
@@ -102,8 +102,7 @@ export function generateRefreshToken(userId: string): string {
 // Verify refresh token
 export function verifyRefreshToken(token: string): { userId: string } | null {
   try {
-    const REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || JWT_SECRET + '-refresh';
-    const decoded = jwt.verify(token, REFRESH_SECRET) as { userId: string; type: string };
+    const decoded = jwt.verify(token, config.jwtRefreshSecret) as { userId: string; type: string };
     
     if (decoded.type !== 'refresh') {
       return null;
