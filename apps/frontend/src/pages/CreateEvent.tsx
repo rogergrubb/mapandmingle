@@ -1,11 +1,16 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft, Camera, Calendar, Clock, MapPin, Users, DollarSign,
   Tag, FileText, Image, X, Plus, Sparkles, Globe, Lock, Eye,
-  Repeat, Bell, Share2, Check, Loader2, Info
+  Repeat, Bell, Share2, Check, Loader2, Info, Map, Navigation
 } from 'lucide-react';
 import api from '../lib/api';
+import mapboxgl from 'mapbox-gl';
+import 'mapbox-gl/dist/mapbox-gl.css';
+
+// Mapbox token
+mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN || 'pk.eyJ1Ijoicm9nZXJncnViYiIsImEiOiJjbWF6cXIycTYwMGxqMnFzZTVhdnRpajFjIn0.bjRucGclYXa7bDyMCawJmg';
 
 const CATEGORIES = [
   'Social', 'Sports', 'Food & Drink', 'Music', 'Outdoors', 
@@ -29,8 +34,13 @@ const RECURRENCE_OPTIONS = [
 export default function CreateEvent() {
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const mapContainerRef = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<mapboxgl.Map | null>(null);
+  const markerRef = useRef<mapboxgl.Marker | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
+  const [showMapPicker, setShowMapPicker] = useState(false);
+  const [isGettingLocation, setIsGettingLocation] = useState(false);
   const totalSteps = 3;
 
   const [formData, setFormData] = useState({
@@ -76,6 +86,145 @@ export default function CreateEvent() {
   });
 
   const [tagInput, setTagInput] = useState('');
+
+  // Initialize map when showMapPicker is true
+  useEffect(() => {
+    if (showMapPicker && mapContainerRef.current && !mapRef.current) {
+      const initialCenter: [number, number] = formData.longitude && formData.latitude 
+        ? [formData.longitude, formData.latitude]
+        : [-122.4194, 37.7749]; // Default to San Francisco
+      
+      const map = new mapboxgl.Map({
+        container: mapContainerRef.current,
+        style: 'mapbox://styles/mapbox/streets-v12',
+        center: initialCenter,
+        zoom: 13,
+      });
+
+      map.addControl(new mapboxgl.NavigationControl(), 'top-right');
+
+      // Add marker if we have coordinates
+      if (formData.longitude && formData.latitude) {
+        markerRef.current = new mapboxgl.Marker({ color: '#ec4899', draggable: true })
+          .setLngLat([formData.longitude, formData.latitude])
+          .addTo(map);
+        
+        markerRef.current.on('dragend', () => {
+          const lngLat = markerRef.current?.getLngLat();
+          if (lngLat) {
+            reverseGeocode(lngLat.lng, lngLat.lat);
+          }
+        });
+      }
+
+      // Click to place pin
+      map.on('click', (e) => {
+        const { lng, lat } = e.lngLat;
+        
+        if (markerRef.current) {
+          markerRef.current.setLngLat([lng, lat]);
+        } else {
+          markerRef.current = new mapboxgl.Marker({ color: '#ec4899', draggable: true })
+            .setLngLat([lng, lat])
+            .addTo(map);
+          
+          markerRef.current.on('dragend', () => {
+            const lngLat = markerRef.current?.getLngLat();
+            if (lngLat) {
+              reverseGeocode(lngLat.lng, lngLat.lat);
+            }
+          });
+        }
+        
+        reverseGeocode(lng, lat);
+      });
+
+      mapRef.current = map;
+    }
+
+    return () => {
+      if (!showMapPicker && mapRef.current) {
+        mapRef.current.remove();
+        mapRef.current = null;
+        markerRef.current = null;
+      }
+    };
+  }, [showMapPicker]);
+
+  // Reverse geocode coordinates to address
+  const reverseGeocode = async (lng: number, lat: number) => {
+    try {
+      const response = await fetch(
+        `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${mapboxgl.accessToken}`
+      );
+      const data = await response.json();
+      
+      if (data.features && data.features.length > 0) {
+        const place = data.features[0];
+        const address = place.place_name;
+        const city = place.context?.find((c: any) => c.id.startsWith('place'))?.text || '';
+        
+        setFormData(prev => ({
+          ...prev,
+          latitude: lat,
+          longitude: lng,
+          address: address,
+          city: city,
+        }));
+      } else {
+        setFormData(prev => ({
+          ...prev,
+          latitude: lat,
+          longitude: lng,
+        }));
+      }
+    } catch (error) {
+      console.error('Reverse geocode failed:', error);
+      setFormData(prev => ({
+        ...prev,
+        latitude: lat,
+        longitude: lng,
+      }));
+    }
+  };
+
+  // Get user's current location
+  const getCurrentLocation = () => {
+    setIsGettingLocation(true);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+        
+        if (mapRef.current) {
+          mapRef.current.flyTo({ center: [longitude, latitude], zoom: 15 });
+          
+          if (markerRef.current) {
+            markerRef.current.setLngLat([longitude, latitude]);
+          } else {
+            markerRef.current = new mapboxgl.Marker({ color: '#ec4899', draggable: true })
+              .setLngLat([longitude, latitude])
+              .addTo(mapRef.current);
+            
+            markerRef.current.on('dragend', () => {
+              const lngLat = markerRef.current?.getLngLat();
+              if (lngLat) {
+                reverseGeocode(lngLat.lng, lngLat.lat);
+              }
+            });
+          }
+        }
+        
+        reverseGeocode(longitude, latitude);
+        setIsGettingLocation(false);
+      },
+      (error) => {
+        console.error('Geolocation error:', error);
+        alert('Could not get your location. Please enable location services.');
+        setIsGettingLocation(false);
+      },
+      { enableHighAccuracy: true }
+    );
+  };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -393,28 +542,107 @@ export default function CreateEvent() {
 
               {(formData.locationType === 'in-person' || formData.locationType === 'hybrid') && (
                 <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-600 mb-2">Address *</label>
-                    <input
-                      type="text"
-                      value={formData.address}
-                      onChange={(e) => setFormData(prev => ({ ...prev, address: e.target.value }))}
-                      placeholder="Enter the venue address"
-                      className="w-full px-4 py-3 bg-gray-50 rounded-xl border border-gray-200
-                                 focus:outline-none focus:ring-2 focus:ring-purple-500/50"
-                    />
+                  {/* Toggle between address input and map picker */}
+                  <div className="flex gap-2 mb-2">
+                    <button
+                      onClick={() => setShowMapPicker(false)}
+                      className={`flex-1 py-2 px-3 rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-2
+                                 ${!showMapPicker
+                                   ? 'bg-purple-100 text-purple-700'
+                                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                 }`}
+                    >
+                      <FileText className="w-4 h-4" />
+                      Enter Address
+                    </button>
+                    <button
+                      onClick={() => setShowMapPicker(true)}
+                      className={`flex-1 py-2 px-3 rounded-xl text-sm font-medium transition-all flex items-center justify-center gap-2
+                                 ${showMapPicker
+                                   ? 'bg-purple-100 text-purple-700'
+                                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                 }`}
+                    >
+                      <Map className="w-4 h-4" />
+                      Pin on Map
+                    </button>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-600 mb-2">City</label>
-                    <input
-                      type="text"
-                      value={formData.city}
-                      onChange={(e) => setFormData(prev => ({ ...prev, city: e.target.value }))}
-                      placeholder="City name"
-                      className="w-full px-4 py-3 bg-gray-50 rounded-xl border border-gray-200
-                                 focus:outline-none focus:ring-2 focus:ring-purple-500/50"
-                    />
-                  </div>
+
+                  {!showMapPicker ? (
+                    <>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-600 mb-2">Address *</label>
+                        <input
+                          type="text"
+                          value={formData.address}
+                          onChange={(e) => setFormData(prev => ({ ...prev, address: e.target.value }))}
+                          placeholder="Enter the venue address"
+                          className="w-full px-4 py-3 bg-gray-50 rounded-xl border border-gray-200
+                                     focus:outline-none focus:ring-2 focus:ring-purple-500/50"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-600 mb-2">City</label>
+                        <input
+                          type="text"
+                          value={formData.city}
+                          onChange={(e) => setFormData(prev => ({ ...prev, city: e.target.value }))}
+                          placeholder="City name"
+                          className="w-full px-4 py-3 bg-gray-50 rounded-xl border border-gray-200
+                                     focus:outline-none focus:ring-2 focus:ring-purple-500/50"
+                        />
+                      </div>
+                    </>
+                  ) : (
+                    <div className="space-y-3">
+                      {/* Map Container */}
+                      <div 
+                        ref={mapContainerRef}
+                        className="w-full h-64 rounded-2xl overflow-hidden border border-gray-200"
+                      />
+                      
+                      {/* Use Current Location Button */}
+                      <button
+                        onClick={getCurrentLocation}
+                        disabled={isGettingLocation}
+                        className="w-full py-3 bg-gray-100 text-gray-700 rounded-xl font-medium
+                                   hover:bg-gray-200 transition-all flex items-center justify-center gap-2"
+                      >
+                        {isGettingLocation ? (
+                          <>
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            Getting location...
+                          </>
+                        ) : (
+                          <>
+                            <Navigation className="w-4 h-4" />
+                            Use My Current Location
+                          </>
+                        )}
+                      </button>
+
+                      <p className="text-xs text-gray-500 text-center">
+                        Tap on the map to place a pin, or drag the pin to adjust
+                      </p>
+
+                      {/* Show selected address */}
+                      {formData.address && (
+                        <div className="p-3 bg-purple-50 rounded-xl border border-purple-200">
+                          <div className="flex items-start gap-2">
+                            <MapPin className="w-4 h-4 text-purple-600 mt-0.5 flex-shrink-0" />
+                            <div>
+                              <p className="text-sm font-medium text-purple-900">{formData.address}</p>
+                              {formData.latitude && formData.longitude && (
+                                <p className="text-xs text-purple-600 mt-1">
+                                  {formData.latitude.toFixed(6)}, {formData.longitude.toFixed(6)}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
 
