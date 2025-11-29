@@ -454,3 +454,202 @@ authRoutes.post('/verify-email', async (c) => {
     return c.json({ error: 'Failed to verify email' }, 500);
   }
 });
+
+// ==================== GOOGLE OAUTH ====================
+
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
+const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
+const GOOGLE_REDIRECT_URI = process.env.GOOGLE_REDIRECT_URI || 'https://mapandmingle-api-production.up.railway.app/api/auth/google/callback';
+const FRONTEND_URL = process.env.FRONTEND_URL || 'https://mapandmingle.vercel.app';
+
+// GET /api/auth/google - Initiate Google OAuth
+authRoutes.get('/google', async (c) => {
+  const state = Math.random().toString(36).substring(7);
+  
+  const params = new URLSearchParams({
+    client_id: GOOGLE_CLIENT_ID!,
+    redirect_uri: GOOGLE_REDIRECT_URI,
+    response_type: 'code',
+    scope: 'openid email profile',
+    state,
+    access_type: 'offline',
+    prompt: 'consent',
+  });
+  
+  return c.redirect(`https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`);
+});
+
+// GET /api/auth/google/callback - Google OAuth callback
+authRoutes.get('/google/callback', async (c) => {
+  try {
+    const code = c.req.query('code');
+    const error = c.req.query('error');
+    
+    if (error) {
+      console.error('Google OAuth error:', error);
+      return c.redirect(`${FRONTEND_URL}/login?error=google_auth_failed`);
+    }
+    
+    if (!code) {
+      return c.redirect(`${FRONTEND_URL}/login?error=no_code`);
+    }
+    
+    // Exchange code for tokens
+    const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        code,
+        client_id: GOOGLE_CLIENT_ID!,
+        client_secret: GOOGLE_CLIENT_SECRET!,
+        redirect_uri: GOOGLE_REDIRECT_URI,
+        grant_type: 'authorization_code',
+      }),
+    });
+    
+    const tokenData = await tokenResponse.json();
+    
+    if (!tokenResponse.ok) {
+      console.error('Google token error:', tokenData);
+      return c.redirect(`${FRONTEND_URL}/login?error=token_exchange_failed`);
+    }
+    
+    // Get user info from Google
+    const userInfoResponse = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+      headers: { Authorization: `Bearer ${tokenData.access_token}` },
+    });
+    
+    const googleUser = await userInfoResponse.json();
+    
+    if (!googleUser.email) {
+      return c.redirect(`${FRONTEND_URL}/login?error=no_email`);
+    }
+    
+    // Find or create user
+    let user = await prisma.user.findUnique({
+      where: { email: googleUser.email },
+      include: { profile: true, accounts: true },
+    });
+    
+    if (!user) {
+      // Create new user
+      user = await prisma.user.create({
+        data: {
+          email: googleUser.email,
+          name: googleUser.name || googleUser.email.split('@')[0],
+          image: googleUser.picture,
+          emailVerified: true, // Google emails are verified
+        },
+        include: { profile: true, accounts: true },
+      });
+      
+      // Create Google account link
+      await prisma.account.create({
+        data: {
+          userId: user.id,
+          accountId: googleUser.id,
+          providerId: 'google',
+          accessToken: tokenData.access_token,
+          refreshToken: tokenData.refresh_token,
+          accessTokenExpiresAt: new Date(Date.now() + tokenData.expires_in * 1000),
+        },
+      });
+      
+      // Create profile with 30-day trial
+      const trialEnd = new Date();
+      trialEnd.setDate(trialEnd.getDate() + 30);
+      
+      await prisma.profile.create({
+        data: {
+          userId: user.id,
+          displayName: googleUser.name,
+          avatar: googleUser.picture,
+          subscriptionStatus: 'trial',
+          subscriptionStartedAt: new Date(),
+          subscriptionExpiresAt: trialEnd,
+          trustScore: 50,
+        },
+      });
+      
+      // Create Stripe customer
+      try {
+        const stripeCustomerId = await StripeService.createCustomer(
+          user.email,
+          user.name || googleUser.email.split('@')[0],
+          user.id
+        );
+        
+        await prisma.user.update({
+          where: { id: user.id },
+          data: { stripeCustomerId },
+        });
+      } catch (err) {
+        console.error('Failed to create Stripe customer:', err);
+      }
+      
+      // Refetch user with profile
+      user = await prisma.user.findUnique({
+        where: { id: user.id },
+        include: { profile: true, accounts: true },
+      });
+    } else {
+      // User exists - check if Google account is linked
+      const googleAccount = user.accounts.find(a => a.providerId === 'google');
+      
+      if (!googleAccount) {
+        // Link Google account to existing user
+        await prisma.account.create({
+          data: {
+            userId: user.id,
+            accountId: googleUser.id,
+            providerId: 'google',
+            accessToken: tokenData.access_token,
+            refreshToken: tokenData.refresh_token,
+            accessTokenExpiresAt: new Date(Date.now() + tokenData.expires_in * 1000),
+          },
+        });
+      } else {
+        // Update existing Google account tokens
+        await prisma.account.update({
+          where: { id: googleAccount.id },
+          data: {
+            accessToken: tokenData.access_token,
+            refreshToken: tokenData.refresh_token || googleAccount.refreshToken,
+            accessTokenExpiresAt: new Date(Date.now() + tokenData.expires_in * 1000),
+          },
+        });
+      }
+      
+      // Update profile avatar if not set
+      if (user.profile && !user.profile.avatar && googleUser.picture) {
+        await prisma.profile.update({
+          where: { userId: user.id },
+          data: { avatar: googleUser.picture },
+        });
+      }
+      
+      // Update last active
+      if (user.profile) {
+        await prisma.profile.update({
+          where: { userId: user.id },
+          data: { lastActiveAt: new Date() },
+        });
+      }
+    }
+    
+    // Generate JWT tokens
+    const accessToken = generateToken(user!.id, user!.email);
+    const refreshToken = generateRefreshToken(user!.id);
+    
+    // Redirect to frontend with tokens
+    const params = new URLSearchParams({
+      accessToken,
+      refreshToken,
+    });
+    
+    return c.redirect(`${FRONTEND_URL}/auth/callback?${params.toString()}`);
+  } catch (error) {
+    console.error('Google OAuth callback error:', error);
+    return c.redirect(`${FRONTEND_URL}/login?error=callback_failed`);
+  }
+});
