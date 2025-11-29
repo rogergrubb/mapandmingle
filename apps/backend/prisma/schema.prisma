@@ -33,7 +33,7 @@ model User {
   lastActiveAt          DateTime?
   pushToken             String?
 
-  // Profile fields (for integration compatibility)
+  // Profile fields (for integration compatibility) - Updated for AI features
   username              String?   @unique
   displayName           String?
   bio                   String?
