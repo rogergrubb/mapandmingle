@@ -4,18 +4,23 @@ const API_URL = import.meta.env.VITE_API_URL || 'https://mapandmingle-production
 
 export const api = axios.create({
   baseURL: API_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
+  // Don't set default Content-Type - let axios auto-detect for FormData
 });
 
-// Request interceptor to add auth token
+// Request interceptor to add auth token and handle Content-Type
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+    
+    // Only set Content-Type to JSON if not FormData
+    if (!(config.data instanceof FormData)) {
+      config.headers['Content-Type'] = 'application/json';
+    }
+    // For FormData, axios will automatically set multipart/form-data with boundary
+    
     return config;
   },
   (error) => {
