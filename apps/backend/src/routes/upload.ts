@@ -4,8 +4,7 @@ import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { nanoid } from 'nanoid';
 import * as jwt from 'jsonwebtoken';
-
-const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-in-production';
+import { config } from '../config';
 
 export const uploadRoutes = new Hono();
 
@@ -17,7 +16,7 @@ function getUserIdFromToken(c: any): string | null {
   }
   try {
     const token = authHeader.substring(7);
-    const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
+    const decoded = jwt.verify(token, config.jwtSecret) as { userId: string };
     return decoded.userId;
   } catch {
     return null;
@@ -25,16 +24,16 @@ function getUserIdFromToken(c: any): string | null {
 }
 
 // Initialize S3 client (optional - can use local storage for dev)
-const s3Client = process.env.AWS_ACCESS_KEY_ID ? new S3Client({
-  region: process.env.AWS_REGION || 'us-east-1',
+const s3Client = config.aws.accessKeyId ? new S3Client({
+  region: config.aws.region,
   credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
+    accessKeyId: config.aws.accessKeyId,
+    secretAccessKey: config.aws.secretAccessKey,
   },
 }) : null;
 
-const BUCKET_NAME = process.env.S3_BUCKET_NAME || 'mapmingle-uploads';
-const CDN_URL = process.env.CDN_URL || `https://${BUCKET_NAME}.s3.amazonaws.com`;
+const BUCKET_NAME = config.aws.s3BucketName;
+const CDN_URL = config.aws.cdnUrl || `https://${BUCKET_NAME}.s3.amazonaws.com`;
 
 // Allowed file types
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
