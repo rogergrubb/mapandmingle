@@ -13,14 +13,20 @@ export default function MainLayout() {
   ];
 
   return (
-    <div className="h-screen flex flex-col bg-gray-50">
-      {/* Main Content */}
-      <main className="flex-1 overflow-y-auto overflow-x-hidden">
+    <div className="h-screen flex flex-col bg-gray-50 overflow-hidden">
+      {/* Main Content - scrollable container */}
+      <main 
+        className="flex-1 overflow-y-auto overscroll-contain"
+        style={{ 
+          WebkitOverflowScrolling: 'touch',
+          minHeight: 0 
+        }}
+      >
         <Outlet />
       </main>
 
-      {/* Bottom Navigation */}
-      <nav className="bg-white border-t border-gray-200 safe-area-bottom">
+      {/* Bottom Navigation - fixed at bottom */}
+      <nav className="bg-white border-t border-gray-200 safe-area-bottom flex-shrink-0">
         <div className="flex justify-around items-center h-16 px-2">
           {navItems.map(({ path, icon: Icon, label }) => {
             const isActive = location.pathname === path;
