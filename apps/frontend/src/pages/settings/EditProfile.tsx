@@ -41,7 +41,7 @@ export default function EditProfile() {
       const formData = new FormData();
       formData.append('photo', file);
 
-      const response = await api.post('/api/upload/profile', formData, {
+      const response: any = await api.post('/api/upload/profile', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
