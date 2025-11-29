@@ -1,12 +1,12 @@
 import { Hono } from 'hono';
 import { prisma } from '../index';
 import Stripe from 'stripe';
+import { config } from '../config';
 
 export const subscriptionRoutes = new Hono();
 
-const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY;
-const stripe = STRIPE_SECRET_KEY && STRIPE_SECRET_KEY !== 'sk_test_placeholder' 
-  ? new Stripe(STRIPE_SECRET_KEY, { apiVersion: '2025-02-24.acacia' })
+const stripe = config.stripe.secretKey && config.stripe.secretKey !== 'sk_test_placeholder' 
+  ? new Stripe(config.stripe.secretKey, { apiVersion: '2025-02-24.acacia' })
   : null;
 
 // GET /api/subscription/status - Get subscription status
@@ -70,12 +70,12 @@ subscriptionRoutes.post('/checkout', async (c) => {
       return c.json({ error: 'Stripe not configured' }, 503);
     }
     
-    const priceId = process.env.STRIPE_PRICE_ID;
+    const priceId = config.stripe.prices.premiumMonthly;
     if (!priceId) {
-      return c.json({ error: 'Stripe not configured' }, 500);
+      return c.json({ error: 'Stripe price not configured' }, 500);
     }
     
-    const baseUrl = process.env.APP_URL || 'http://localhost:3000';
+    const baseUrl = config.frontendUrl;
     
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
@@ -176,7 +176,7 @@ subscriptionRoutes.post('/portal', async (c) => {
       return c.json({ error: 'No Stripe customer' }, 400);
     }
     
-    const baseUrl = process.env.APP_URL || 'http://localhost:3000';
+    const baseUrl = config.frontendUrl;
     
     const session = await stripe.billingPortal.sessions.create({
       customer: profile.stripeCustomerId,
