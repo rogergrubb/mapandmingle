@@ -7,7 +7,7 @@ export const userRoutes = new Hono();
 // GET /api/users/me - Get current user's profile
 userRoutes.get('/me', authMiddleware, async (c) => {
   try {
-    const userId = c.get('userId');
+    const userId = c.get('userId') as string;
 
     if (!userId) {
       return c.json({ error: 'Unauthorized' }, 401);
@@ -59,7 +59,7 @@ userRoutes.get('/me', authMiddleware, async (c) => {
 // PATCH /api/users/me - Update current user's profile
 userRoutes.patch('/me', authMiddleware, async (c) => {
   try {
-    const userId = c.get('userId');
+    const userId = c.get('userId') as string;
 
     if (!userId) {
       return c.json({ error: 'Unauthorized' }, 401);
