@@ -171,7 +171,6 @@ aiRoutes.get('/suggest-matches', async (c) => {
         image: true,
         bio: true,
         interests: true,
-        trustScore: true,
       },
     });
 
