@@ -2,11 +2,18 @@ import { Hono } from 'hono';
 import { prisma } from '../index';
 import { z } from 'zod';
 import * as bcrypt from 'bcryptjs';
-import { generateToken, generateRefreshToken, verifyRefreshToken } from '../middleware/auth';
+import { generateToken, generateRefreshToken, verifyRefreshToken, rateLimitMiddleware } from '../middleware/auth';
 import { EmailService } from '../services/email.service';
 import { StripeService } from '../services/stripe.service';
+import { config } from '../config';
 
 export const authRoutes = new Hono();
+
+// Apply rate limiting to all auth routes (10 requests per 15 minutes)
+authRoutes.use('*', rateLimitMiddleware(
+  config.rateLimit.auth.maxRequests, 
+  config.rateLimit.auth.windowMs
+));
 
 // Validation schemas
 const registerSchema = z.object({
