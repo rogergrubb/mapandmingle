@@ -37,7 +37,7 @@ model User {
   username              String?   @unique
   displayName           String?
   bio                   String?
-  interests             String?   // JSON array
+  interests             String[]  @default([])
   location              String?
   activityLevel         String?   // active, moderate, casual
   isPremium             Boolean   @default(false)
