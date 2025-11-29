@@ -78,7 +78,7 @@ export default function Subscription() {
       });
 
       // Redirect to Stripe checkout
-      window.location.href = response.checkoutUrl;
+      window.location.href = response.data.checkoutUrl;
     } catch (error) {
       console.error('Stripe checkout error:', error);
       alert('Failed to start checkout. Please try again.');
