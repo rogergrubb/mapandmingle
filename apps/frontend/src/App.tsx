@@ -9,6 +9,7 @@ import { ForgotPassword } from './pages/ForgotPassword';
 import { Onboarding } from './pages/Onboarding';
 import MapPage from './pages/MapPage';
 import EventsPage from './pages/EventsPage';
+import CreateEvent from './pages/CreateEvent';
 import { EventDetail } from './pages/EventDetail';
 import { MyEvents } from './pages/MyEvents';
 import MessagesPage from './pages/MessagesPage';
@@ -50,6 +51,7 @@ function App() {
           <Route path="/" element={<MapPage />} />
           <Route path="/map" element={<MapPage />} />
           <Route path="/events" element={<EventsPage />} />
+          <Route path="/events/create" element={<CreateEvent />} />
           <Route path="/events/:id" element={<EventDetail />} />
           <Route path="/my-events" element={<MyEvents />} />
           <Route path="/messages" element={<MessagesPage />} />
