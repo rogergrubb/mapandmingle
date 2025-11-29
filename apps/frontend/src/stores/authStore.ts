@@ -13,6 +13,7 @@ interface AuthState {
   logout: () => void;
   updateProfile: (data: Partial<User>) => Promise<void>;
   fetchUser: () => Promise<void>;
+  setTokens: (accessToken: string, refreshToken: string) => void;
 }
 
 interface RegisterData {
@@ -100,5 +101,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     } catch (error) {
       get().logout();
     }
+  },
+
+  // Set tokens from OAuth callback
+  setTokens: (accessToken: string, refreshToken: string) => {
+    localStorage.setItem('token', accessToken);
+    localStorage.setItem('refreshToken', refreshToken);
+    set({ token: accessToken, isAuthenticated: true });
+    
+    // Connect WebSocket
+    wsClient.connect(accessToken);
   },
 }));
