@@ -462,6 +462,27 @@ const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
 const GOOGLE_REDIRECT_URI = process.env.GOOGLE_REDIRECT_URI || 'https://mapandmingle-api-production.up.railway.app/api/auth/google/callback';
 const FRONTEND_URL = process.env.FRONTEND_URL || 'https://mapandmingle.vercel.app';
 
+// Type definitions for Google OAuth
+interface GoogleTokenResponse {
+  access_token: string;
+  refresh_token?: string;
+  expires_in: number;
+  token_type: string;
+  scope: string;
+  id_token?: string;
+  error?: string;
+}
+
+interface GoogleUserInfo {
+  id: string;
+  email: string;
+  verified_email: boolean;
+  name: string;
+  given_name?: string;
+  family_name?: string;
+  picture?: string;
+}
+
 // GET /api/auth/google - Initiate Google OAuth
 authRoutes.get('/google', async (c) => {
   const state = Math.random().toString(36).substring(7);
@@ -507,7 +528,7 @@ authRoutes.get('/google/callback', async (c) => {
       }),
     });
     
-    const tokenData = await tokenResponse.json();
+    const tokenData = await tokenResponse.json() as GoogleTokenResponse;
     
     if (!tokenResponse.ok) {
       console.error('Google token error:', tokenData);
@@ -519,7 +540,7 @@ authRoutes.get('/google/callback', async (c) => {
       headers: { Authorization: `Bearer ${tokenData.access_token}` },
     });
     
-    const googleUser = await userInfoResponse.json();
+    const googleUser = await userInfoResponse.json() as GoogleUserInfo;
     
     if (!googleUser.email) {
       return c.redirect(`${FRONTEND_URL}/login?error=no_email`);
