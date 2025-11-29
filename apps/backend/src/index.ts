@@ -4,8 +4,15 @@ import { logger } from 'hono/logger';
 import { WebSocketServer, WebSocket } from 'ws';
 import { createServer } from 'http';
 
+// Import config and validate
+import { config, validateConfig } from './config';
+validateConfig();
+
 // Import Prisma client
 import { prisma } from './lib/prisma';
+
+// Import rate limiting middleware
+import { rateLimitMiddleware } from './middleware/auth';
 
 // Import routes
 import { authRoutes } from './routes/auth';
@@ -52,14 +59,30 @@ const app = new Hono();
 
 // Middleware
 app.use('*', logger());
+
+// CORS - Restrict to allowed origins in production
 app.use('*', cors({
-  origin: '*',
+  origin: (origin) => {
+    // Allow requests with no origin (mobile apps, Postman, etc.)
+    if (!origin) return true;
+    
+    // In development, allow localhost
+    if (config.isDevelopment && (origin.includes('localhost') || origin.includes('127.0.0.1'))) {
+      return true;
+    }
+    
+    // Check against allowed origins
+    return config.corsOrigins.some(allowed => 
+      origin === allowed || origin.endsWith(allowed.replace('https://', '.'))
+    );
+  },
   allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowHeaders: ['Content-Type', 'Authorization'],
+  allowHeaders: ['Content-Type', 'Authorization', 'X-User-Id'],
   credentials: true,
+  maxAge: 86400, // 24 hours
 }));
 
-// Health check
+// Health check (no rate limiting)
 app.get('/', (c) => c.json({ status: 'ok', message: 'Map Mingle API v1.0' }));
 app.get('/health', (c) => c.json({ status: 'healthy', timestamp: new Date().toISOString() }));
 
