@@ -55,6 +55,109 @@ userRoutes.get('/me', async (c) => {
   }
 });
 
+// PATCH /api/users/me - Update current user's profile
+userRoutes.patch('/me', async (c) => {
+  try {
+    const userId = c.req.header('x-user-id');
+
+    if (!userId) {
+      return c.json({ error: 'Unauthorized' }, 401);
+    }
+
+    const body = await c.req.json();
+    const {
+      displayName,
+      bio,
+      avatar,
+      interests,
+      activityIntent,
+      chatReadiness,
+      visibilityMode,
+      ghostMode,
+    } = body;
+
+    // Ensure user exists
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: { profile: true },
+    });
+
+    if (!user) {
+      return c.json({ error: 'User not found' }, 404);
+    }
+
+    // Prepare profile update data
+    const profileData: any = {};
+
+    if (displayName !== undefined) profileData.displayName = displayName;
+    if (bio !== undefined) profileData.bio = bio;
+    if (avatar !== undefined) profileData.avatar = avatar;
+    if (interests !== undefined) {
+      // Convert array to JSON string for storage
+      profileData.interests = JSON.stringify(interests);
+    }
+    if (activityIntent !== undefined) profileData.activityIntent = activityIntent;
+    if (chatReadiness !== undefined) profileData.chatReadiness = chatReadiness;
+    if (visibilityMode !== undefined) profileData.visibilityMode = visibilityMode;
+    if (ghostMode !== undefined) profileData.ghostMode = ghostMode;
+
+    // Update or create profile
+    if (user.profile) {
+      // Update existing profile
+      await prisma.profile.update({
+        where: { userId },
+        data: profileData,
+      });
+    } else {
+      // Create new profile
+      await prisma.profile.create({
+        data: {
+          userId,
+          ...profileData,
+        },
+      });
+    }
+
+    // Fetch updated user with profile
+    const updatedUser = await prisma.user.findUnique({
+      where: { id: userId },
+      include: { profile: true },
+    });
+
+    // Parse interests for response
+    let parsedInterests: string[] = [];
+    if (updatedUser?.profile?.interests) {
+      try {
+        parsedInterests = JSON.parse(updatedUser.profile.interests);
+      } catch {}
+    }
+
+    return c.json({
+      id: updatedUser!.id,
+      email: updatedUser!.email,
+      name: updatedUser!.name,
+      image: updatedUser!.image,
+      displayName: updatedUser!.profile?.displayName || updatedUser!.name || 'Anonymous',
+      username: updatedUser!.profile?.handle || updatedUser!.id.slice(0, 8),
+      avatar: updatedUser!.profile?.avatar || updatedUser!.image,
+      bio: updatedUser!.profile?.bio,
+      interests: parsedInterests,
+      activityIntent: updatedUser!.profile?.activityIntent,
+      chatReadiness: updatedUser!.profile?.chatReadiness || 'browsing_only',
+      visibilityMode: updatedUser!.profile?.visibilityMode || 'public',
+      ghostMode: updatedUser!.profile?.ghostMode || false,
+      trustScore: updatedUser!.profile?.trustScore || 50,
+      trustLevel: updatedUser!.profile?.trustLevel || 'new',
+      subscriptionStatus: updatedUser!.profile?.subscriptionStatus || 'trial',
+      createdAt: updatedUser!.createdAt.toISOString(),
+      lastActive: updatedUser!.profile?.lastActiveAt?.toISOString(),
+    });
+  } catch (error) {
+    console.error('Error updating user profile:', error);
+    return c.json({ error: 'Failed to update profile' }, 500);
+  }
+});
+
 // GET /api/users/search - Search users
 userRoutes.get('/search', async (c) => {
   try {
