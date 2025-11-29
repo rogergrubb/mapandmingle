@@ -3,25 +3,15 @@ import { prisma } from '../lib/prisma';
 import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { nanoid } from 'nanoid';
-import * as jwt from 'jsonwebtoken';
 import { config } from '../config';
+import { authMiddleware } from '../middleware/auth';
 
-export const uploadRoutes = new Hono();
+// Define context variables type
+type Variables = {
+  userId: string;
+};
 
-// Helper to extract userId from JWT token
-function getUserIdFromToken(c: any): string | null {
-  const authHeader = c.req.header('Authorization');
-  if (!authHeader?.startsWith('Bearer ')) {
-    return null;
-  }
-  try {
-    const token = authHeader.substring(7);
-    const decoded = jwt.verify(token, config.jwtSecret) as { userId: string };
-    return decoded.userId;
-  } catch {
-    return null;
-  }
-}
+export const uploadRoutes = new Hono<{ Variables: Variables }>();
 
 // Initialize S3 client (optional - can use local storage for dev)
 const s3Client = config.aws.accessKeyId ? new S3Client({
@@ -40,9 +30,9 @@ const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
 // Profile photo upload (specific endpoint for profile photos)
-uploadRoutes.post('/profile', async (c) => {
+uploadRoutes.post('/profile', authMiddleware, async (c) => {
   try {
-    const userId = getUserIdFromToken(c);
+    const userId = c.get('userId');
     if (!userId) {
       return c.json({ error: 'Unauthorized - please log in' }, 401);
     }
@@ -145,9 +135,9 @@ uploadRoutes.post('/profile', async (c) => {
 });
 
 // Get presigned upload URL
-uploadRoutes.post('/presigned', async (c) => {
+uploadRoutes.post('/presigned', authMiddleware, async (c) => {
   try {
-    const userId = getUserIdFromToken(c);
+    const userId = c.get('userId');
     if (!userId) {
       return c.json({ error: 'Unauthorized' }, 401);
     }
@@ -194,9 +184,9 @@ uploadRoutes.post('/presigned', async (c) => {
 });
 
 // Direct upload (for development or small files)
-uploadRoutes.post('/', async (c) => {
+uploadRoutes.post('/', authMiddleware, async (c) => {
   try {
-    const userId = getUserIdFromToken(c);
+    const userId = c.get('userId');
     if (!userId) {
       return c.json({ error: 'Unauthorized' }, 401);
     }
@@ -263,9 +253,9 @@ uploadRoutes.post('/', async (c) => {
 });
 
 // Delete upload
-uploadRoutes.delete('/:key', async (c) => {
+uploadRoutes.delete('/:key', authMiddleware, async (c) => {
   try {
-    const userId = getUserIdFromToken(c);
+    const userId = c.get('userId');
     if (!userId) {
       return c.json({ error: 'Unauthorized' }, 401);
     }
@@ -300,9 +290,9 @@ uploadRoutes.delete('/:key', async (c) => {
 });
 
 // Get user's uploads
-uploadRoutes.get('/my-uploads', async (c) => {
+uploadRoutes.get('/my-uploads', authMiddleware, async (c) => {
   try {
-    const userId = getUserIdFromToken(c);
+    const userId = c.get('userId');
     if (!userId) {
       return c.json({ error: 'Unauthorized' }, 401);
     }
