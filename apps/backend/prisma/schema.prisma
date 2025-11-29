@@ -22,6 +22,7 @@ model User {
   emailVerified Boolean   @default(false)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
+  deletedAt     DateTime?
 
   // Stripe subscription fields
   stripeCustomerId      String?   @unique
@@ -32,6 +33,7 @@ model User {
   subscriptionEnd       DateTime?
   lastActiveAt          DateTime?
   pushToken             String?
+  phone                 String?
 
   // Profile fields (for integration compatibility) - Updated for AI features
   username              String?   @unique
@@ -41,6 +43,28 @@ model User {
   location              String?
   activityLevel         String?   // active, moderate, casual
   isPremium             Boolean   @default(false)
+
+  // Privacy settings
+  profileVisibility     String?   @default("public") // public, friends, private
+  showLocation          Boolean   @default(true)
+  showActivity          Boolean   @default(true)
+  allowMessages         String?   @default("everyone") // everyone, friends, nobody
+  allowTags             Boolean   @default(true)
+  showOnlineStatus      Boolean   @default(true)
+  shareData             Boolean   @default(false)
+
+  // Notification settings
+  notifyMessages        Boolean   @default(true)
+  notifyLikes           Boolean   @default(true)
+  notifyComments        Boolean   @default(true)
+  notifyFollows         Boolean   @default(true)
+  notifyEvents          Boolean   @default(true)
+  notifyProximity       Boolean   @default(true)
+  notifyEmail           Boolean   @default(true)
+  notifyPush            Boolean   @default(true)
+
+  // Security
+  twoFactorEnabled      Boolean   @default(false)
 
   // Relations
   profile               Profile?
