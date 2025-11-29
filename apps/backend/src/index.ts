@@ -64,17 +64,19 @@ app.use('*', logger());
 app.use('*', cors({
   origin: (origin) => {
     // Allow requests with no origin (mobile apps, Postman, etc.)
-    if (!origin) return true;
+    if (!origin) return origin;
     
     // In development, allow localhost
     if (config.isDevelopment && (origin.includes('localhost') || origin.includes('127.0.0.1'))) {
-      return true;
+      return origin;
     }
     
     // Check against allowed origins
-    return config.corsOrigins.some(allowed => 
+    const isAllowed = config.corsOrigins.some(allowed => 
       origin === allowed || origin.endsWith(allowed.replace('https://', '.'))
     );
+    
+    return isAllowed ? origin : null;
   },
   allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowHeaders: ['Content-Type', 'Authorization', 'X-User-Id'],
