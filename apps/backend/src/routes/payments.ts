@@ -36,7 +36,7 @@ paymentRoutes.post('/create-checkout', async (c) => {
     if (!stripeCustomerId) {
       stripeCustomerId = await StripeService.createCustomer(
         user.email,
-        user.displayName || user.username,
+        user.name || user.email,
         user.id
       );
 
@@ -163,7 +163,6 @@ paymentRoutes.post('/webhook', async (c) => {
             where: { id: user.id },
             data: {
               stripeSubscriptionId: subscriptionId,
-              isPremium: true,
               subscriptionTier: session.metadata?.plan || 'basic',
             },
           });
@@ -185,7 +184,7 @@ paymentRoutes.post('/webhook', async (c) => {
           await prisma.user.update({
             where: { id: user.id },
             data: {
-              isPremium: subscription.status === 'active',
+              subscriptionTier: subscription.status === 'active' ? (user.subscriptionTier || 'basic') : null,
             },
           });
 
@@ -206,7 +205,6 @@ paymentRoutes.post('/webhook', async (c) => {
           await prisma.user.update({
             where: { id: user.id },
             data: {
-              isPremium: false,
               stripeSubscriptionId: null,
               subscriptionTier: null,
             },

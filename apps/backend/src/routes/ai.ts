@@ -71,7 +71,7 @@ aiRoutes.get('/recommend-events', async (c) => {
     }));
 
     const recommendations = await AIService.generateEventRecommendations(
-      user.interests || [],
+      Array.isArray(user.interests) ? user.interests : [],
       user.location || 'Unknown',
       eventData
     );
@@ -84,12 +84,11 @@ aiRoutes.get('/recommend-events', async (c) => {
         },
       },
       include: {
-        creator: {
+        host: {
           select: {
             id: true,
-            username: true,
-            displayName: true,
-            avatar: true,
+            name: true,
+            image: true,
           },
         },
         _count: {
@@ -145,14 +144,14 @@ aiRoutes.get('/suggest-matches', async (c) => {
 
     const matchData = potentialMatches.map(u => ({
       id: u.id,
-      interests: u.interests || [],
+      interests: Array.isArray(u.interests) ? u.interests : [],
       bio: u.bio || '',
       activityLevel: u.activityLevel || 'moderate',
     }));
 
     const matches = await AIService.generateUserMatches(
       {
-        interests: currentUser.interests || [],
+        interests: Array.isArray(currentUser.interests) ? currentUser.interests : [],
         bio: currentUser.bio || '',
         activityLevel: currentUser.activityLevel || 'moderate',
       },
@@ -168,9 +167,8 @@ aiRoutes.get('/suggest-matches', async (c) => {
       },
       select: {
         id: true,
-        username: true,
-        displayName: true,
-        avatar: true,
+        name: true,
+        image: true,
         bio: true,
         interests: true,
         trustScore: true,
