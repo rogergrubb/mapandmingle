@@ -2,12 +2,17 @@ import { Hono } from 'hono';
 import { prisma } from '../index';
 import { authMiddleware } from '../middleware/auth';
 
-export const userRoutes = new Hono();
+// Define context variables type for TypeScript
+type Variables = {
+  userId: string;
+};
+
+export const userRoutes = new Hono<{ Variables: Variables }>();
 
 // GET /api/users/me - Get current user's profile
 userRoutes.get('/me', authMiddleware, async (c) => {
   try {
-    const userId = c.get('userId') as string;
+    const userId = c.get('userId');
 
     if (!userId) {
       return c.json({ error: 'Unauthorized' }, 401);
@@ -59,7 +64,7 @@ userRoutes.get('/me', authMiddleware, async (c) => {
 // PATCH /api/users/me - Update current user's profile
 userRoutes.patch('/me', authMiddleware, async (c) => {
   try {
-    const userId = c.get('userId') as string;
+    const userId = c.get('userId');
 
     if (!userId) {
       return c.json({ error: 'Unauthorized' }, 401);
