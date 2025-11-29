@@ -32,7 +32,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({ isLoading: true });
     try {
       const response: any = await api.post('/api/auth/login', { email, password });
-      const { token, refreshToken, user } = response;
+      // Backend returns accessToken, not token
+      const { accessToken, refreshToken, user } = response;
+      const token = accessToken;
       
       localStorage.setItem('token', token);
       localStorage.setItem('refreshToken', refreshToken);
@@ -51,7 +53,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({ isLoading: true });
     try {
       const response: any = await api.post('/api/auth/register', data);
-      const { token, refreshToken, user } = response;
+      // Backend returns accessToken, not token
+      const { accessToken, refreshToken, user } = response;
+      const token = accessToken;
       
       localStorage.setItem('token', token);
       localStorage.setItem('refreshToken', refreshToken);
