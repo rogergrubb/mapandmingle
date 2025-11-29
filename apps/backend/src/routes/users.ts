@@ -3,6 +3,59 @@ import { prisma } from '../index';
 
 export const userRoutes = new Hono();
 
+// GET /api/users/me - Get current user's profile
+userRoutes.get('/me', async (c) => {
+  try {
+    const userId = c.req.header('x-user-id');
+
+    if (!userId) {
+      return c.json({ error: 'Unauthorized' }, 401);
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: { profile: true },
+    });
+
+    if (!user) {
+      return c.json({ error: 'User not found' }, 404);
+    }
+
+    // Parse interests
+    let interests: string[] = [];
+    if (user.profile?.interests) {
+      try {
+        interests = JSON.parse(user.profile.interests);
+      } catch {}
+    }
+
+    return c.json({
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      image: user.image,
+      displayName: user.profile?.displayName || user.name || 'Anonymous',
+      username: user.profile?.handle || user.id.slice(0, 8),
+      avatar: user.profile?.avatar || user.image,
+      bio: user.profile?.bio,
+      location: user.profile?.location,
+      interests,
+      activityIntent: user.profile?.activityIntent,
+      chatReadiness: user.profile?.chatReadiness || 'browsing_only',
+      visibilityMode: user.profile?.visibilityMode || 'visible_to_all',
+      ghostMode: user.profile?.ghostMode || false,
+      trustScore: user.profile?.trustScore || 50,
+      trustLevel: user.profile?.trustLevel || 'new',
+      isPremium: user.profile?.isPremium || false,
+      createdAt: user.createdAt.toISOString(),
+      lastActive: user.profile?.lastActiveAt?.toISOString(),
+    });
+  } catch (error) {
+    console.error('Error fetching current user:', error);
+    return c.json({ error: 'Failed to fetch user profile' }, 500);
+  }
+});
+
 // GET /api/users/search - Search users
 userRoutes.get('/search', async (c) => {
   try {
