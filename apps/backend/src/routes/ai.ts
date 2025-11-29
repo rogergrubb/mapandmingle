@@ -71,7 +71,7 @@ aiRoutes.get('/recommend-events', async (c) => {
     }));
 
     const recommendations = await AIService.generateEventRecommendations(
-      Array.isArray(user.interests) ? user.interests : [],
+      user.interests,
       user.location || 'Unknown',
       eventData
     );
@@ -144,14 +144,14 @@ aiRoutes.get('/suggest-matches', async (c) => {
 
     const matchData = potentialMatches.map(u => ({
       id: u.id,
-      interests: Array.isArray(u.interests) ? u.interests : [],
+      interests: u.interests,
       bio: u.bio || '',
       activityLevel: u.activityLevel || 'moderate',
     }));
 
     const matches = await AIService.generateUserMatches(
       {
-        interests: Array.isArray(currentUser.interests) ? currentUser.interests : [],
+        interests: currentUser.interests,
         bio: currentUser.bio || '',
         activityLevel: currentUser.activityLevel || 'moderate',
       },
