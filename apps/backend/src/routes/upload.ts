@@ -102,15 +102,25 @@ uploadRoutes.post('/profile', authMiddleware, async (c) => {
       return c.json({ url, key });
     } else {
       // No S3 configured - convert to base64 data URL for demo/development
+      console.log('S3 not configured, using base64 fallback for user:', userId);
+      
       const arrayBuffer = await file.arrayBuffer();
       const base64 = Buffer.from(arrayBuffer).toString('base64');
       const dataUrl = `data:${file.type};base64,${base64}`;
 
+      console.log('Generated data URL, length:', dataUrl.length);
+
       // Update user's profile image with data URL
-      await prisma.user.update({
-        where: { id: userId },
-        data: { image: dataUrl },
-      });
+      try {
+        await prisma.user.update({
+          where: { id: userId },
+          data: { image: dataUrl },
+        });
+        console.log('Updated user image');
+      } catch (userError) {
+        console.error('Failed to update user image:', userError);
+        throw userError;
+      }
 
       // Also update profile avatar if exists
       try {
@@ -118,8 +128,10 @@ uploadRoutes.post('/profile', authMiddleware, async (c) => {
           where: { userId },
           data: { avatar: dataUrl },
         });
-      } catch {
+        console.log('Updated profile avatar');
+      } catch (profileError) {
         // Profile might not exist yet, that's ok
+        console.log('Profile update skipped (may not exist):', profileError);
       }
 
       return c.json({ 
@@ -130,7 +142,7 @@ uploadRoutes.post('/profile', authMiddleware, async (c) => {
     }
   } catch (error) {
     console.error('Profile photo upload error:', error);
-    return c.json({ error: 'Failed to upload profile photo' }, 500);
+    return c.json({ error: 'Failed to upload profile photo', details: String(error) }, 500);
   }
 });
 
