@@ -33,6 +33,15 @@ model User {
   lastActiveAt          DateTime?
   pushToken             String?
 
+  // Profile fields (for integration compatibility)
+  username              String?   @unique
+  displayName           String?
+  bio                   String?
+  interests             String?   // JSON array
+  location              String?
+  activityLevel         String?   // active, moderate, casual
+  isPremium             Boolean   @default(false)
+
   // Relations
   profile               Profile?
   sessions              Session[]
