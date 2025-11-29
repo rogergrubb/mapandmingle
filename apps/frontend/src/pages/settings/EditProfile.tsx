@@ -37,15 +37,12 @@ export default function EditProfile() {
     setLoading(true);
 
     try {
-      // Upload to S3
-      const formData = new FormData();
-      formData.append('photo', file);
+      // Upload to server
+      const uploadFormData = new FormData();
+      uploadFormData.append('photo', file);
 
-      const response: any = await api.post('/api/upload/profile', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
+      // Don't set Content-Type header - axios will set it automatically with boundary for FormData
+      const response: any = await api.post('/api/upload/profile', uploadFormData);
 
       // Update avatar with returned URL (response is already unwrapped by interceptor)
       setFormData(prev => ({ ...prev, avatar: response.url }));
