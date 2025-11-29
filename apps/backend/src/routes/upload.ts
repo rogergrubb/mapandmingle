@@ -14,6 +14,12 @@ type Variables = {
 export const uploadRoutes = new Hono<{ Variables: Variables }>();
 
 // Initialize S3 client (optional - can use local storage for dev)
+console.log('S3 Config Check:', {
+  hasAccessKeyId: !!config.aws.accessKeyId,
+  region: config.aws.region,
+  bucketName: config.aws.s3BucketName,
+});
+
 const s3Client = config.aws.accessKeyId ? new S3Client({
   region: config.aws.region,
   credentials: {
@@ -22,8 +28,10 @@ const s3Client = config.aws.accessKeyId ? new S3Client({
   },
 }) : null;
 
+console.log('S3 Client initialized:', !!s3Client);
+
 const BUCKET_NAME = config.aws.s3BucketName;
-const CDN_URL = config.aws.cdnUrl || `https://${BUCKET_NAME}.s3.amazonaws.com`;
+const CDN_URL = config.aws.cdnUrl || `https://${BUCKET_NAME}.s3.${config.aws.region}.amazonaws.com`;
 
 // Allowed file types
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
