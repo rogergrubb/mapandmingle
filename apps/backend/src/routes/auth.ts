@@ -502,6 +502,9 @@ authRoutes.get('/google', async (c) => {
 
 // GET /api/auth/google/callback - Google OAuth callback
 authRoutes.get('/google/callback', async (c) => {
+  console.log('=== Google OAuth Callback Hit ===');
+  console.log('Query params:', c.req.query());
+  
   try {
     const code = c.req.query('code');
     const error = c.req.query('error');
