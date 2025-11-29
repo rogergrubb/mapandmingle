@@ -47,8 +47,8 @@ export default function EditProfile() {
         },
       });
 
-      // Update avatar with S3 URL
-      setFormData(prev => ({ ...prev, avatar: response.data.url }));
+      // Update avatar with returned URL (response is already unwrapped by interceptor)
+      setFormData(prev => ({ ...prev, avatar: response.url }));
     } catch (error) {
       console.error('Photo upload failed:', error);
       alert('Failed to upload photo. Please try again.');
