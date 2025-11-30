@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
   Calendar, MapPin, Users, Clock, Share2, Bookmark, MessageCircle,
-  UserPlus, UserMinus, AlertCircle, CheckCircle, X
+  UserPlus, UserMinus, AlertCircle, CheckCircle, X, Edit2, Trash2
 } from 'lucide-react';
 import { Button } from '../components/common/Button';
 import api from '../lib/api';
@@ -145,6 +145,24 @@ export function EventDetail() {
     }
   };
 
+  const handleDeleteEvent = async () => {
+    if (!event) return;
+    
+    const confirmed = window.confirm(
+      'Are you sure you want to delete this event? This action cannot be undone.'
+    );
+    
+    if (!confirmed) return;
+    
+    try {
+      await api.delete(`/api/events/${event.id}`);
+      navigate('/events', { replace: true });
+    } catch (error) {
+      console.error('Failed to delete event:', error);
+      alert('Failed to delete event. Please try again.');
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -257,9 +275,29 @@ export function EventDetail() {
           {/* RSVP Buttons */}
           <div className="border-t pt-4">
             {isCreator ? (
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-center">
-                <AlertCircle className="w-5 h-5 text-blue-600 mr-2" />
-                <span className="text-blue-900">You're the host of this event</span>
+              <div className="space-y-3">
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-center">
+                  <AlertCircle className="w-5 h-5 text-blue-600 mr-2" />
+                  <span className="text-blue-900">You're the host of this event</span>
+                </div>
+                <div className="flex gap-3">
+                  <Button 
+                    variant="outline" 
+                    onClick={() => navigate(`/events/${event.id}/edit`)}
+                    className="flex-1"
+                  >
+                    <Edit2 className="w-4 h-4 mr-2" />
+                    Edit Event
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    onClick={handleDeleteEvent}
+                    className="flex-1 text-red-600 border-red-300 hover:bg-red-50"
+                  >
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Delete Event
+                  </Button>
+                </div>
               </div>
             ) : rsvpStatus ? (
               <div className="flex items-center justify-between">
