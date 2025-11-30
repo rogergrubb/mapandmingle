@@ -30,6 +30,7 @@ import HelpSupport from './pages/settings/HelpSupport';
 import Privacy from './pages/Privacy';
 import Terms from './pages/Terms';
 import { AdminReports } from './pages/admin/AdminReports';
+import CreateMinglePage from './pages/CreateMinglePage';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
@@ -60,6 +61,7 @@ function App() {
           <Route path="/map" element={<MapPage />} />
           <Route path="/events" element={<EventsPage />} />
           <Route path="/events/create" element={<CreateEvent />} />
+          <Route path="/mingles/create" element={<CreateMinglePage />} />
           <Route path="/events/:id" element={<EventDetail />} />
           <Route path="/events/:id/edit" element={<EditEvent />} />
           <Route path="/my-events" element={<MyEvents />} />
