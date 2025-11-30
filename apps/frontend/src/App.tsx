@@ -12,6 +12,7 @@ import MapPage from './pages/MapPage';
 import EventsPage from './pages/EventsPage';
 import CreateEvent from './pages/CreateEvent';
 import { EventDetail } from './pages/EventDetail';
+import { EditEvent } from './pages/EditEvent';
 import { MyEvents } from './pages/MyEvents';
 import MessagesPage from './pages/MessagesPage';
 import { Chat } from './pages/Chat';
@@ -59,6 +60,7 @@ function App() {
           <Route path="/events" element={<EventsPage />} />
           <Route path="/events/create" element={<CreateEvent />} />
           <Route path="/events/:id" element={<EventDetail />} />
+          <Route path="/events/:id/edit" element={<EditEvent />} />
           <Route path="/my-events" element={<MyEvents />} />
           <Route path="/messages" element={<MessagesPage />} />
           <Route path="/chat/:conversationId" element={<Chat />} />
