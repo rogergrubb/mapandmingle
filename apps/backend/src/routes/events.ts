@@ -244,76 +244,12 @@ eventRoutes.post('/:id/rsvp', authMiddleware, async (c) => {
 
 // GET /api/events/:id/comments - Get event comments
 eventRoutes.get('/:id/comments', async (c) => {
-  try {
-    const eventId = c.req.param('id');
-    
-    // Check if EventComment model exists, if not return empty array
-    try {
-      const comments = await prisma.eventComment.findMany({
-        where: { eventId },
-        include: {
-          user: {
-            select: { id: true, name: true, image: true },
-          },
-        },
-        orderBy: { createdAt: 'desc' },
-      });
-      
-      return c.json(comments.map(comment => ({
-        id: comment.id,
-        content: comment.content,
-        user: comment.user,
-        createdAt: comment.createdAt.toISOString(),
-      })));
-    } catch {
-      // Model might not exist yet
-      return c.json([]);
-    }
-  } catch (error) {
-    console.error('Error fetching comments:', error);
-    return c.json([]);
-  }
+  // Comments feature not yet implemented - return empty array
+  return c.json([]);
 });
 
 // POST /api/events/:id/comments - Add comment to event
 eventRoutes.post('/:id/comments', authMiddleware, async (c) => {
-  try {
-    const userId = getUserId(c);
-    if (!userId) return c.json({ error: 'Unauthorized' }, 401);
-    
-    const eventId = c.req.param('id');
-    const body = await c.req.json();
-    const { content } = body;
-    
-    if (!content || content.trim().length === 0) {
-      return c.json({ error: 'Comment content required' }, 400);
-    }
-    
-    try {
-      const comment = await prisma.eventComment.create({
-        data: {
-          eventId,
-          userId,
-          content: content.trim(),
-        },
-        include: {
-          user: {
-            select: { id: true, name: true, image: true },
-          },
-        },
-      });
-      
-      return c.json({
-        id: comment.id,
-        content: comment.content,
-        user: comment.user,
-        createdAt: comment.createdAt.toISOString(),
-      });
-    } catch {
-      return c.json({ error: 'Comments not supported yet' }, 400);
-    }
-  } catch (error) {
-    console.error('Error creating comment:', error);
-    return c.json({ error: 'Failed to create comment' }, 500);
-  }
+  // Comments feature not yet implemented
+  return c.json({ error: 'Comments feature coming soon' }, 501);
 });
