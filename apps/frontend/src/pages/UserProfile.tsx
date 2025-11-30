@@ -53,7 +53,7 @@ export function UserProfile() {
 
   const fetchProfile = async () => {
     try {
-      const data = await api.get(`/api/users/${params.userId}`);
+      const data: UserProfile = await api.get(`/api/users/${params.userId}`);
       setProfile(data);
     } catch (error) {
       console.error('Failed to fetch profile:', error);
@@ -97,7 +97,7 @@ export function UserProfile() {
     
     try {
       // Create or get existing conversation
-      const data = await api.post('/api/conversations', {
+      const data: { id: string } = await api.post('/api/conversations', {
         participantId: profile.id,
       });
       
