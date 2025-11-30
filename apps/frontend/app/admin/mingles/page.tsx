@@ -83,7 +83,8 @@ export default function AdminMinglesPage() {
           m.participantCount,
         ].join(',')
       ),
-    ].join('\n');
+    ].join('
+');
 
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
