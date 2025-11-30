@@ -173,7 +173,7 @@ export default function MapPage() {
 
       {/* Quick Actions - Mingle Button */}
       <button
-        onClick={() => navigate('/create-mingle')}
+        onClick={() => navigate('/mingles/create')}
         className="absolute top-20 right-4 z-[1000] bg-purple-500 text-white p-3 rounded-full shadow-lg hover:bg-purple-600 transition-all"
       >
         <Users size={22} />
