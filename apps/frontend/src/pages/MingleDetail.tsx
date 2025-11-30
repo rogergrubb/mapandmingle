@@ -200,7 +200,7 @@ export function MingleDetail() {
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Mingle Not Found</h2>
-          <Link href="/mingles">
+          <Link to="/mingles">
             <Button>Back to Mingles</Button>
           </Link>
         </div>
