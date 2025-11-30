@@ -3,7 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Eye, EyeOff, Mail, Lock, ArrowRight, Loader2 } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
 
-const API_URL = import.meta.env.VITE_API_URL || 'https://mapandmingle-api-production.up.railway.app';
+const API_URL = import.meta.env.VITE_API_URL || 'https://mapandmingle-api-492171901610.us-west1.run.app';
 
 export default function Login() {
   const [email, setEmail] = useState('');
