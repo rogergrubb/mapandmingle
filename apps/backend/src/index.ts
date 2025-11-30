@@ -409,6 +409,50 @@ async function runMigrations() {
       CREATE INDEX IF NOT EXISTS "EventComment_eventId_createdAt_idx" ON "EventComment"("eventId", "createdAt");
     `).catch(() => {});
     
+
+    // Add new columns to MingleEvent table for drafts and admin tracking
+    await prisma.$executeRawUnsafe(`
+      ALTER TABLE "MingleEvent" 
+      ADD COLUMN IF NOT EXISTS "isDraft" BOOLEAN DEFAULT true;
+    `).catch(() => {});
+    
+    await prisma.$executeRawUnsafe(`
+      ALTER TABLE "MingleEvent" 
+      ADD COLUMN IF NOT EXISTS "isActive" BOOLEAN DEFAULT true;
+    `).catch(() => {});
+    
+    await prisma.$executeRawUnsafe(`
+      ALTER TABLE "MingleEvent" 
+      ADD COLUMN IF NOT EXISTS "privacy" TEXT DEFAULT 'public';
+    `).catch(() => {});
+    
+    await prisma.$executeRawUnsafe(`
+      ALTER TABLE "MingleEvent" 
+      ADD COLUMN IF NOT EXISTS "tags" TEXT[] DEFAULT ARRAY[]::TEXT[];
+    `).catch(() => {});
+    
+    await prisma.$executeRawUnsafe(`
+      ALTER TABLE "MingleEvent" 
+      ADD COLUMN IF NOT EXISTS "photoUrl" TEXT;
+    `).catch(() => {});
+    
+    await prisma.$executeRawUnsafe(`
+      ALTER TABLE "MingleEvent" 
+      ADD COLUMN IF NOT EXISTS "adminNotes" TEXT;
+    `).catch(() => {});
+    
+    await prisma.$executeRawUnsafe(`
+      CREATE INDEX IF NOT EXISTS "MingleEvent_isDraft_idx" ON "MingleEvent"("isDraft");
+    `).catch(() => {});
+    
+    await prisma.$executeRawUnsafe(`
+      CREATE INDEX IF NOT EXISTS "MingleEvent_isActive_idx" ON "MingleEvent"("isActive");
+    `).catch(() => {});
+    
+    await prisma.$executeRawUnsafe(`
+      CREATE INDEX IF NOT EXISTS "MingleEvent_hostId_idx" ON "MingleEvent"("hostId");
+    `).catch(() => {});
+
     // Add new columns to Report table if not exists
     await prisma.$executeRawUnsafe(`
       ALTER TABLE "Report" 
@@ -418,3 +462,42 @@ async function runMigrations() {
     await prisma.$executeRawUnsafe(`
       ALTER TABLE "Report" 
       ADD COLUMN IF NOT EXISTS "eventCommentId" TEXT;
+    `).catch(() => {});
+    
+    await prisma.$executeRawUnsafe(`
+      ALTER TABLE "Report" 
+      ADD COLUMN IF NOT EXISTS "adminNotes" TEXT;
+    `).catch(() => {});
+    
+    await prisma.$executeRawUnsafe(`
+      CREATE INDEX IF NOT EXISTS "Report_status_idx" ON "Report"("status");
+    `).catch(() => {});
+    
+    console.log('✅ Database migrations complete');
+  } catch (error) {
+    console.error('⚠️ Migration error (non-fatal):', error);
+  }
+}
+
+// Run migrations then start server
+runMigrations().then(() => {
+  server.listen(PORT, '0.0.0.0', () => {
+    console.log(`
+╔═══════════════════════════════════════════════════════════╗
+║                    🗺️  MAP MINGLE API                      ║
+╠═══════════════════════════════════════════════════════════╣
+║  Server running on port ${PORT}                              ║
+║  WebSocket ready for real-time connections                ║
+║  Database: PostgreSQL via Prisma                          ║
+╚═══════════════════════════════════════════════════════════╝
+    `);
+  });
+});
+
+// Graceful shutdown
+process.on('SIGTERM', async () => {
+  console.log('Shutting down...');
+  await prisma.$disconnect();
+  server.close();
+  process.exit(0);
+});
