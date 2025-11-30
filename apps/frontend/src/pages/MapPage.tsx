@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Circle, useMap } from 'react-leaflet';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Flame, Locate, Users } from 'lucide-react';
+import { Flame, Locate, Menu, MapPin, MessageCircle, Search } from 'lucide-react';
 import { useMapStore } from '../stores/mapStore';
 import { useAuthStore } from '../stores/authStore';
 import 'leaflet/dist/leaflet.css';
@@ -44,45 +44,50 @@ function MapController() {
 export default function MapPage() {
   const navigate = useNavigate();
   const { pins, hotspots, filter, showHotspots, setFilter, setShowHotspots, setUserLocation } = useMapStore();
-  const user = useAuthStore((state) => state.user);
+  const { user, isAuthenticated } = useAuthStore();
   const [userPosition, setUserPosition] = useState<[number, number] | null>(null);
   const [isLocating, setIsLocating] = useState(true);
+  const [showHotZoneMenu, setShowHotZoneMenu] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map>(null);
 
   useEffect(() => {
-    // Get user location
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const pos: [number, number] = [position.coords.latitude, position.coords.longitude];
-          setUserPosition(pos);
-          setUserLocation({ latitude: position.coords.latitude, longitude: position.coords.longitude });
-          setIsLocating(false);
-        },
-        (error) => {
-          console.error('Error getting location:', error);
-          // Default to San Francisco
-          setUserPosition([37.7749, -122.4194]);
-          setIsLocating(false);
-        }
-      );
-    } else {
-      setUserPosition([37.7749, -122.4194]);
-      setIsLocating(false);
-    }
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setShowHotZoneMenu(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  useEffect(() => {
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const pos: [number, number] = [position.coords.latitude, position.coords.longitude];
+        setUserPosition(pos);
+        setUserLocation(pos);
+        setIsLocating(false);
+      },
+      () => {
+        setUserPosition([37.7749, -122.4194]);
+        setIsLocating(false);
+      }
+    );
   }, [setUserLocation]);
 
   const handleCenterOnUser = () => {
     if (userPosition && mapRef.current) {
-      mapRef.current.setView(userPosition, 15);
+      mapRef.current.setView(userPosition, mapRef.current.getZoom());
     }
   };
 
-  if (isLocating || !userPosition) {
+  if (isLocating) {
     return (
-      <div className="h-full flex items-center justify-center bg-gray-50">
+      <div className="flex items-center justify-center w-full h-screen bg-gray-100">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500 mx-auto mb-4"></div>
+          <div className="animate-spin text-4xl mb-4">📍</div>
           <p className="text-gray-600">Finding your location...</p>
         </div>
       </div>
@@ -90,94 +95,141 @@ export default function MapPage() {
   }
 
   return (
-    <div className="relative h-full">
-      {/* Map */}
+    <div className="relative w-full h-screen">
       <MapContainer
-        center={userPosition}
-        zoom={15}
-        className="h-full w-full"
         ref={mapRef}
+        center={userPosition || [37.7749, -122.4194]}
+        zoom={13}
+        className="w-full h-full"
       >
         <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         />
-        <MapController />
-        
-        {/* User Location Marker */}
-        <Marker position={userPosition}>
-          <Popup>You are here</Popup>
-        </Marker>
 
-        {/* Pin Markers */}
+        <MapController />
+
+        {/* Pins/Mingles */}
         {pins.map((pin) => (
           <Marker
             key={pin.id}
             position={[pin.latitude, pin.longitude]}
             eventHandlers={{
-              click: () => navigate(`/pin/${pin.id}`),
+              click: () => navigate(`/mingles/${pin.id}`),
             }}
           >
             <Popup>
-              <div className="p-2">
-                <h3 className="font-semibold">{pin.title}</h3>
-                <p className="text-sm text-gray-600">{pin.category}</p>
+              <div className="w-64">
+                <h3 className="font-bold mb-1">{pin.title}</h3>
+                <p className="text-sm text-gray-600 mb-2">{pin.description}</p>
+                <button
+                  onClick={() => navigate(`/mingles/${pin.id}`)}
+                  className="w-full bg-purple-500 hover:bg-purple-600 text-white px-3 py-2 rounded text-sm font-semibold"
+                >
+                  View Details
+                </button>
               </div>
             </Popup>
           </Marker>
         ))}
 
         {/* Hotspots */}
-        {showHotspots && hotspots.map((hotspot, index) => (
-          <Circle
-            key={index}
-            center={[hotspot.latitude, hotspot.longitude]}
-            radius={hotspot.radius}
-            pathOptions={{
-              color: '#F97316',
-              fillColor: '#F97316',
-              fillOpacity: hotspot.intensity / 100,
-            }}
-          />
-        ))}
+        {showHotspots &&
+          hotspots.map((hotspot) => (
+            <Circle
+              key={hotspot.id}
+              center={[hotspot.latitude, hotspot.longitude]}
+              radius={hotspot.radius}
+              pathOptions={{
+                color: '#ef4444',
+                weight: 2,
+                opacity: 0.2,
+                fill: true,
+                fillColor: '#ef4444',
+                fillOpacity: 0.1,
+              }}
+            />
+          ))}
       </MapContainer>
 
-      {/* Top Bar - Filter Pills */}
-      <div className="absolute top-4 left-4 right-20 z-[1000]">
-        <div className="bg-white/90 backdrop-blur-sm rounded-full p-1 flex shadow-lg">
-          {(['all', '24h', 'week'] as const).map((f) => (
+      {/* Hot Zone Menu */}
+      <div className="absolute top-4 left-4 z-[1000]" ref={menuRef}>
+        <button
+          onClick={() => setShowHotZoneMenu(!showHotZoneMenu)}
+          className="flex items-center gap-2 px-4 py-3 bg-red-500 hover:bg-red-600 text-white rounded-full shadow-lg font-bold transition-all"
+        >
+          <Flame size={20} />
+          <span>Hot Zone</span>
+          <Menu size={20} />
+        </button>
+
+        {/* Dropdown Menu */}
+        {showHotZoneMenu && (
+          <div className="absolute top-full mt-2 left-0 bg-white rounded-xl shadow-xl overflow-hidden min-w-[280px] border border-gray-200">
+            {/* Mingle Hot Zone */}
             <button
-              key={f}
-              onClick={() => setFilter(f)}
-              className={`flex-1 py-2 px-4 rounded-full font-semibold transition-all ${
-                filter === f
-                  ? 'bg-primary-500 text-white'
-                  : 'text-gray-600 hover:bg-gray-100'
-              }`}
+              onClick={() => {
+                setShowHotspots(!showHotspots);
+                setShowHotZoneMenu(false);
+              }}
+              className="w-full flex items-center gap-3 px-4 py-3 hover:bg-orange-50 transition border-b border-gray-100"
             >
-              {f === 'all' ? 'All' : f === '24h' ? '24h' : 'Week'}
+              <div className="bg-orange-100 rounded-full p-2">
+                <Flame size={20} className="text-orange-500" />
+              </div>
+              <div className="text-left flex-1">
+                <p className="font-bold text-gray-800">Mingle Hot Zone</p>
+                <p className="text-xs text-gray-500">Browse active mingles</p>
+              </div>
+              <span className="text-gray-400">→</span>
             </button>
-          ))}
-        </div>
+
+            {/* Create a Mingle Now */}
+            <button
+              onClick={() => {
+                if (!isAuthenticated) {
+                  navigate('/(auth)/login');
+                } else {
+                  navigate('/mingles/create');
+                }
+                setShowHotZoneMenu(false);
+              }}
+              className="w-full flex items-center gap-3 px-4 py-3 hover:bg-green-50 transition border-b border-gray-100"
+            >
+              <div className="bg-green-100 rounded-full p-2">
+                <MapPin size={20} className="text-green-600" />
+              </div>
+              <div className="text-left flex-1">
+                <p className="font-bold text-gray-800">Create a Mingle</p>
+                <p className="text-xs text-gray-500">Start your own meetup</p>
+              </div>
+              <span className="text-gray-400">→</span>
+            </button>
+
+            {/* Find a Mingler Now */}
+            <button
+              onClick={() => {
+                if (!isAuthenticated) {
+                  navigate('/(auth)/login');
+                } else {
+                  navigate('/find-mingler');
+                }
+                setShowHotZoneMenu(false);
+              }}
+              className="w-full flex items-center gap-3 px-4 py-3 hover:bg-purple-50 transition"
+            >
+              <div className="bg-purple-100 rounded-full p-2">
+                <Search size={20} className="text-purple-600" />
+              </div>
+              <div className="text-left flex-1">
+                <p className="font-bold text-gray-800">Find a Mingler</p>
+                <p className="text-xs text-gray-500">Search & message users</p>
+              </div>
+              <span className="text-gray-400">→</span>
+            </button>
+          </div>
+        )}
       </div>
-
-      {/* Hotspot Toggle */}
-      <button
-        onClick={() => setShowHotspots(!showHotspots)}
-        className={`absolute top-4 right-4 z-[1000] p-3 rounded-full shadow-lg transition-all ${
-          showHotspots ? 'bg-orange-500 text-white' : 'bg-white text-orange-500'
-        }`}
-      >
-        <Flame size={24} />
-      </button>
-
-      {/* Quick Actions - Mingle Button */}
-      <button
-        onClick={() => navigate('/mingles/create')}
-        className="absolute top-20 right-4 z-[1000] bg-purple-500 text-white p-3 rounded-full shadow-lg hover:bg-purple-600 transition-all"
-      >
-        <Users size={22} />
-      </button>
 
       {/* Center on User Button */}
       <button
@@ -187,42 +239,12 @@ export default function MapPage() {
         <Locate size={24} />
       </button>
 
-      {/* Create Pin FAB */}
-      <button
-        onClick={() => navigate('/create-pin')}
-        className="absolute bottom-24 left-1/2 -translate-x-1/2 z-[1000] bg-primary-500 text-white p-4 rounded-full shadow-xl hover:bg-primary-600 hover:scale-110 transition-all"
-      >
-        <Plus size={28} />
-      </button>
-
-      {/* Bottom Info Card */}
-      <div className="absolute bottom-20 left-4 right-4 z-[1000]">
-        <div className="bg-white/90 backdrop-blur-sm rounded-2xl p-4 shadow-lg">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center">
-              <div className="w-2 h-2 rounded-full bg-green-500 mr-2"></div>
-              <span className="text-gray-700 font-medium">
-                {pins.length} {pins.length === 1 ? 'person' : 'people'} nearby
-              </span>
-            </div>
-            {showHotspots && hotspots.length > 0 && (
-              <div className="flex items-center">
-                <Flame size={16} className="text-orange-600 mr-1" />
-                <span className="text-orange-600 font-medium">{hotspots.length} hotspots</span>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Activity Intent Badge */}
-      {user?.activityIntent && (
-        <div className="absolute top-20 left-4 z-[1000]">
-          <div className="bg-white/90 backdrop-blur-sm rounded-full px-3 py-2 flex items-center shadow-md">
-            <div className="w-2 h-2 rounded-full bg-green-500 mr-2"></div>
-            <span className="text-gray-700 text-sm font-medium">{user.activityIntent}</span>
-          </div>
-        </div>
+      {/* Close Menu on Map Click */}
+      {showHotZoneMenu && (
+        <div
+          className="absolute inset-0 z-[999]"
+          onClick={() => setShowHotZoneMenu(false)}
+        />
       )}
     </div>
   );
