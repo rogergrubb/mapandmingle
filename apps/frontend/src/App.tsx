@@ -11,6 +11,7 @@ import { Onboarding } from './pages/Onboarding';
 import MapPage from './pages/MapPage';
 import EventsPage from './pages/EventsPage';
 import CreateEvent from './pages/CreateEvent';
+import CreateMinglePage from './pages/CreateMinglePage';
 import { EventDetail } from './pages/EventDetail';
 import { EditEvent } from './pages/EditEvent';
 import { MyEvents } from './pages/MyEvents';
@@ -30,7 +31,6 @@ import HelpSupport from './pages/settings/HelpSupport';
 import Privacy from './pages/Privacy';
 import Terms from './pages/Terms';
 import { AdminReports } from './pages/admin/AdminReports';
-import CreateMinglePage from './pages/CreateMinglePage';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
@@ -61,13 +61,13 @@ function App() {
           <Route path="/map" element={<MapPage />} />
           <Route path="/events" element={<EventsPage />} />
           <Route path="/events/create" element={<CreateEvent />} />
-          <Route path="/mingles/create" element={<CreateMinglePage />} />
           <Route path="/events/:id" element={<EventDetail />} />
           <Route path="/events/:id/edit" element={<EditEvent />} />
           <Route path="/my-events" element={<MyEvents />} />
           <Route path="/messages" element={<MessagesPage />} />
           <Route path="/chat/:conversationId" element={<Chat />} />
           <Route path="/mingles" element={<Mingles />} />
+          <Route path="/mingles/create" element={<CreateMinglePage />} />
           <Route path="/mingles/:id" element={<MingleDetail />} />
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/profile/:userId" element={<UserProfile />} />
