@@ -459,8 +459,8 @@ authRoutes.post('/verify-email', async (c) => {
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
-const GOOGLE_REDIRECT_URI = process.env.GOOGLE_REDIRECT_URI || 'https://mapandmingle-api-production.up.railway.app/api/auth/google/callback';
-const FRONTEND_URL = process.env.FRONTEND_URL || 'https://mapandmingle.vercel.app';
+const GOOGLE_REDIRECT_URI = process.env.GOOGLE_REDIRECT_URI || 'https://mapandmingle-api-492171901610.us-west1.run.app/api/auth/google/callback';
+const FRONTEND_URL = process.env.FRONTEND_URL || 'https://www.mapandmingle.com';
 
 // Type definitions for Google OAuth
 interface GoogleTokenResponse {
