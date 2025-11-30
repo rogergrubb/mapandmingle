@@ -647,23 +647,26 @@ model Block {
 
 model Report {
   id              String   @id @default(cuid())
-  reporterId      String
-  reportedUserId  String
-  reason          String   // spam, harassment, inappropriate, fake, other
+  type            String   @default("user_report") // user_report, mingle_published, mingle_draft_created, event_created, etc.
+  reporterId      String?  // User who reported (optional for system tracking)
+  reportedUserId  String?  // User being reported (optional for system tracking)
+  initiatorId     String?  // For tracking system-generated records
+  targetId        String?  // ID of the thing being tracked (mingle, event, etc.)
+  reason          String   // spam, harassment, inappropriate, fake, other, or reason for tracking
   description     String?  @db.VarChar(500)
-  status          String   @default("pending") // pending, reviewed, resolved, dismissed
+  status          String   @default("pending") // pending, reviewed, resolved, dismissed, open
   eventId         String?  // Optional: if report is related to an event
   eventCommentId  String?  // Optional: if reporting a specific comment
   adminNotes      String?  @db.Text
   createdAt       DateTime @default(now())
   reviewedAt      DateTime?
 
-  reporter     User @relation("ReportInitiator", fields: [reporterId], references: [id], onDelete: Cascade)
-  reportedUser User @relation("ReportTarget", fields: [reportedUserId], references: [id], onDelete: Cascade)
+  reporter     User? @relation("ReportInitiator", fields: [reporterId], references: [id], onDelete: SetNull)
+  reportedUser User? @relation("ReportTarget", fields: [reportedUserId], references: [id], onDelete: SetNull)
 
   @@index([status])
+  @@index([type])
 }
-
 // ============================================================================
 // HOTSPOTS (ACTIVITY AGGREGATION)
 // ============================================================================
