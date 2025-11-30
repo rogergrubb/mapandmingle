@@ -56,7 +56,8 @@ export function AdminReports() {
   const fetchReports = async () => {
     try {
       setLoading(true);
-      const response = await api.get(`/api/admin/reports?status=${statusFilter}&page=${pagination.page}`);
+      const response: { reports: Report[]; pagination: { page: number; total: number; totalPages: number } } = 
+        await api.get(`/api/admin/reports?status=${statusFilter}&page=${pagination.page}`);
       setReports(response.reports);
       setPagination(response.pagination);
     } catch (error: any) {
