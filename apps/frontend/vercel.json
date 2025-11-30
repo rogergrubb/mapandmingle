@@ -4,6 +4,12 @@
   "devCommand": "npm run dev",
   "installCommand": "npm install",
   "framework": "vite",
+  "env": [
+    {
+      "key": "VITE_API_URL",
+      "value": "https://mapandmingle-api-492171901610.us-west1.run.app"
+    }
+  ],
   "routes": [
     {
       "src": "/assets/(.*)",
