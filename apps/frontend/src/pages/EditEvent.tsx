@@ -67,14 +67,28 @@ export function EditEvent() {
       const startDate = new Date(event.startTime);
       const endDate = event.endTime ? new Date(event.endTime) : null;
 
+      // Format date and time in local timezone
+      const formatLocalDate = (d: Date) => {
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+      };
+      
+      const formatLocalTime = (d: Date) => {
+        const hours = String(d.getHours()).padStart(2, '0');
+        const minutes = String(d.getMinutes()).padStart(2, '0');
+        return `${hours}:${minutes}`;
+      };
+
       setFormData({
         title: event.title,
         description: event.description || '',
         category: event.category,
-        startDate: startDate.toISOString().split('T')[0],
-        startTime: startDate.toTimeString().slice(0, 5),
-        endDate: endDate ? endDate.toISOString().split('T')[0] : '',
-        endTime: endDate ? endDate.toTimeString().slice(0, 5) : '',
+        startDate: formatLocalDate(startDate),
+        startTime: formatLocalTime(startDate),
+        endDate: endDate ? formatLocalDate(endDate) : '',
+        endTime: endDate ? formatLocalTime(endDate) : '',
         venueName: event.venueName || '',
         venueAddress: event.venueAddress || '',
         latitude: event.latitude,
@@ -95,14 +109,18 @@ export function EditEvent() {
     setSaving(true);
 
     try {
+      // Create Date objects in local timezone, then convert to ISO
+      const startDateTime = new Date(`${formData.startDate}T${formData.startTime}:00`);
+      const endDateTime = formData.endDate && formData.endTime
+        ? new Date(`${formData.endDate}T${formData.endTime}:00`)
+        : null;
+
       const eventData = {
         title: formData.title,
         description: formData.description,
         category: formData.category,
-        startTime: `${formData.startDate}T${formData.startTime}`,
-        endTime: formData.endDate && formData.endTime
-          ? `${formData.endDate}T${formData.endTime}`
-          : null,
+        startTime: startDateTime.toISOString(),
+        endTime: endDateTime ? endDateTime.toISOString() : null,
         venueName: formData.venueName,
         venueAddress: formData.venueAddress,
         latitude: formData.latitude,
