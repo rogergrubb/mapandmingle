@@ -500,7 +500,7 @@ model MingleEvent {
   // NEW FIELDS FOR READY TO MINGLE FEATURE
   isDraft         Boolean   @default(true)
   isActive        Boolean   @default(true)
-  privacy         String    @default("public") // public, private, friends
+  privacy         String    @default("public") // public, friends, private
   tags            String[]  @default([])
   photoUrl        String?
   adminNotes      String?
@@ -517,29 +517,6 @@ model MingleEvent {
   @@index([hostId])
   @@index([isDraft])
   @@index([isActive])
-}
-
-model MingleParticipant {
-  id           String    @id @default(cuid())
-  mingleId     String
-  userId       String
-  status       String    @default("interested") // interested, confirmed, declined
-  joinedAt     DateTime  @default(now())
-  notifiedAt   DateTime?
-
-  mingle MingleEvent @relation(fields: [mingleId], references: [id], onDelete: Cascade)
-  user   User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([mingleId, userId])
-}
-
-model MingleView {
-  id        String   @id @default(cuid())
-  mingleId  String
-  visitorId String?  // null for anonymous
-  viewedAt  DateTime @default(now())
-
-  mingle MingleEvent @relation(fields: [mingleId], references: [id], onDelete: Cascade)
 }
 
 model MingleParticipant {
