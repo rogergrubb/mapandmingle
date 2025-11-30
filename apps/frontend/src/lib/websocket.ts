@@ -11,7 +11,7 @@ class WebSocketClient {
 
   constructor() {
     const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const apiUrl = import.meta.env.VITE_API_URL || 'https://mapandmingle-production.up.railway.app';
+    const apiUrl = import.meta.env.VITE_API_URL || 'https://mapandmingle-api-492171901610.us-west1.run.app';
     this.url = apiUrl.replace(/^https?:/, wsProtocol);
   }
 
