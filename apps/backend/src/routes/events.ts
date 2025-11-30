@@ -242,6 +242,104 @@ eventRoutes.post('/:id/rsvp', authMiddleware, async (c) => {
   }
 });
 
+// DELETE /api/events/:id - Delete event (host only)
+eventRoutes.delete('/:id', authMiddleware, async (c) => {
+  try {
+    const userId = getUserId(c);
+    if (!userId) return c.json({ error: 'Unauthorized' }, 401);
+    
+    const id = c.req.param('id');
+    
+    // Verify user is the host
+    const event = await prisma.event.findUnique({
+      where: { id },
+      select: { hostId: true },
+    });
+    
+    if (!event) {
+      return c.json({ error: 'Event not found' }, 404);
+    }
+    
+    if (event.hostId !== userId) {
+      return c.json({ error: 'Only the host can delete this event' }, 403);
+    }
+    
+    // Delete attendees first (foreign key constraint)
+    await prisma.eventAttendee.deleteMany({
+      where: { eventId: id },
+    });
+    
+    // Delete the event
+    await prisma.event.delete({
+      where: { id },
+    });
+    
+    return c.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting event:', error);
+    return c.json({ error: 'Failed to delete event' }, 500);
+  }
+});
+
+// PUT /api/events/:id - Update event (host only)
+eventRoutes.put('/:id', authMiddleware, async (c) => {
+  try {
+    const userId = getUserId(c);
+    if (!userId) return c.json({ error: 'Unauthorized' }, 401);
+    
+    const id = c.req.param('id');
+    const body = await c.req.json();
+    
+    // Verify user is the host
+    const event = await prisma.event.findUnique({
+      where: { id },
+      select: { hostId: true },
+    });
+    
+    if (!event) {
+      return c.json({ error: 'Event not found' }, 404);
+    }
+    
+    if (event.hostId !== userId) {
+      return c.json({ error: 'Only the host can edit this event' }, 403);
+    }
+    
+    // Update the event
+    const updated = await prisma.event.update({
+      where: { id },
+      data: {
+        title: body.title,
+        description: body.description,
+        category: body.category?.toLowerCase(),
+        image: body.image,
+        venueName: body.venueName || body.address,
+        venueAddress: body.venueAddress || body.address,
+        latitude: body.latitude,
+        longitude: body.longitude,
+        startTime: body.startTime ? new Date(body.startTime) : undefined,
+        endTime: body.endTime ? new Date(body.endTime) : undefined,
+        maxAttendees: body.maxAttendees || body.capacity,
+      },
+      include: {
+        host: { select: { id: true, name: true, image: true } },
+      },
+    });
+    
+    return c.json({
+      id: updated.id,
+      title: updated.title,
+      description: updated.description,
+      category: updated.category,
+      venueName: updated.venueName,
+      startTime: updated.startTime.toISOString(),
+      host: updated.host,
+    });
+  } catch (error) {
+    console.error('Error updating event:', error);
+    return c.json({ error: 'Failed to update event' }, 500);
+  }
+});
+
 // GET /api/events/:id/comments - Get event comments
 eventRoutes.get('/:id/comments', async (c) => {
   // Comments feature not yet implemented - return empty array
