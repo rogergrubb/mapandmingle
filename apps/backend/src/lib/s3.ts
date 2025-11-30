@@ -10,15 +10,18 @@ const s3Client = new S3Client({
 });
 
 export async function uploadToS3(
-  fileBuffer: Buffer,
+  fileData: Buffer | ArrayBuffer,
   fileName: string,
   mimeType: string = 'application/octet-stream'
 ): Promise<string> {
   try {
+    // Convert ArrayBuffer to Buffer if needed
+    const buffer = Buffer.isBuffer(fileData) ? fileData : Buffer.from(fileData);
+
     const command = new PutObjectCommand({
       Bucket: config.aws.s3BucketName,
       Key: fileName,
-      Body: fileBuffer,
+      Body: buffer,
       ContentType: mimeType,
       ACL: 'public-read',
     });
