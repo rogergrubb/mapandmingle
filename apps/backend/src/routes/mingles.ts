@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { prisma } from '../index';
+import { uploadToS3 } from '../lib/s3';
 
 export const mingleRoutes = new Hono();
 
@@ -23,7 +24,7 @@ const INTENT_CARDS = [
 // GET /api/mingles/intent-cards
 mingleRoutes.get('/intent-cards', (c) => c.json(INTENT_CARDS));
 
-// GET /api/mingles - Get nearby mingles
+// GET /api/mingles - Get nearby mingles (only active, non-draft)
 mingleRoutes.get('/', async (c) => {
   try {
     const lat = parseFloat(c.req.query('latitude') || '0');
@@ -31,11 +32,13 @@ mingleRoutes.get('/', async (c) => {
     
     const mingles = await prisma.mingleEvent.findMany({
       where: {
+        isDraft: false, // Only show published mingles
+        isActive: true, // Only show active mingles
         status: { in: ['scheduled', 'live'] },
         startTime: { gte: new Date() },
       },
       include: {
-        host: { select: { id: true, name: true, image: true } },
+        host: { select: { id: true, name: true, image: true, profile: { select: { displayName: true } } } },
         _count: { select: { participants: true } },
       },
       orderBy: { startTime: 'asc' },
@@ -56,6 +59,9 @@ mingleRoutes.get('/', async (c) => {
       status: m.status,
       maxParticipants: m.maxParticipants,
       participantCount: m._count.participants,
+      photoUrl: m.photoUrl,
+      privacy: m.privacy,
+      tags: m.tags,
       host: m.host,
       createdAt: m.createdAt.toISOString(),
     })));
@@ -64,46 +70,285 @@ mingleRoutes.get('/', async (c) => {
   }
 });
 
-// POST /api/mingles - Create mingle
+// POST /api/mingles/draft - Save mingle as draft
+mingleRoutes.post('/draft', async (c) => {
+  try {
+    const userId = c.req.header('X-User-Id');
+    if (!userId) return c.json({ error: 'Unauthorized' }, 401);
+
+    const formData = await c.req.formData();
+    const description = formData.get('description') as string;
+    const latitude = parseFloat(formData.get('latitude') as string);
+    const longitude = parseFloat(formData.get('longitude') as string);
+    const locationName = formData.get('locationName') as string;
+    const maxParticipants = formData.get('maxParticipants') as string;
+    const privacy = (formData.get('privacy') as string) || 'public';
+    const tags = (formData.get('tags') as string || '').split(' ').filter(t => t);
+    const photoFile = formData.get('photo') as File | null;
+
+    let photoUrl = null;
+    if (photoFile) {
+      const buffer = await photoFile.arrayBuffer();
+      photoUrl = await uploadToS3(buffer, `mingles/${userId}/${Date.now()}.jpg`);
+    }
+
+    const mingle = await prisma.mingleEvent.create({
+      data: {
+        hostId: userId,
+        title: 'Ready to Mingle',
+        description,
+        latitude,
+        longitude,
+        locationName,
+        maxParticipants: parseInt(maxParticipants) || null,
+        privacy,
+        tags,
+        photoUrl,
+        isDraft: true, // This is a draft
+        isActive: true,
+        startTime: new Date(),
+        endTime: new Date(Date.now() + 30 * 60000),
+        duration: 30,
+        status: 'live',
+        intentCard: 'spontaneous_mingle',
+      },
+    });
+
+    // Log to admin tracking (invisible to users)
+    await prisma.report.create({
+      data: {
+        type: 'mingle_draft_created',
+        initiatorId: userId,
+        targetId: mingle.id,
+        reason: `Draft mingle created: ${description?.substring(0, 100)}`,
+        status: 'open',
+        adminNotes: `User: ${userId}, Location: ${locationName}, Privacy: ${privacy}, Tags: ${tags.join(', ')}, Photo: ${photoUrl ? 'Yes' : 'No'}`,
+      },
+    });
+
+    return c.json({ id: mingle.id, isDraft: true }, 201);
+  } catch (error: any) {
+    console.error('Draft creation error:', error);
+    return c.json({ error: 'Failed to save draft' }, 500);
+  }
+});
+
+// POST /api/mingles - Create/publish mingle from draft or new
 mingleRoutes.post('/', async (c) => {
   try {
     const userId = c.req.header('X-User-Id');
     if (!userId) return c.json({ error: 'Unauthorized' }, 401);
-    
-    const body = await c.req.json();
-    const startTime = new Date(body.startTime);
-    const endTime = new Date(startTime.getTime() + body.duration * 60 * 1000);
-    
+
+    const formData = await c.req.formData();
+    const description = formData.get('description') as string;
+    const latitude = parseFloat(formData.get('latitude') as string);
+    const longitude = parseFloat(formData.get('longitude') as string);
+    const locationName = formData.get('locationName') as string;
+    const maxParticipants = formData.get('maxParticipants') as string;
+    const privacy = (formData.get('privacy') as string) || 'public';
+    const tags = (formData.get('tags') as string || '').split(' ').filter(t => t);
+    const photoFile = formData.get('photo') as File | null;
+
+    if (!description || description.trim().length === 0) {
+      return c.json({ error: 'Description is required' }, 400);
+    }
+
+    let photoUrl = null;
+    if (photoFile) {
+      const buffer = await photoFile.arrayBuffer();
+      photoUrl = await uploadToS3(buffer, `mingles/${userId}/${Date.now()}.jpg`);
+    }
+
+    const startTime = new Date();
+    const endTime = new Date(startTime.getTime() + 30 * 60 * 1000);
+
     const mingle = await prisma.mingleEvent.create({
       data: {
         hostId: userId,
-        title: body.title,
-        description: body.description,
-        intentCard: body.intentCard,
-        latitude: body.latitude,
-        longitude: body.longitude,
-        locationName: body.locationName,
-        radius: body.radius || 200,
+        title: 'Ready to Mingle',
+        description,
+        latitude,
+        longitude,
+        locationName,
+        maxParticipants: parseInt(maxParticipants) || null,
+        privacy,
+        tags,
+        photoUrl,
+        isDraft: false, // Published
+        isActive: true,
         startTime,
-        duration: body.duration || 30,
         endTime,
-        maxParticipants: body.maxParticipants,
-        isPremiumOnly: body.isPremiumOnly || false,
+        duration: 30,
+        status: 'live',
+        intentCard: 'spontaneous_mingle',
       },
     });
-    
-    // Auto-confirm host
+
+    // Auto-confirm host as participant
     await prisma.mingleParticipant.create({
       data: { mingleId: mingle.id, userId, status: 'confirmed' },
     });
-    
-    return c.json({ id: mingle.id }, 201);
-  } catch (error) {
+
+    // Get user info for admin tracking
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { username: true, name: true, email: true },
+    });
+
+    // Log to admin tracking (invisible to users) - comprehensive data recording
+    await prisma.report.create({
+      data: {
+        type: 'mingle_published',
+        initiatorId: userId,
+        targetId: mingle.id,
+        reason: `Spontaneous mingle published: ${description?.substring(0, 100)}`,
+        status: 'open',
+        adminNotes: `
+Username: ${user?.username || 'N/A'}
+Name: ${user?.name || 'N/A'}
+Email: ${user?.email || 'N/A'}
+Mingle ID: ${mingle.id}
+Description: ${description}
+Location: ${locationName}
+Coordinates: ${latitude}, ${longitude}
+Privacy: ${privacy}
+Tags: ${tags.join(', ')}
+Max Participants: ${maxParticipants || 'Unlimited'}
+Photo: ${photoUrl ? 'Yes - ' + photoUrl : 'No'}
+Start Time: ${startTime.toISOString()}
+End Time: ${endTime.toISOString()}
+Status: Live
+Created At: ${new Date().toISOString()}
+        `.trim(),
+      },
+    });
+
+    return c.json({ 
+      id: mingle.id, 
+      isDraft: false,
+      message: 'Your mingle is now live! 🔥'
+    }, 201);
+  } catch (error: any) {
+    console.error('Mingle creation error:', error);
     return c.json({ error: 'Failed to create mingle' }, 500);
   }
 });
 
-// POST /api/mingles/:id/rsvp
+// GET /api/mingles/user/drafts - Get user's draft mingles
+mingleRoutes.get('/user/drafts', async (c) => {
+  try {
+    const userId = c.req.header('X-User-Id');
+    if (!userId) return c.json({ error: 'Unauthorized' }, 401);
+
+    const drafts = await prisma.mingleEvent.findMany({
+      where: {
+        hostId: userId,
+        isDraft: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return c.json(drafts);
+  } catch (error) {
+    return c.json({ error: 'Failed to fetch drafts' }, 500);
+  }
+});
+
+// GET /api/mingles/:id - Get mingle details
+mingleRoutes.get('/:id', async (c) => {
+  try {
+    const userId = c.req.header('X-User-Id');
+    const mingleId = c.req.param('id');
+    
+    const mingle = await prisma.mingleEvent.findUnique({
+      where: { id: mingleId },
+      include: {
+        host: { 
+          select: { 
+            id: true, 
+            name: true, 
+            image: true,
+            username: true,
+          },
+        },
+        participants: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                image: true,
+              },
+            },
+          },
+        },
+      },
+    });
+    
+    if (!mingle) {
+      return c.json({ error: 'Mingle not found' }, 404);
+    }
+
+    // Check if user has RSVP'd
+    let userRsvp = null;
+    if (userId) {
+      const participant = mingle.participants.find(p => p.userId === userId);
+      userRsvp = participant?.status || null;
+    }
+
+    // Record view for admin tracking
+    if (userId && userId !== mingle.hostId) {
+      await prisma.mingleView.create({
+        data: {
+          mingleId,
+          visitorId: userId,
+        },
+      });
+    }
+    
+    return c.json({
+      mingle: {
+        id: mingle.id,
+        title: mingle.title,
+        description: mingle.description,
+        intentCard: mingle.intentCard,
+        latitude: mingle.latitude,
+        longitude: mingle.longitude,
+        locationName: mingle.locationName,
+        radius: mingle.radius,
+        startTime: mingle.startTime.toISOString(),
+        endTime: mingle.endTime.toISOString(),
+        duration: mingle.duration,
+        status: mingle.status,
+        maxParticipants: mingle.maxParticipants,
+        photoUrl: mingle.photoUrl,
+        privacy: mingle.privacy,
+        tags: mingle.tags,
+        isDraft: mingle.isDraft,
+        isActive: mingle.isActive,
+        participantCount: mingle.participants.length,
+        participants: mingle.participants.map(p => ({
+          userId: p.userId,
+          status: p.status,
+          user: p.user,
+        })),
+        host: {
+          id: mingle.host.id,
+          name: mingle.host.name,
+          username: mingle.host.username,
+          image: mingle.host.image,
+        },
+        userRsvp,
+        createdAt: mingle.createdAt.toISOString(),
+      },
+    });
+  } catch (error) {
+    console.error('Error fetching mingle:', error);
+    return c.json({ error: 'Failed to fetch mingle' }, 500);
+  }
+});
+
+// POST /api/mingles/:id/rsvp - RSVP to mingle
 mingleRoutes.post('/:id/rsvp', async (c) => {
   try {
     const userId = c.req.header('X-User-Id');
@@ -124,217 +369,85 @@ mingleRoutes.post('/:id/rsvp', async (c) => {
   }
 });
 
-// GET /api/mingles/:id - Get mingle details
-mingleRoutes.get('/:id', async (c) => {
+// PUT /api/mingles/:id - Update mingle (only drafts)
+mingleRoutes.put('/:id', async (c) => {
   try {
-    const userId = c.req.header('x-user-id');
+    const userId = c.req.header('X-User-Id');
+    if (!userId) return c.json({ error: 'Unauthorized' }, 401);
+
     const mingleId = c.req.param('id');
     
+    // Check ownership
     const mingle = await prisma.mingleEvent.findUnique({
       where: { id: mingleId },
-      include: {
-        host: { 
-          select: { 
-            id: true, 
-            name: true, 
-            image: true,
-            profile: {
-              select: {
-                displayName: true,
-                avatar: true,
-                trustScore: true,
-              },
-            },
-          },
-        },
-        participants: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                name: true,
-                image: true,
-                profile: {
-                  select: {
-                    displayName: true,
-                    avatar: true,
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
     });
-    
-    if (!mingle) {
-      return c.json({ error: 'Mingle not found' }, 404);
+
+    if (!mingle || mingle.hostId !== userId) {
+      return c.json({ error: 'Not authorized to update this mingle' }, 403);
     }
 
-    // Check if user has RSVP'd
-    let userRsvp = null;
-    if (userId) {
-      const participant = mingle.participants.find(p => p.userId === userId);
-      userRsvp = participant?.status || null;
+    if (!mingle.isDraft) {
+      return c.json({ error: 'Can only update draft mingles' }, 400);
     }
-    
-    return c.json({
-      mingle: {
-        id: mingle.id,
-        title: mingle.title,
-        description: mingle.description,
-        intentCard: mingle.intentCard,
-        latitude: mingle.latitude,
-        longitude: mingle.longitude,
-        locationName: mingle.locationName,
-        radius: mingle.radius,
-        startTime: mingle.startTime.toISOString(),
-        endTime: mingle.endTime.toISOString(),
-        duration: mingle.duration,
-        status: mingle.status,
-        maxParticipants: mingle.maxParticipants,
-        isPremiumOnly: mingle.isPremiumOnly,
-        host: {
-          id: mingle.host.id,
-          name: mingle.host.name,
-          displayName: mingle.host.profile?.displayName || mingle.host.name,
-          avatar: mingle.host.profile?.avatar || mingle.host.image,
-          trustScore: mingle.host.profile?.trustScore || 50,
-        },
-        participants: mingle.participants.map(p => ({
-          id: p.user.id,
-          name: p.user.name,
-          displayName: p.user.profile?.displayName || p.user.name,
-          avatar: p.user.profile?.avatar || p.user.image,
-          status: p.status,
-          joinedAt: p.joinedAt.toISOString(),
-        })),
-        userRsvp,
-        isHost: mingle.hostId === userId,
-        createdAt: mingle.createdAt.toISOString(),
-      },
-    });
-  } catch (error) {
-    console.error('Error fetching mingle:', error);
-    return c.json({ error: 'Failed to fetch mingle' }, 500);
-  }
-});
 
-// POST /api/mingles/:id/join - Join mingle
-mingleRoutes.post('/:id/join', async (c) => {
-  try {
-    const userId = c.req.header('x-user-id');
-    if (!userId) return c.json({ error: 'Unauthorized' }, 401);
-    
-    const mingleId = c.req.param('id');
-    
-    const mingle = await prisma.mingleEvent.findUnique({
+    const formData = await c.req.formData();
+    const description = formData.get('description') as string;
+    const latitude = parseFloat(formData.get('latitude') as string);
+    const longitude = parseFloat(formData.get('longitude') as string);
+    const locationName = formData.get('locationName') as string;
+    const maxParticipants = formData.get('maxParticipants') as string;
+    const privacy = (formData.get('privacy') as string) || mingle.privacy;
+    const tags = (formData.get('tags') as string || '').split(' ').filter(t => t);
+    const photoFile = formData.get('photo') as File | null;
+
+    let photoUrl = mingle.photoUrl;
+    if (photoFile) {
+      const buffer = await photoFile.arrayBuffer();
+      photoUrl = await uploadToS3(buffer, `mingles/${userId}/${Date.now()}.jpg`);
+    }
+
+    const updated = await prisma.mingleEvent.update({
       where: { id: mingleId },
-      include: { _count: { select: { participants: true } } },
+      data: {
+        description,
+        latitude,
+        longitude,
+        locationName,
+        maxParticipants: parseInt(maxParticipants) || null,
+        privacy,
+        tags,
+        photoUrl,
+      },
     });
-    
-    if (!mingle) {
-      return c.json({ error: 'Mingle not found' }, 404);
-    }
-    
-    // Check capacity
-    if (mingle.maxParticipants && mingle._count.participants >= mingle.maxParticipants) {
-      return c.json({ error: 'Mingle is full' }, 400);
-    }
-    
-    await prisma.mingleParticipant.upsert({
-      where: { mingleId_userId: { mingleId, userId } },
-      create: { mingleId, userId, status: 'confirmed' },
-      update: { status: 'confirmed' },
-    });
-    
-    return c.json({ success: true });
+
+    return c.json({ success: true, mingle: updated });
   } catch (error) {
-    return c.json({ error: 'Failed to join mingle' }, 500);
+    return c.json({ error: 'Failed to update mingle' }, 500);
   }
 });
 
-// POST /api/mingles/:id/leave - Leave mingle
-mingleRoutes.post('/:id/leave', async (c) => {
-  try {
-    const userId = c.req.header('x-user-id');
-    if (!userId) return c.json({ error: 'Unauthorized' }, 401);
-    
-    const mingleId = c.req.param('id');
-    
-    await prisma.mingleParticipant.delete({
-      where: { mingleId_userId: { mingleId, userId } },
-    });
-    
-    return c.json({ success: true });
-  } catch (error) {
-    return c.json({ error: 'Failed to leave mingle' }, 500);
-  }
-});
-
-// DELETE /api/mingles/:id - Cancel mingle (host only)
+// DELETE /api/mingles/:id - Delete mingle (only drafts or by host)
 mingleRoutes.delete('/:id', async (c) => {
   try {
-    const userId = c.req.header('x-user-id');
+    const userId = c.req.header('X-User-Id');
     if (!userId) return c.json({ error: 'Unauthorized' }, 401);
-    
-    const mingleId = c.req.param('id');
-    
-    const mingle = await prisma.mingleEvent.findUnique({
-      where: { id: mingleId },
-    });
-    
-    if (!mingle) {
-      return c.json({ error: 'Mingle not found' }, 404);
-    }
-    
-    if (mingle.hostId !== userId) {
-      return c.json({ error: 'Only the host can cancel this mingle' }, 403);
-    }
-    
-    await prisma.mingleEvent.update({
-      where: { id: mingleId },
-      data: { status: 'cancelled' },
-    });
-    
-    return c.json({ success: true });
-  } catch (error) {
-    return c.json({ error: 'Failed to cancel mingle' }, 500);
-  }
-});
 
-// PUT /api/mingles/:id/status - Update mingle status (host only)
-mingleRoutes.put('/:id/status', async (c) => {
-  try {
-    const userId = c.req.header('x-user-id');
-    if (!userId) return c.json({ error: 'Unauthorized' }, 401);
-    
     const mingleId = c.req.param('id');
-    const { status } = await c.req.json();
-    
-    if (!['scheduled', 'live', 'ended', 'cancelled'].includes(status)) {
-      return c.json({ error: 'Invalid status' }, 400);
-    }
     
     const mingle = await prisma.mingleEvent.findUnique({
       where: { id: mingleId },
     });
-    
-    if (!mingle) {
-      return c.json({ error: 'Mingle not found' }, 404);
+
+    if (!mingle || mingle.hostId !== userId) {
+      return c.json({ error: 'Not authorized to delete this mingle' }, 403);
     }
-    
-    if (mingle.hostId !== userId) {
-      return c.json({ error: 'Only the host can update status' }, 403);
-    }
-    
-    await prisma.mingleEvent.update({
+
+    await prisma.mingleEvent.delete({
       where: { id: mingleId },
-      data: { status },
     });
-    
+
     return c.json({ success: true });
   } catch (error) {
-    return c.json({ error: 'Failed to update status' }, 500);
+    return c.json({ error: 'Failed to delete mingle' }, 500);
   }
 });
