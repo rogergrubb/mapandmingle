@@ -102,7 +102,7 @@ export function Mingles() {
             </h1>
             <p className="text-sm text-gray-600">Spontaneous meetups happening now</p>
           </div>
-          <Link href="/mingles/create">
+          <Link to="/mingles/create">
             <Button>
               <Plus className="w-4 h-4 mr-2" />
               Create
@@ -148,7 +148,7 @@ export function Mingles() {
               <p className="text-gray-600 mb-6">
                 Be the first to create a spontaneous meetup!
               </p>
-              <Link href="/mingles/create">
+              <Link to="/mingles/create">
                 <Button>Create Mingle</Button>
               </Link>
             </div>
