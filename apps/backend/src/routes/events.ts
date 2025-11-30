@@ -342,12 +342,160 @@ eventRoutes.put('/:id', authMiddleware, async (c) => {
 
 // GET /api/events/:id/comments - Get event comments
 eventRoutes.get('/:id/comments', async (c) => {
-  // Comments feature not yet implemented - return empty array
-  return c.json([]);
+  try {
+    const eventId = c.req.param('id');
+    
+    const comments = await prisma.eventComment.findMany({
+      where: { eventId },
+      orderBy: { createdAt: 'asc' },
+      include: {
+        user: {
+          select: { id: true, name: true, image: true },
+        },
+      },
+    });
+    
+    return c.json(comments.map(comment => ({
+      id: comment.id,
+      userId: comment.userId,
+      userName: comment.user.name,
+      userAvatar: comment.user.image,
+      text: comment.text,
+      createdAt: comment.createdAt.toISOString(),
+    })));
+  } catch (error) {
+    console.error('Error fetching comments:', error);
+    return c.json([]);
+  }
 });
 
 // POST /api/events/:id/comments - Add comment to event
 eventRoutes.post('/:id/comments', authMiddleware, async (c) => {
-  // Comments feature not yet implemented
-  return c.json({ error: 'Comments feature coming soon' }, 501);
+  try {
+    const userId = getUserId(c);
+    if (!userId) return c.json({ error: 'Unauthorized' }, 401);
+    
+    const eventId = c.req.param('id');
+    const { text } = await c.req.json();
+    
+    if (!text?.trim()) {
+      return c.json({ error: 'Comment text is required' }, 400);
+    }
+    
+    const comment = await prisma.eventComment.create({
+      data: {
+        eventId,
+        userId,
+        text: text.trim(),
+      },
+      include: {
+        user: {
+          select: { id: true, name: true, image: true },
+        },
+      },
+    });
+    
+    return c.json({
+      id: comment.id,
+      userId: comment.userId,
+      userName: comment.user.name,
+      userAvatar: comment.user.image,
+      text: comment.text,
+      createdAt: comment.createdAt.toISOString(),
+    });
+  } catch (error) {
+    console.error('Error adding comment:', error);
+    return c.json({ error: 'Failed to add comment' }, 500);
+  }
+});
+
+// DELETE /api/events/:eventId/comments/:commentId - Delete comment (author or host only)
+eventRoutes.delete('/:eventId/comments/:commentId', authMiddleware, async (c) => {
+  try {
+    const userId = getUserId(c);
+    if (!userId) return c.json({ error: 'Unauthorized' }, 401);
+    
+    const eventId = c.req.param('eventId');
+    const commentId = c.req.param('commentId');
+    
+    // Get comment and event
+    const comment = await prisma.eventComment.findUnique({
+      where: { id: commentId },
+    });
+    
+    const event = await prisma.event.findUnique({
+      where: { id: eventId },
+      select: { hostId: true },
+    });
+    
+    if (!comment || !event) {
+      return c.json({ error: 'Not found' }, 404);
+    }
+    
+    // Only comment author or event host can delete
+    if (comment.userId !== userId && event.hostId !== userId) {
+      return c.json({ error: 'Not authorized to delete this comment' }, 403);
+    }
+    
+    await prisma.eventComment.delete({
+      where: { id: commentId },
+    });
+    
+    return c.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting comment:', error);
+    return c.json({ error: 'Failed to delete comment' }, 500);
+  }
+});
+
+// POST /api/events/:eventId/comments/:commentId/report - Report a comment
+eventRoutes.post('/:eventId/comments/:commentId/report', authMiddleware, async (c) => {
+  try {
+    const userId = getUserId(c);
+    if (!userId) return c.json({ error: 'Unauthorized' }, 401);
+    
+    const eventId = c.req.param('eventId');
+    const commentId = c.req.param('commentId');
+    const { reason, description } = await c.req.json();
+    
+    // Get the comment to find the reported user
+    const comment = await prisma.eventComment.findUnique({
+      where: { id: commentId },
+      include: {
+        user: { select: { id: true, name: true } },
+        event: { select: { title: true, hostId: true } },
+      },
+    });
+    
+    if (!comment) {
+      return c.json({ error: 'Comment not found' }, 404);
+    }
+    
+    // Create the report
+    const report = await prisma.report.create({
+      data: {
+        reporterId: userId,
+        reportedUserId: comment.userId,
+        reason: reason || 'inappropriate',
+        description: description || `Comment on event "${comment.event.title}": "${comment.text}"`,
+        eventId,
+        eventCommentId: commentId,
+      },
+    });
+    
+    // Create notification for admin (you can change this to a specific admin user ID)
+    // For now, we'll just log it and the admin page will query reports
+    console.log('New report created:', {
+      reportId: report.id,
+      reporter: userId,
+      reportedUser: comment.user.name,
+      eventTitle: comment.event.title,
+      commentText: comment.text,
+    });
+    
+    return c.json({ success: true, reportId: report.id });
+  } catch (error) {
+    console.error('Error reporting comment:', error);
+    return c.json({ error: 'Failed to submit report' }, 500);
+  }
 });
