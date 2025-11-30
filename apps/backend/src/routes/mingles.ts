@@ -21,6 +21,113 @@ const INTENT_CARDS = [
   { id: 'exploring', label: 'Just exploring', emoji: '🗺️' },
 ];
 
+
+// Helper function for distance calculation (Haversine)
+function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371; // km
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLon/2) * Math.sin(dLon/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c;
+}
+
+// GET /api/mingles/search - Advanced search with filters by tags, location, privacy
+mingleRoutes.get('/search', async (c) => {
+  try {
+    const latitude = parseFloat(c.req.query('latitude') || '37.7749');
+    const longitude = parseFloat(c.req.query('longitude') || '-122.4194');
+    const radius = parseFloat(c.req.query('radius') || '50');
+    const tags = c.req.query('tags')?.split(',').filter(t => t.trim()) || [];
+    const privacy = c.req.query('privacy');
+    const sortBy = c.req.query('sort') || 'distance';
+    
+    const whereConditions: any = {
+      isDraft: false,
+      isActive: true,
+      status: { in: ['scheduled', 'live'] },
+      startTime: { gte: new Date() },
+    };
+    
+    // Only show public mingles by default, or user's own private mingles
+    if (privacy === 'all') {
+      // Show all
+    } else if (privacy === 'friends') {
+      whereConditions.privacy = { in: ['public', 'friends'] };
+    } else {
+      whereConditions.privacy = 'public';
+    }
+    
+    // Filter by tags if provided
+    if (tags.length > 0) {
+      whereConditions.tags = { hasSome: tags };
+    }
+    
+    const mingles = await prisma.mingleEvent.findMany({
+      where: whereConditions,
+      include: {
+        host: { 
+          select: { 
+            id: true, 
+            name: true, 
+            image: true,
+            username: true,
+            profile: { select: { displayName: true, bio: true, avatar: true } }
+          },
+        },
+        _count: { select: { participants: true } },
+      },
+      take: 100,
+    });
+    
+    // Calculate distances and filter by radius
+    const withDistance = mingles
+      .map(m => ({
+        ...m,
+        distance: calculateDistance(latitude, longitude, m.latitude, m.longitude)
+      }))
+      .filter(m => m.distance <= radius);
+    
+    // Sort
+    const sorted = withDistance.sort((a, b) => {
+      if (sortBy === 'distance') return a.distance - b.distance;
+      if (sortBy === 'recent') return b.startTime.getTime() - a.startTime.getTime();
+      if (sortBy === 'popular') return b._count.participants - a._count.participants;
+      return 0;
+    });
+    
+    return c.json(sorted.map(m => ({
+      id: m.id,
+      title: m.title,
+      description: m.description,
+      latitude: m.latitude,
+      longitude: m.longitude,
+      locationName: m.locationName,
+      tags: m.tags,
+      privacy: m.privacy,
+      startTime: m.startTime.toISOString(),
+      maxParticipants: m.maxParticipants,
+      participantCount: m._count.participants,
+      distance: m.distance,
+      photoUrl: m.photoUrl,
+      host: {
+        id: m.host.id,
+        name: m.host.name,
+        image: m.host.image,
+        username: m.host.username,
+        displayName: m.host.profile?.displayName,
+        bio: m.host.profile?.bio,
+        avatar: m.host.profile?.avatar,
+      },
+    })));
+  } catch (error) {
+    console.error('Search error:', error);
+    return c.json({ error: 'Search failed' }, 500);
+  }
+});
+
 // GET /api/mingles/intent-cards
 mingleRoutes.get('/intent-cards', (c) => c.json(INTENT_CARDS));
 
