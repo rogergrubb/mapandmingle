@@ -215,9 +215,10 @@ export default function MapScreen() {
       </View>
 
       {/* Create Mingle Button - Flame Icon */}
-      <View className="absolute top-12 right-4">
+      <View className="absolute top-12 right-4 z-50">
         <Text className="text-xs text-gray-600 font-semibold text-right mb-1">Start Mingle</Text>
         <TouchableOpacity
+          activeOpacity={0.6}
           onPress={handleCreateMingle}
           className={`p-3 rounded-full shadow-lg bg-orange-500`}
           style={{
