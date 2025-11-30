@@ -2,11 +2,31 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MessageCircle, Search } from 'lucide-react';
 import api from '../lib/api';
-import { Conversation } from '../types';
+
+interface ConversationParticipant {
+  id: string;
+  name: string;
+  image?: string;
+  avatar?: string;
+}
+
+interface ConversationListItem {
+  id: string;
+  participants: ConversationParticipant[];
+  lastMessage?: {
+    id: string;
+    content: string;
+    senderId: string;
+    createdAt: string;
+  };
+  unreadCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
 
 export default function MessagesPage() {
   const navigate = useNavigate();
-  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [conversations, setConversations] = useState<ConversationListItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -16,8 +36,8 @@ export default function MessagesPage() {
 
   const fetchConversations = async () => {
     try {
-      const data: any = await api.get('/api/conversations');
-      setConversations(data);
+      const data = await api.get('/api/conversations');
+      setConversations(data || []);
     } catch (error) {
       console.error('Error fetching conversations:', error);
     } finally {
@@ -27,7 +47,7 @@ export default function MessagesPage() {
 
   const filteredConversations = conversations.filter((conv) =>
     conv.participants.some((p) =>
-      p.displayName.toLowerCase().includes(searchQuery.toLowerCase())
+      (p.name || '').toLowerCase().includes(searchQuery.toLowerCase())
     )
   );
 
@@ -81,6 +101,8 @@ export default function MessagesPage() {
         ) : (
           filteredConversations.map((conversation) => {
             const otherParticipant = conversation.participants[0]; // Assuming 1-on-1 chats
+            const displayName = otherParticipant?.name || 'User';
+            const avatarUrl = otherParticipant?.avatar || otherParticipant?.image;
             return (
               <div
                 key={conversation.id}
@@ -90,16 +112,16 @@ export default function MessagesPage() {
                 <div className="flex items-start space-x-3">
                   {/* Avatar */}
                   <div className="flex-shrink-0">
-                    {otherParticipant.avatar ? (
+                    {avatarUrl ? (
                       <img
-                        src={otherParticipant.avatar}
-                        alt={otherParticipant.displayName}
+                        src={avatarUrl}
+                        alt={displayName}
                         className="w-12 h-12 rounded-full object-cover"
                       />
                     ) : (
                       <div className="w-12 h-12 rounded-full bg-primary-100 flex items-center justify-center">
                         <span className="text-primary-600 font-semibold text-lg">
-                          {otherParticipant.displayName[0].toUpperCase()}
+                          {displayName[0].toUpperCase()}
                         </span>
                       </div>
                     )}
@@ -109,7 +131,7 @@ export default function MessagesPage() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between mb-1">
                       <h3 className="font-semibold text-gray-900 truncate">
-                        {otherParticipant.displayName}
+                        {displayName}
                       </h3>
                       <span className="text-xs text-gray-500">
                         {formatTime(conversation.updatedAt)}
