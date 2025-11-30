@@ -1,0 +1,2 @@
+// Test file created via GitHub API
+const test = 'Ready to Mingle migrations test';
