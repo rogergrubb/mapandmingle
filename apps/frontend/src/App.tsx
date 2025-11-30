@@ -29,6 +29,7 @@ import AccountSettings from './pages/settings/AccountSettings';
 import HelpSupport from './pages/settings/HelpSupport';
 import Privacy from './pages/Privacy';
 import Terms from './pages/Terms';
+import { AdminReports } from './pages/admin/AdminReports';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
@@ -75,6 +76,7 @@ function App() {
           <Route path="/settings/subscription" element={<Subscription />} />
           <Route path="/settings/account" element={<AccountSettings />} />
           <Route path="/settings/help" element={<HelpSupport />} />
+          <Route path="/admin/reports" element={<AdminReports />} />
         </Route>
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
