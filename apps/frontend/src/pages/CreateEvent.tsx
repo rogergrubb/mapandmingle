@@ -10,7 +10,7 @@ import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 
 // Mapbox token
-mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN || 'pk.eyJ1Ijoicm9nZXJncnViYiIsImEiOiJjbWF6cXIycTYwMGxqMnFzZTVhdnRpajFjIn0.bjRucGclYXa7bDyMCawJmg';
+mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN || 'pk.eyJ1Ijoicm9nZXJncnViYiIsImEiOiJjbWlremJuYWUxaGthM2ZteG9tY3FtOXJrIn0.JI5jjhbb8ptdJFKBznW23g';
 
 const CATEGORIES = [
   'Social', 'Sports', 'Food & Drink', 'Music', 'Outdoors', 
