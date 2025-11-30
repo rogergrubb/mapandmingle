@@ -375,8 +375,32 @@ wss.on('connection', (ws, req) => {
   });
 });
 
-server.listen(PORT, '0.0.0.0', () => {
-  console.log(`
+// Auto-run database migrations on startup
+async function runMigrations() {
+  try {
+    console.log('🔄 Running database migrations...');
+    
+    // Add isMuted and isArchived columns to ConversationParticipant if they don't exist
+    await prisma.$executeRawUnsafe(`
+      ALTER TABLE "ConversationParticipant" 
+      ADD COLUMN IF NOT EXISTS "isMuted" BOOLEAN DEFAULT false;
+    `).catch(() => {});
+    
+    await prisma.$executeRawUnsafe(`
+      ALTER TABLE "ConversationParticipant" 
+      ADD COLUMN IF NOT EXISTS "isArchived" BOOLEAN DEFAULT false;
+    `).catch(() => {});
+    
+    console.log('✅ Database migrations complete');
+  } catch (error) {
+    console.error('⚠️ Migration error (non-fatal):', error);
+  }
+}
+
+// Run migrations then start server
+runMigrations().then(() => {
+  server.listen(PORT, '0.0.0.0', () => {
+    console.log(`
 ╔═══════════════════════════════════════════════════════════╗
 ║                    🗺️  MAP MINGLE API                      ║
 ╠═══════════════════════════════════════════════════════════╣
@@ -384,7 +408,8 @@ server.listen(PORT, '0.0.0.0', () => {
 ║  WebSocket ready for real-time connections                ║
 ║  Database: PostgreSQL via Prisma                          ║
 ╚═══════════════════════════════════════════════════════════╝
-  `);
+    `);
+  });
 });
 
 // Graceful shutdown
