@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import {
   MapPin, Calendar, Heart, MessageCircle, UserPlus, UserMinus,
-  Shield, Award, Flame, Users, Camera, Flag
+  Shield, Award, Flame, Users, Camera, Flag, ArrowLeft
 } from 'lucide-react';
 import { Button } from '../components/common/Button';
 import { useAuthStore } from '../stores/authStore';
@@ -144,6 +144,16 @@ export function UserProfile() {
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
+      {/* Back Button */}
+      <div className="bg-white/80 backdrop-blur-sm border-b sticky top-0 z-20">
+        <div className="max-w-4xl mx-auto px-4 py-3">
+          <button onClick={() => navigate(-1)} className="flex items-center text-gray-600 hover:text-gray-900">
+            <ArrowLeft className="w-5 h-5 mr-2" />
+            Back
+          </button>
+        </div>
+      </div>
+
       {/* Cover Photo */}
       <div className="h-48 bg-gradient-to-r from-pink-500 to-purple-600 relative">
         {profile.coverPhoto && (
