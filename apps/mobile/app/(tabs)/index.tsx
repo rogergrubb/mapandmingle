@@ -23,7 +23,7 @@ export default function MapScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [region, setRegion] = useState<Region | null>(null);
   const [filter, setFilter] = useState<'all' | '24h' | 'week'>('all');
-  const [showHotspots, setShowHotspots] = useState(false);
+  const [showHotspots, setShowHotspots] = useState(true);
   const [nearbyCount, setNearbyCount] = useState(0);
   const [showTutorial, setShowTutorial] = useState(true);
 
@@ -163,14 +163,6 @@ export default function MapScreen() {
     }).start();
   };
 
-  const handleToggleHotspots = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setShowHotspots(!showHotspots);
-    if (!showHotspots && region) {
-      fetchHotspots(region);
-    }
-  };
-
   if (isLoading) {
     return (
       <View className="flex-1 items-center justify-center bg-white">
@@ -222,14 +214,12 @@ export default function MapScreen() {
         </View>
       </View>
 
-      {/* Hotspot Toggle */}
+      {/* Create Mingle Button - Flame Icon */}
       <TouchableOpacity
-        onPress={handleToggleHotspots}
-        className={`absolute top-12 right-4 p-3 rounded-full shadow-lg ${
-          showHotspots ? 'bg-orange-500' : 'bg-white'
-        }`}
+        onPress={handleCreateMingle}
+        className={`absolute top-12 right-4 p-3 rounded-full shadow-lg bg-orange-500`}
         style={{
-          shadowColor: showHotspots ? '#F97316' : '#000',
+          shadowColor: '#F97316',
           shadowOffset: { width: 0, height: 2 },
           shadowOpacity: 0.2,
           shadowRadius: 4,
@@ -239,24 +229,8 @@ export default function MapScreen() {
         <Ionicons 
           name="flame" 
           size={24} 
-          color={showHotspots ? 'white' : '#F97316'} 
+          color="white" 
         />
-      </TouchableOpacity>
-
-      {/* Quick Actions - Mingle Button */}
-      <TouchableOpacity
-        onPress={handleCreateMingle}
-        className="absolute top-28 right-4 bg-gradient-to-r from-purple-500 to-pink-500 p-3 rounded-full shadow-lg"
-        style={{
-          backgroundColor: '#8B5CF6',
-          shadowColor: '#8B5CF6',
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.3,
-          shadowRadius: 4,
-          elevation: 4,
-        }}
-      >
-        <Ionicons name="people" size={22} color="white" />
       </TouchableOpacity>
 
       {/* Center on User Button */}
@@ -305,7 +279,7 @@ export default function MapScreen() {
         <BlurView intensity={80} className="rounded-2xl overflow-hidden">
           <View className="flex-row items-center justify-between px-4 py-3 bg-white/70">
             <View className="flex-row items-center">
-              <View className="w-2 h-2 rounded-full bg-green-500 mr-2" />
+              <View className="v-2 h-2 rounded-full bg-green-500 mr-2" />
               <Text className="text-gray-700 font-medium">
                 {nearbyCount} {nearbyCount === 1 ? 'person' : 'people'} nearby
               </Text>
@@ -342,5 +316,5 @@ export default function MapScreen() {
         />
       )}
     </View>
-  );
-}
+  
+  };
