@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { Calendar, MapPin, Users, Plus } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Calendar, MapPin, Users, Plus, ArrowLeft } from 'lucide-react';
 import { Button } from '../components/common/Button';
 import api from '../lib/api';
 
@@ -18,6 +18,7 @@ interface Event {
 }
 
 export function MyEvents() {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'attending' | 'created'>('attending');
   const [attendingEvents, setAttendingEvents] = useState<Event[]>([]);
   const [createdEvents, setCreatedEvents] = useState<Event[]>([]);
@@ -48,6 +49,10 @@ export function MyEvents() {
     <div className="min-h-screen bg-gray-50 pb-20">
       <div className="bg-white border-b sticky top-0 z-10">
         <div className="max-w-4xl mx-auto px-4 py-4">
+          <button onClick={() => navigate(-1)} className="flex items-center text-gray-600 hover:text-gray-900 mb-3">
+            <ArrowLeft className="w-5 h-5 mr-2" />
+            Back
+          </button>
           <div className="flex items-center justify-between mb-4">
             <h1 className="text-2xl font-bold text-gray-900">My Events</h1>
             <Link to="/events/create">
