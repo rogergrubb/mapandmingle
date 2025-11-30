@@ -2,10 +2,10 @@ import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { config } from '../config';
 
 const s3Client = new S3Client({
-  region: config.awsRegion || 'us-east-2',
+  region: config.aws.region,
   credentials: {
-    accessKeyId: config.awsAccessKeyId,
-    secretAccessKey: config.awsSecretAccessKey,
+    accessKeyId: config.aws.accessKeyId || '',
+    secretAccessKey: config.aws.secretAccessKey || '',
   },
 });
 
@@ -16,7 +16,7 @@ export async function uploadToS3(
 ): Promise<string> {
   try {
     const command = new PutObjectCommand({
-      Bucket: config.awsBucket || 'mapandmingle-uploads',
+      Bucket: config.aws.s3BucketName,
       Key: fileName,
       Body: fileBuffer,
       ContentType: mimeType,
@@ -26,9 +26,8 @@ export async function uploadToS3(
     await s3Client.send(command);
 
     // Return the public URL
-    const region = config.awsRegion || 'us-east-2';
-    const bucket = config.awsBucket || 'mapandmingle-uploads';
-    return `https://${bucket}.s3.${region}.amazonaws.com/${fileName}`;
+    const url = `https://${config.aws.s3BucketName}.s3.${config.aws.region}.amazonaws.com/${fileName}`;
+    return url;
   } catch (error) {
     console.error('S3 upload error:', error);
     throw new Error(`Failed to upload file to S3: ${error}`);
