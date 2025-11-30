@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Flame, Locate, Menu, MapPin, MessageCircle, Search } from 'lucide-react';
 import { useMapStore } from '../stores/mapStore';
 import { useAuthStore } from '../stores/authStore';
+import { MapStatusBar } from '../components/map/MapStatusBar';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 
@@ -151,6 +152,15 @@ export default function MapPage() {
             />
           ))}
       </MapContainer>
+
+            {/* Map Status Bar - Consolidated UI */}
+      <MapStatusBar
+        peopleCount={pins.length}
+        timeFilter={filter}
+        showHotspots={showHotspots}
+        onTimeFilterChange={(newFilter) => setFilter(newFilter)}
+        onToggleHotspots={() => setShowHotspots(!showHotspots)}
+      />
 
       {/* Hot Zone Menu */}
       <div className="absolute top-4 left-4 z-[1000]" ref={menuRef}>
