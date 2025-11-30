@@ -215,71 +215,83 @@ export default function MapScreen() {
       </View>
 
       {/* Create Mingle Button - Flame Icon */}
-      <TouchableOpacity
-        onPress={handleCreateMingle}
-        className={`absolute top-12 right-4 p-3 rounded-full shadow-lg bg-orange-500`}
-        style={{
-          shadowColor: '#F97316',
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.2,
-          shadowRadius: 4,
-          elevation: 4,
-        }}
-      >
-        <Ionicons 
-          name="flame" 
-          size={24} 
-          color="white" 
-        />
-      </TouchableOpacity>
+      <View className="absolute top-12 right-4">
+        <Text className="text-xs text-gray-600 font-semibold text-right mb-1">Start Mingle</Text>
+        <TouchableOpacity
+          onPress={handleCreateMingle}
+          className={`p-3 rounded-full shadow-lg bg-orange-500`}
+          style={{
+            shadowColor: '#F97316',
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.2,
+            shadowRadius: 4,
+            elevation: 4,
+          }}
+        >
+          <Ionicons 
+            name="flame" 
+            size={24} 
+            color="white" 
+          />
+        </TouchableOpacity>
+      </View>
 
       {/* Center on User Button */}
-      <TouchableOpacity
-        onPress={handleCenterOnUser}
-        className="absolute bottom-36 right-4 bg-white p-3 rounded-full shadow-lg"
-        style={{
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.15,
-          shadowRadius: 4,
-          elevation: 4,
-        }}
-      >
-        <Ionicons name="locate" size={24} color="#FF6B9D" />
-      </TouchableOpacity>
+      <View className="absolute bottom-36 right-4">
+        <TouchableOpacity
+          onPress={handleCenterOnUser}
+          className="bg-white p-3 rounded-full shadow-lg mb-1"
+          style={{
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.15,
+            shadowRadius: 4,
+            elevation: 4,
+          }}
+        >
+          <Ionicons name="locate" size={24} color="#FF6B9D" />
+        </TouchableOpacity>
+        <Text className="text-xs text-gray-600 font-semibold text-center">My Location</Text>
+      </View>
 
       {/* Create Pin FAB */}
-      <Animated.View
+      <View
         style={{
           position: 'absolute',
-          bottom: 140,
+          bottom: 160,
           left: '50%',
           marginLeft: -28,
-          transform: [{ scale: fabScale }],
         }}
       >
-        <TouchableOpacity
-          onPress={handleCreatePin}
-          className="bg-primary-500 p-4 rounded-full shadow-xl"
+        <Text className="text-xs text-gray-600 font-semibold text-center mb-1">Add Pin</Text>
+        <Animated.View
           style={{
-            shadowColor: '#FF6B9D',
-            shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: 0.4,
-            shadowRadius: 8,
-            elevation: 8,
+            transform: [{ scale: fabScale }],
           }}
-          activeOpacity={0.8}
         >
-          <Ionicons name="add" size={28} color="white" />
-        </TouchableOpacity>
-      </Animated.View>
+          <TouchableOpacity
+            onPress={handleCreatePin}
+            className="bg-primary-500 p-4 rounded-full shadow-xl"
+            style={{
+              shadowColor: '#FF6B9D',
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.4,
+              shadowRadius: 8,
+              elevation: 8,
+            }}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="add" size={28} color="white" />
+          </TouchableOpacity>
+        </Animated.View>
+      </View>
 
       {/* Bottom Info Card */}
       <View className="absolute bottom-24 left-4 right-4">
         <BlurView intensity={80} className="rounded-2xl overflow-hidden">
           <View className="flex-row items-center justify-between px-4 py-3 bg-white/70">
             <View className="flex-row items-center">
-              <View className="v-2 h-2 rounded-full bg-green-500 mr-2" />
+              <View className="w-2 h-2 rounded-full bg-green-500 mr-2" />
               <Text className="text-gray-700 font-medium">
                 {nearbyCount} {nearbyCount === 1 ? 'person' : 'people'} nearby
               </Text>
@@ -316,5 +328,5 @@ export default function MapScreen() {
         />
       )}
     </View>
-  
-  };
+  );
+}
