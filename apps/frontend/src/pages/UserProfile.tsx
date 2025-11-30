@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import {
   MapPin, Calendar, Heart, MessageCircle, UserPlus, UserMinus,
   Shield, Award, Flame, Users, Camera, Flag
@@ -38,6 +38,7 @@ interface UserProfile {
 
 export function UserProfile() {
   const params = useParams<{ userId: string }>();
+  const navigate = useNavigate();
   const currentUser = useAuthStore((state) => state.user);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -52,8 +53,8 @@ export function UserProfile() {
 
   const fetchProfile = async () => {
     try {
-      const response = await api.get(`/api/users/${params.userId}`);
-      setProfile(response.data);
+      const data = await api.get(`/api/users/${params.userId}`);
+      setProfile(data);
     } catch (error) {
       console.error('Failed to fetch profile:', error);
     } finally {
@@ -91,9 +92,19 @@ export function UserProfile() {
     }
   };
 
-  const handleMessage = () => {
-    if (profile) {
-      window.location.href = `/messages?userId=${profile.id}`;
+  const handleMessage = async () => {
+    if (!profile) return;
+    
+    try {
+      // Create or get existing conversation
+      const data = await api.post('/api/conversations', {
+        participantId: profile.id,
+      });
+      
+      // Navigate to the conversation
+      navigate(`/chat/${data.id}`);
+    } catch (error) {
+      console.error('Failed to start conversation:', error);
     }
   };
 
