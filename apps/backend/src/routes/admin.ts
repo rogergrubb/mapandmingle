@@ -433,4 +433,123 @@ admin.post('/users/:id/subscription', async (c) => {
   }
 });
 
+// Get all reports
+admin.get('/reports', async (c) => {
+  try {
+    const page = parseInt(c.req.query('page') || '1');
+    const limit = parseInt(c.req.query('limit') || '20');
+    const status = c.req.query('status');
+    const skip = (page - 1) * limit;
+
+    const where: any = {};
+    if (status) {
+      where.status = status;
+    }
+
+    const [reports, total] = await Promise.all([
+      prisma.report.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          reporter: {
+            select: { id: true, name: true, email: true, image: true }
+          },
+          reportedUser: {
+            select: { id: true, name: true, email: true, image: true }
+          }
+        }
+      }),
+      prisma.report.count({ where })
+    ]);
+
+    // Fetch event comment details if present
+    const enrichedReports = await Promise.all(reports.map(async (report) => {
+      let eventDetails = null;
+      let commentDetails = null;
+
+      if (report.eventId) {
+        const event = await prisma.event.findUnique({
+          where: { id: report.eventId },
+          select: { id: true, title: true }
+        });
+        eventDetails = event;
+      }
+
+      if (report.eventCommentId) {
+        const comment = await prisma.eventComment.findUnique({
+          where: { id: report.eventCommentId },
+          select: { id: true, text: true, createdAt: true }
+        });
+        commentDetails = comment;
+      }
+
+      return {
+        ...report,
+        event: eventDetails,
+        comment: commentDetails
+      };
+    }));
+
+    return c.json({
+      reports: enrichedReports,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit)
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching reports:', error);
+    return c.json({ error: 'Failed to fetch reports' }, 500);
+  }
+});
+
+// Update report status
+admin.patch('/reports/:id', async (c) => {
+  try {
+    const reportId = c.req.param('id');
+    const body = await c.req.json();
+    const { status, adminNotes } = body;
+
+    const report = await prisma.report.update({
+      where: { id: reportId },
+      data: {
+        status,
+        adminNotes,
+        reviewedAt: new Date()
+      }
+    });
+
+    return c.json({ success: true, report });
+  } catch (error) {
+    console.error('Error updating report:', error);
+    return c.json({ error: 'Failed to update report' }, 500);
+  }
+});
+
+// Ban/suspend user
+admin.post('/users/:id/ban', async (c) => {
+  try {
+    const userId = c.req.param('id');
+    const body = await c.req.json();
+    const { reason, duration } = body; // duration in days, null = permanent
+
+    // Update user status
+    await prisma.user.update({
+      where: { id: userId },
+      data: {
+        emailVerified: false // Using emailVerified as ban flag for now
+      }
+    });
+
+    return c.json({ success: true, message: `User ${userId} has been banned` });
+  } catch (error) {
+    console.error('Error banning user:', error);
+    return c.json({ error: 'Failed to ban user' }, 500);
+  }
+});
+
 export default admin;
