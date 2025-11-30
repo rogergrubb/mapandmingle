@@ -36,7 +36,7 @@ export default function MessagesPage() {
 
   const fetchConversations = async () => {
     try {
-      const data = await api.get('/api/conversations');
+      const data: ConversationListItem[] = await api.get('/api/conversations');
       setConversations(data || []);
     } catch (error) {
       console.error('Error fetching conversations:', error);
