@@ -37,7 +37,7 @@ export function ForgotPassword() {
           <p className="text-gray-600 mb-6">
             We've sent password reset instructions to <strong>{email}</strong>
           </p>
-          <Link href="/login">
+          <Link to="/login">
             <Button className="w-full">Back to Login</Button>
           </Link>
         </div>
@@ -48,7 +48,7 @@ export function ForgotPassword() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-pink-500 via-purple-500 to-indigo-600 p-4">
       <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md">
-        <Link href="/login">
+        <Link to="/login">
           <button className="flex items-center text-gray-600 hover:text-gray-900 mb-6">
             <ArrowLeft className="w-5 h-5 mr-2" />
             Back to Login
