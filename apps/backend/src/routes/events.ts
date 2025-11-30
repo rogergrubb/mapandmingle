@@ -1,21 +1,38 @@
 import { Hono } from 'hono';
 import { prisma } from '../index';
 import { z } from 'zod';
+import { authMiddleware, getUserId } from '../middleware/auth';
 
 export const eventRoutes = new Hono();
 
 const createEventSchema = z.object({
   title: z.string().min(1).max(100),
   description: z.string().max(1000).optional(),
-  category: z.enum(['social', 'dating', 'networking', 'activity', 'other']),
+  category: z.string().min(1),
   image: z.string().optional(),
-  venueName: z.string().min(1),
+  // Support both venueName and address
+  venueName: z.string().optional(),
   venueAddress: z.string().optional(),
-  latitude: z.number(),
-  longitude: z.number(),
+  address: z.string().optional(),
+  city: z.string().optional(),
+  latitude: z.number().optional().default(0),
+  longitude: z.number().optional().default(0),
   startTime: z.string(),
-  endTime: z.string().optional(),
-  maxAttendees: z.number().min(2).max(500).optional(),
+  endTime: z.string().optional().nullable(),
+  maxAttendees: z.number().min(2).max(500).optional().nullable(),
+  capacity: z.number().optional().nullable(),
+  // Additional fields from frontend
+  locationType: z.string().optional(),
+  virtualLink: z.string().optional(),
+  visibility: z.string().optional(),
+  price: z.number().optional(),
+  isFree: z.boolean().optional(),
+  tags: z.array(z.string()).optional(),
+  recurrence: z.string().optional(),
+  requireApproval: z.boolean().optional(),
+  allowWaitlist: z.boolean().optional(),
+  allowGuests: z.boolean().optional(),
+  sendReminders: z.boolean().optional(),
 });
 
 // GET /api/events - Get events near location
@@ -72,9 +89,9 @@ eventRoutes.get('/', async (c) => {
 });
 
 // POST /api/events - Create new event
-eventRoutes.post('/', async (c) => {
+eventRoutes.post('/', authMiddleware, async (c) => {
   try {
-    const userId = c.req.header('X-User-Id');
+    const userId = getUserId(c);
     if (!userId) return c.json({ error: 'Unauthorized' }, 401);
     
     const body = await c.req.json();
@@ -91,15 +108,15 @@ eventRoutes.post('/', async (c) => {
         hostId: userId,
         title: data.title,
         description: data.description,
-        category: data.category,
+        category: data.category?.toLowerCase() || 'social',
         image: data.image,
-        venueName: data.venueName,
-        venueAddress: data.venueAddress,
-        latitude: data.latitude,
-        longitude: data.longitude,
+        venueName: data.venueName || data.address || 'TBD',
+        venueAddress: data.venueAddress || data.address,
+        latitude: data.latitude || 0,
+        longitude: data.longitude || 0,
         startTime: new Date(data.startTime),
         endTime: data.endTime ? new Date(data.endTime) : null,
-        maxAttendees: data.maxAttendees,
+        maxAttendees: data.maxAttendees || data.capacity || null,
       },
       include: {
         host: { select: { id: true, name: true, image: true } },
@@ -187,9 +204,9 @@ eventRoutes.get('/:id', async (c) => {
 });
 
 // POST /api/events/:id/rsvp - RSVP to event
-eventRoutes.post('/:id/rsvp', async (c) => {
+eventRoutes.post('/:id/rsvp', authMiddleware, async (c) => {
   try {
-    const userId = c.req.header('X-User-Id');
+    const userId = getUserId(c);
     if (!userId) return c.json({ error: 'Unauthorized' }, 401);
     
     const eventId = c.req.param('id');
