@@ -429,6 +429,61 @@ async function runMigrations() {
       CREATE INDEX IF NOT EXISTS "Report_status_idx" ON "Report"("status");
     `).catch(() => {});
     
+
+    // Add Ready to Mingle feature columns to MingleEvent if they don't exist
+    await prisma.$executeRawUnsafe(`
+      ALTER TABLE "MingleEvent" 
+      ADD COLUMN IF NOT EXISTS "isDraft" BOOLEAN DEFAULT true;
+    `).catch(() => {});
+    
+    await prisma.$executeRawUnsafe(`
+      ALTER TABLE "MingleEvent" 
+      ADD COLUMN IF NOT EXISTS "isActive" BOOLEAN DEFAULT true;
+    `).catch(() => {});
+    
+    await prisma.$executeRawUnsafe(`
+      ALTER TABLE "MingleEvent" 
+      ADD COLUMN IF NOT EXISTS "privacy" TEXT DEFAULT 'public';
+    `).catch(() => {});
+    
+    await prisma.$executeRawUnsafe(`
+      ALTER TABLE "MingleEvent" 
+      ADD COLUMN IF NOT EXISTS "tags" TEXT[] DEFAULT ARRAY[]::TEXT[];
+    `).catch(() => {});
+    
+    await prisma.$executeRawUnsafe(`
+      ALTER TABLE "MingleEvent" 
+      ADD COLUMN IF NOT EXISTS "photoUrl" TEXT;
+    `).catch(() => {});
+    
+    await prisma.$executeRawUnsafe(`
+      ALTER TABLE "MingleEvent" 
+      ADD COLUMN IF NOT EXISTS "adminNotes" TEXT;
+    `).catch(() => {});
+    
+    // Create indexes for performance
+    await prisma.$executeRawUnsafe(`
+      CREATE INDEX IF NOT EXISTS "MingleEvent_isDraft_idx" ON "MingleEvent"("isDraft");
+    `).catch(() => {});
+    
+    await prisma.$executeRawUnsafe(`
+      CREATE INDEX IF NOT EXISTS "MingleEvent_isActive_idx" ON "MingleEvent"("isActive");
+    `).catch(() => {});
+    
+    await prisma.$executeRawUnsafe(`
+      CREATE INDEX IF NOT EXISTS "MingleEvent_hostId_idx" ON "MingleEvent"("hostId");
+    `).catch(() => {});
+    
+    // Update default status from 'scheduled' to 'live'
+    await prisma.$executeRawUnsafe(`
+      ALTER TABLE "MingleEvent" ALTER COLUMN "status" SET DEFAULT 'live';
+    `).catch(() => {});
+    
+    // Make intentCard optional
+    await prisma.$executeRawUnsafe(`
+      ALTER TABLE "MingleEvent" ALTER COLUMN "intentCard" DROP NOT NULL;
+    `).catch(() => {});
+
     console.log('✅ Database migrations complete');
   } catch (error) {
     console.error('⚠️ Migration error (non-fatal):', error);
