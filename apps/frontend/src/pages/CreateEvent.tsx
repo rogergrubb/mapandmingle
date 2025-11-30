@@ -272,7 +272,18 @@ export default function CreateEvent() {
       };
 
       const response: any = await api.post('/api/events', eventData);
-      navigate(`/events/${response.id}`);
+      console.log('Create event response:', response);
+      
+      // Handle both response formats
+      const eventId = response?.id || response?.data?.id;
+      
+      if (eventId) {
+        navigate(`/events/${eventId}`);
+      } else {
+        // If no ID, go to events list
+        console.error('No event ID in response:', response);
+        navigate('/events');
+      }
     } catch (error) {
       console.error('Failed to create event:', error);
       alert('Failed to create event. Please try again.');
