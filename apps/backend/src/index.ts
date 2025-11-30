@@ -452,7 +452,6 @@ async function runMigrations() {
     await prisma.$executeRawUnsafe(`
       CREATE INDEX IF NOT EXISTS "MingleEvent_hostId_idx" ON "MingleEvent"("hostId");
     `).catch(() => {});
-
     // Add new columns to Report table if not exists
     await prisma.$executeRawUnsafe(`
       ALTER TABLE "Report" 
