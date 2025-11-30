@@ -12,6 +12,7 @@ import MapPage from './pages/MapPage';
 import EventsPage from './pages/EventsPage';
 import CreateEvent from './pages/CreateEvent';
 import CreateMinglePage from './pages/CreateMinglePage';
+import FindMinglerPage from './pages/FindMinglerPage';
 import { EventDetail } from './pages/EventDetail';
 import { EditEvent } from './pages/EditEvent';
 import { MyEvents } from './pages/MyEvents';
@@ -68,6 +69,7 @@ function App() {
           <Route path="/chat/:conversationId" element={<Chat />} />
           <Route path="/mingles" element={<Mingles />} />
           <Route path="/mingles/create" element={<CreateMinglePage />} />
+          <Route path="/find-mingler" element={<FindMinglerPage />} />
           <Route path="/mingles/:id" element={<MingleDetail />} />
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/profile/:userId" element={<UserProfile />} />
