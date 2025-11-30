@@ -87,7 +87,7 @@ function LocationPicker({
             <Popup>Your Mingle Location</Popup>
           </Marker>
           <MapUpdater />
-        </MapContainer
+        </MapContainer>
 
         <button
           onClick={onCancel}
