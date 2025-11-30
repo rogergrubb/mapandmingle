@@ -261,12 +261,16 @@ export default function CreateEvent() {
   const handleSubmit = async () => {
     setIsSubmitting(true);
     try {
+      // Create Date objects in local timezone, then convert to ISO
+      const startDateTime = new Date(`${formData.startDate}T${formData.startTime}:00`);
+      const endDateTime = formData.endDate && formData.endTime
+        ? new Date(`${formData.endDate}T${formData.endTime}:00`)
+        : null;
+
       const eventData = {
         ...formData,
-        startTime: `${formData.startDate}T${formData.startTime}`,
-        endTime: formData.endDate && formData.endTime 
-          ? `${formData.endDate}T${formData.endTime}` 
-          : null,
+        startTime: startDateTime.toISOString(),
+        endTime: endDateTime ? endDateTime.toISOString() : null,
         price: formData.isFree ? 0 : formData.price,
         capacity: formData.unlimitedCapacity ? null : formData.capacity,
       };
