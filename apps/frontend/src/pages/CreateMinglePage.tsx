@@ -1,23 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {
-  Flame,
-  Camera,
-  Images,
-  MapPin,
-  Info,
-  X,
-  AlertCircle,
-  Loader,
-  ArrowLeft,
-} from 'lucide-react';
+import { Flame, Camera, Images, MapPin, Info, X, AlertCircle, Loader, ArrowLeft } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
 import { api } from '../lib/api';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
-// Fix default marker icon
 delete (L.Icon.Default.prototype as any)._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
@@ -56,7 +45,6 @@ function LocationPicker({
 
   const handleConfirm = async () => {
     try {
-      // Reverse geocode using OpenStreetMap Nominatim
       const response = await fetch(
         `https://nominatim.openstreetmap.org/reverse?format=json&lat=${location.lat}&lon=${location.lng}`
       );
@@ -64,7 +52,6 @@ function LocationPicker({
       const name = data.address?.city || data.address?.town || 'Selected Location';
       onConfirm(location, name);
     } catch (error) {
-      // Fallback if geocoding fails
       onConfirm(location, `Selected Location (${location.lat.toFixed(4)}, ${location.lng.toFixed(4)})`);
     }
   };
@@ -128,7 +115,6 @@ export default function CreateMinglePage() {
   const [showMapPicker, setShowMapPicker] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Form state
   const [description, setDescription] = useState('');
   const [preferredPeople, setPreferredPeople] = useState('2-4');
   const [photoFile, setPhotoFile] = useState<File | null>(null);
@@ -142,7 +128,6 @@ export default function CreateMinglePage() {
   const [locationName, setLocationName] = useState('San Francisco, CA');
   const [isMingleEnabled, setIsMingleEnabled] = useState(true);
 
-  // Get user's location on mount
   useEffect(() => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
@@ -150,7 +135,6 @@ export default function CreateMinglePage() {
           const { latitude, longitude } = position.coords;
           setLocation({ lat: latitude, lng: longitude });
 
-          // Reverse geocode
           fetch(
             `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`
           )
@@ -278,7 +262,6 @@ export default function CreateMinglePage() {
 
   return (
     <div className="bg-white min-h-screen">
-      {/* Header */}
       <div className="bg-gradient-to-r from-orange-400 to-orange-500 text-white px-4 py-6">
         <button
           onClick={() => navigate(-1)}
@@ -290,9 +273,7 @@ export default function CreateMinglePage() {
         <p className="text-orange-100">I'm hot 🔥 & ready right now</p>
       </div>
 
-      {/* Content */}
       <div className="max-w-2xl mx-auto px-4 py-6 pb-20">
-        {/* Info Banner */}
         <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6">
           <div className="flex gap-3">
             <Info className="text-blue-600 flex-shrink-0 mt-1" size={20} />
@@ -301,7 +282,6 @@ export default function CreateMinglePage() {
             </p>
           </div>
 
-          {/* Toggle */}
           <div className="mt-4 flex items-center bg-white rounded-lg p-3 gap-3">
             <Flame size={20} color={isMingleEnabled ? '#f97316' : '#d1d5db'} />
             <span className="flex-1 font-semibold text-gray-700">
@@ -322,7 +302,6 @@ export default function CreateMinglePage() {
           </div>
         </div>
 
-        {/* Photo Upload */}
         <div className="mb-6">
           <h2 className="text-lg font-bold mb-3 text-gray-800">Your Vibe 📸</h2>
           {photoPreview ? (
@@ -374,7 +353,6 @@ export default function CreateMinglePage() {
           <p className="text-gray-400 text-xs">💡 Show what you're up to or where you are</p>
         </div>
 
-        {/* Description */}
         <div className="mb-6">
           <label className="text-lg font-bold mb-2 block text-gray-800">
             What's Happening?
@@ -392,7 +370,6 @@ export default function CreateMinglePage() {
           </p>
         </div>
 
-        {/* Tags */}
         <div className="mb-6">
           <label className="text-lg font-bold mb-2 block text-gray-800">Tags</label>
           <input
@@ -408,7 +385,6 @@ export default function CreateMinglePage() {
           </p>
         </div>
 
-        {/* Preferred People */}
         <div className="mb-6">
           <h3 className="text-lg font-bold mb-3 text-gray-800">How Many People?</h3>
           <div className="grid grid-cols-4 gap-2">
@@ -428,7 +404,6 @@ export default function CreateMinglePage() {
           </div>
         </div>
 
-        {/* Privacy */}
         <div className="mb-6">
           <h3 className="text-lg font-bold mb-3 text-gray-800">Who Can See This?</h3>
           <div className="space-y-3">
@@ -464,7 +439,6 @@ export default function CreateMinglePage() {
           </div>
         </div>
 
-        {/* Location */}
         <div className="mb-6">
           <h3 className="text-lg font-bold mb-3 text-gray-800">📍 Your Location</h3>
           <div className="bg-gray-100 rounded-xl p-4 mb-3 flex items-center gap-3">
@@ -480,7 +454,6 @@ export default function CreateMinglePage() {
           </button>
         </div>
 
-        {/* Action Buttons */}
         <div className="space-y-3">
           <button
             onClick={saveDraft}
