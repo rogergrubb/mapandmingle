@@ -1,11 +1,13 @@
 import { Hono } from 'hono';
 import { prisma, broadcastToUser } from '../index';
 import { z } from 'zod';
+import { authMiddleware, getUserId } from '../middleware/auth';
 
 export const conversationRoutes = new Hono();
 
 const sendMessageSchema = z.object({
   content: z.string().min(1).max(2000),
+  text: z.string().min(1).max(2000).optional(), // Support both 'content' and 'text'
 });
 
 const createConversationSchema = z.object({
@@ -14,9 +16,9 @@ const createConversationSchema = z.object({
 });
 
 // GET /api/conversations - Get all conversations for current user
-conversationRoutes.get('/', async (c) => {
+conversationRoutes.get('/', authMiddleware, async (c) => {
   try {
-    const userId = c.req.header('X-User-Id');
+    const userId = getUserId(c);
     if (!userId) return c.json({ error: 'Unauthorized' }, 401);
     
     const participations = await prisma.conversationParticipant.findMany({
@@ -86,9 +88,9 @@ conversationRoutes.get('/', async (c) => {
 });
 
 // GET /api/conversations/:id/messages - Get messages in a conversation
-conversationRoutes.get('/:id/messages', async (c) => {
+conversationRoutes.get('/:id/messages', authMiddleware, async (c) => {
   try {
-    const userId = c.req.header('X-User-Id');
+    const userId = getUserId(c);
     if (!userId) return c.json({ error: 'Unauthorized' }, 401);
     
     const conversationId = c.req.param('id');
@@ -154,9 +156,9 @@ conversationRoutes.get('/:id/messages', async (c) => {
 });
 
 // POST /api/conversations/:id/messages - Send a message
-conversationRoutes.post('/:id/messages', async (c) => {
+conversationRoutes.post('/:id/messages', authMiddleware, async (c) => {
   try {
-    const userId = c.req.header('X-User-Id');
+    const userId = getUserId(c);
     if (!userId) return c.json({ error: 'Unauthorized' }, 401);
     
     const conversationId = c.req.param('id');
@@ -253,9 +255,9 @@ conversationRoutes.post('/:id/messages', async (c) => {
 });
 
 // POST /api/conversations - Create new conversation
-conversationRoutes.post('/', async (c) => {
+conversationRoutes.post('/', authMiddleware, async (c) => {
   try {
-    const userId = c.req.header('X-User-Id');
+    const userId = getUserId(c);
     if (!userId) return c.json({ error: 'Unauthorized' }, 401);
     
     const body = await c.req.json();
@@ -311,10 +313,167 @@ conversationRoutes.post('/', async (c) => {
   }
 });
 
-// POST /api/conversations/:id/mark-read - Mark all messages as read
-conversationRoutes.post('/:id/mark-read', async (c) => {
+// GET /api/conversations/:id - Get single conversation
+conversationRoutes.get('/:id', authMiddleware, async (c) => {
   try {
-    const userId = c.req.header('X-User-Id');
+    const userId = getUserId(c);
+    if (!userId) return c.json({ error: 'Unauthorized' }, 401);
+    
+    const conversationId = c.req.param('id');
+    
+    // Verify user is a participant
+    const participation = await prisma.conversationParticipant.findUnique({
+      where: { conversationId_userId: { conversationId, userId } },
+      include: {
+        conversation: {
+          include: {
+            participants: {
+              include: {
+                user: {
+                  select: {
+                    id: true,
+                    name: true,
+                    image: true,
+                    profile: { select: { avatar: true } },
+                  },
+                },
+              },
+            },
+            messages: {
+              orderBy: { createdAt: 'desc' },
+              take: 1,
+            },
+          },
+        },
+      },
+    });
+    
+    if (!participation) {
+      return c.json({ error: 'Conversation not found' }, 404);
+    }
+    
+    // Format participants (excluding current user)
+    const otherParticipants = participation.conversation.participants
+      .filter((p) => p.userId !== userId)
+      .map((p) => ({
+        id: p.user.id,
+        name: p.user.name || 'User',
+        image: p.user.image,
+        avatar: p.user.profile?.avatar,
+      }));
+    
+    const lastMessage = participation.conversation.messages[0];
+    
+    return c.json({
+      id: participation.conversation.id,
+      participants: otherParticipants,
+      lastMessage: lastMessage ? {
+        id: lastMessage.id,
+        content: lastMessage.content,
+        senderId: lastMessage.senderId,
+        createdAt: lastMessage.createdAt.toISOString(),
+      } : null,
+      unreadCount: 0, // Could calculate this
+      createdAt: participation.conversation.createdAt.toISOString(),
+      updatedAt: participation.conversation.updatedAt.toISOString(),
+    });
+  } catch (error) {
+    console.error('Error fetching conversation:', error);
+    return c.json({ error: 'Failed to fetch conversation' }, 500);
+  }
+});
+
+// POST /api/conversations/:id/mute - Toggle mute
+conversationRoutes.post('/:id/mute', authMiddleware, async (c) => {
+  try {
+    const userId = getUserId(c);
+    if (!userId) return c.json({ error: 'Unauthorized' }, 401);
+    
+    const conversationId = c.req.param('id');
+    
+    const participation = await prisma.conversationParticipant.findUnique({
+      where: { conversationId_userId: { conversationId, userId } },
+    });
+    
+    if (!participation) {
+      return c.json({ error: 'Not a participant' }, 403);
+    }
+    
+    const updated = await prisma.conversationParticipant.update({
+      where: { conversationId_userId: { conversationId, userId } },
+      data: { isMuted: !(participation.isMuted || false) },
+    });
+    
+    return c.json({ isMuted: updated.isMuted });
+  } catch (error) {
+    console.error('Error muting conversation:', error);
+    return c.json({ error: 'Failed to mute' }, 500);
+  }
+});
+
+// POST /api/conversations/:id/archive - Archive conversation
+conversationRoutes.post('/:id/archive', authMiddleware, async (c) => {
+  try {
+    const userId = getUserId(c);
+    if (!userId) return c.json({ error: 'Unauthorized' }, 401);
+    
+    const conversationId = c.req.param('id');
+    
+    const participation = await prisma.conversationParticipant.findUnique({
+      where: { conversationId_userId: { conversationId, userId } },
+    });
+    
+    if (!participation) {
+      return c.json({ error: 'Not a participant' }, 403);
+    }
+    
+    const updated = await prisma.conversationParticipant.update({
+      where: { conversationId_userId: { conversationId, userId } },
+      data: { isArchived: !(participation.isArchived || false) },
+    });
+    
+    return c.json({ isArchived: updated.isArchived });
+  } catch (error) {
+    console.error('Error archiving conversation:', error);
+    return c.json({ error: 'Failed to archive' }, 500);
+  }
+});
+
+// DELETE /api/conversations/:id - Delete conversation for user
+conversationRoutes.delete('/:id', authMiddleware, async (c) => {
+  try {
+    const userId = getUserId(c);
+    if (!userId) return c.json({ error: 'Unauthorized' }, 401);
+    
+    const conversationId = c.req.param('id');
+    
+    // Remove user from conversation
+    await prisma.conversationParticipant.delete({
+      where: { conversationId_userId: { conversationId, userId } },
+    });
+    
+    // Check if conversation has no participants left
+    const remaining = await prisma.conversationParticipant.count({
+      where: { conversationId },
+    });
+    
+    // If no participants, delete the whole conversation
+    if (remaining === 0) {
+      await prisma.message.deleteMany({ where: { conversationId } });
+      await prisma.conversation.delete({ where: { id: conversationId } });
+    }
+    
+    return c.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting conversation:', error);
+    return c.json({ error: 'Failed to delete' }, 500);
+  }
+});
+
+// POST /api/conversations/:id/mark-read - Mark all messages as read
+conversationRoutes.post('/:id/mark-read', authMiddleware, async (c) => {
+  try {
+    const userId = getUserId(c);
     if (!userId) return c.json({ error: 'Unauthorized' }, 401);
     
     const conversationId = c.req.param('id');
