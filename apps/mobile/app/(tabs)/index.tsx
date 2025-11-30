@@ -22,21 +22,15 @@ export default function MapScreen() {
   const [location, setLocation] = useState<Location.LocationObject | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [region, setRegion] = useState<Region | null>(null);
-  const [filter, setFilter] = useState<'all' | '24h' | 'week'>('all');
-  const [showHotspots, setShowHotspots] = useState(true);
-  const [nearbyCount, setNearbyCount] = useState(0);
   const [showTutorial, setShowTutorial] = useState(true);
+  const [showHotZoneMenu, setShowHotZoneMenu] = useState(false);
 
-  // Animations
   const fabScale = useRef(new Animated.Value(1)).current;
-  const filterBgAnim = useRef(new Animated.Value(0)).current;
 
-  // Get user location
   useEffect(() => {
     (async () => {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
-        console.log('Location permission denied');
         setIsLoading(false);
         return;
       }
@@ -49,90 +43,23 @@ export default function MapScreen() {
         latitudeDelta: 0.01,
         longitudeDelta: 0.01,
       });
+
+      // Fetch nearby mingles
+      try {
+        const response = await api.get('/api/mingles', {
+          params: {
+            latitude: loc.coords.latitude,
+            longitude: loc.coords.longitude,
+          },
+        });
+        setPins(response || []);
+      } catch (error) {
+        console.error('Failed to fetch mingles:', error);
+      }
+
       setIsLoading(false);
     })();
   }, []);
-
-  // Fetch pins when region changes
-  const fetchPins = useCallback(async (r: Region) => {
-    try {
-      const response = await api.get<Pin[]>('/api/pins', {
-        params: {
-          north: r.latitude + r.latitudeDelta / 2,
-          south: r.latitude - r.latitudeDelta / 2,
-          east: r.longitude + r.longitudeDelta / 2,
-          west: r.longitude - r.longitudeDelta / 2,
-          filter,
-        },
-      });
-      setPins(response);
-      setNearbyCount(response.length);
-    } catch (error) {
-      console.error('Error fetching pins:', error);
-    }
-  }, [filter]);
-
-  // Fetch hotspots when enabled
-  const fetchHotspots = useCallback(async (r: Region) => {
-    if (!showHotspots) return;
-    
-    try {
-      const response = await api.get<Hotspot[]>('/api/hotspots', {
-        params: {
-          latitude: r.latitude,
-          longitude: r.longitude,
-          radius: Math.max(r.latitudeDelta, r.longitudeDelta) * 111, // km
-        },
-      });
-      setHotspots(response);
-    } catch (error) {
-      console.error('Error fetching hotspots:', error);
-    }
-  }, [showHotspots]);
-
-  useEffect(() => {
-    if (region) {
-      fetchPins(region);
-      fetchHotspots(region);
-    }
-  }, [region, filter, fetchPins, fetchHotspots]);
-
-  const handleRegionChange = (r: Region) => {
-    setRegion(r);
-  };
-
-  const handleCreatePin = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    
-    // Animate FAB
-    Animated.sequence([
-      Animated.timing(fabScale, {
-        toValue: 0.9,
-        duration: 100,
-        useNativeDriver: true,
-      }),
-      Animated.timing(fabScale, {
-        toValue: 1,
-        duration: 100,
-        useNativeDriver: true,
-      }),
-    ]).start();
-
-    if (!isAuthenticated) {
-      router.push('/(auth)/login');
-      return;
-    }
-    router.push('/create-pin');
-  };
-
-  const handleCreateMingle = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    if (!isAuthenticated) {
-      router.push('/(auth)/login');
-      return;
-    }
-    router.push('/create-mingle');
-  };
 
   const handlePinPress = (pin: Pin) => {
     router.push(`/pin/${pin.id}`);
@@ -148,19 +75,6 @@ export default function MapScreen() {
         longitudeDelta: 0.01,
       });
     }
-  };
-
-  const handleFilterChange = (newFilter: 'all' | '24h' | 'week') => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setFilter(newFilter);
-    
-    // Animate filter background
-    Animated.spring(filterBgAnim, {
-      toValue: newFilter === 'all' ? 0 : newFilter === '24h' ? 1 : 2,
-      useNativeDriver: false,
-      tension: 50,
-      friction: 8,
-    }).start();
   };
 
   if (isLoading) {
@@ -184,64 +98,106 @@ export default function MapScreen() {
           latitudeDelta: 0.01,
           longitudeDelta: 0.01,
         }}
-        onRegionChange={handleRegionChange}
         onPinPress={handlePinPress}
-        showHotspots={showHotspots}
-        hotspots={hotspots}
         showUserLocation
       />
 
-      {/* Top Bar - Filter Pills */}
-      <View className="absolute top-12 left-4 right-16">
-        <View className="bg-white/90 rounded-full p-1 flex-row shadow-lg">
-          {(['all', '24h', 'week'] as const).map((f, index) => (
-            <TouchableOpacity
-              key={f}
-              onPress={() => handleFilterChange(f)}
-              className={`flex-1 py-2 px-4 rounded-full ${
-                filter === f ? 'bg-primary-500' : 'bg-transparent'
-              }`}
-            >
-              <Text 
-                className={`text-center font-semibold ${
-                  filter === f ? 'text-white' : 'text-gray-600'
-                }`}
-              >
-                {f === 'all' ? 'All' : f === '24h' ? '24h' : 'Week'}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-      </View>
-
-      {/* Create Mingle Button - Flame Icon */}
-      <View className="absolute top-12 right-4">
-        <Text className="text-xs text-gray-600 font-semibold text-right mb-1">Start Mingle</Text>
+      {/* Hot Zone Menu Button */}
+      <View className="absolute top-12 left-4 z-40">
         <TouchableOpacity
-          activeOpacity={0.6}
-          onPress={handleCreateMingle}
-          className={`p-3 rounded-full shadow-lg bg-orange-500`}
+          activeOpacity={0.7}
+          onPress={() => setShowHotZoneMenu(!showHotZoneMenu)}
+          className="bg-red-500 rounded-full p-4 shadow-lg flex-row items-center gap-2"
           style={{
-            shadowColor: '#F97316',
+            shadowColor: '#ef4444',
             shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: 0.2,
+            shadowOpacity: 0.3,
             shadowRadius: 4,
-            elevation: 4,
+            elevation: 5,
           }}
         >
-          <Ionicons 
-            name="flame" 
-            size={24} 
-            color="white" 
-          />
+          <Ionicons name="flame" size={24} color="white" />
+          <Text className="text-white font-bold">Hot Zone</Text>
         </TouchableOpacity>
+
+        {/* Hot Zone Menu Dropdown */}
+        {showHotZoneMenu && (
+          <BlurView intensity={90} className="absolute top-16 left-0 rounded-xl overflow-hidden shadow-lg">
+            <View className="bg-white/95 rounded-xl overflow-hidden">
+              {/* Mingle Hot Zone */}
+              <TouchableOpacity
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                  router.push('/mingles');
+                  setShowHotZoneMenu(false);
+                }}
+                className="flex-row items-center gap-3 px-4 py-4 border-b border-gray-200"
+              >
+                <View className="bg-orange-100 rounded-full p-2">
+                  <Ionicons name="flame" size={20} color="#f97316" />
+                </View>
+                <View className="flex-1">
+                  <Text className="font-bold text-gray-800">Mingle Hot Zone</Text>
+                  <Text className="text-xs text-gray-500">Browse active mingles</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color="#999" />
+              </TouchableOpacity>
+
+              {/* Create a Mingle */}
+              <TouchableOpacity
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                  if (!isAuthenticated) {
+                    router.push('/(auth)/login');
+                  } else {
+                    router.push('/create-mingle');
+                  }
+                  setShowHotZoneMenu(false);
+                }}
+                className="flex-row items-center gap-3 px-4 py-4 border-b border-gray-200"
+              >
+                <View className="bg-green-100 rounded-full p-2">
+                  <Ionicons name="add-circle" size={20} color="#16a34a" />
+                </View>
+                <View className="flex-1">
+                  <Text className="font-bold text-gray-800">Create a Mingle</Text>
+                  <Text className="text-xs text-gray-500">Start your own meetup</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color="#999" />
+              </TouchableOpacity>
+
+              {/* Find a Mingler */}
+              <TouchableOpacity
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                  if (!isAuthenticated) {
+                    router.push('/(auth)/login');
+                  } else {
+                    router.push('/find-mingler');
+                  }
+                  setShowHotZoneMenu(false);
+                }}
+                className="flex-row items-center gap-3 px-4 py-4"
+              >
+                <View className="bg-purple-100 rounded-full p-2">
+                  <Ionicons name="search" size={20} color="#a855f7" />
+                </View>
+                <View className="flex-1">
+                  <Text className="font-bold text-gray-800">Find a Mingler</Text>
+                  <Text className="text-xs text-gray-500">Search & message users</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color="#999" />
+              </TouchableOpacity>
+            </View>
+          </BlurView>
+        )}
       </View>
 
       {/* Center on User Button */}
-      <View className="absolute bottom-36 right-4">
+      <View className="absolute bottom-36 right-4 z-30">
         <TouchableOpacity
           onPress={handleCenterOnUser}
-          className="bg-white p-3 rounded-full shadow-lg mb-1"
+          className="bg-white p-3 rounded-full shadow-lg"
           style={{
             shadowColor: '#000',
             shadowOffset: { width: 0, height: 2 },
@@ -252,80 +208,21 @@ export default function MapScreen() {
         >
           <Ionicons name="locate" size={24} color="#FF6B9D" />
         </TouchableOpacity>
-        <Text className="text-xs text-gray-600 font-semibold text-center">My Location</Text>
       </View>
 
-      {/* Create Pin FAB */}
-      <View
-        style={{
-          position: 'absolute',
-          bottom: 160,
-          left: '50%',
-          marginLeft: -28,
-        }}
-      >
-        <Text className="text-xs text-gray-600 font-semibold text-center mb-1">Add Pin</Text>
-        <Animated.View
-          style={{
-            transform: [{ scale: fabScale }],
-          }}
-        >
-          <TouchableOpacity
-            onPress={handleCreatePin}
-            className="bg-primary-500 p-4 rounded-full shadow-xl"
-            style={{
-              shadowColor: '#FF6B9D',
-              shadowOffset: { width: 0, height: 4 },
-              shadowOpacity: 0.4,
-              shadowRadius: 8,
-              elevation: 8,
-            }}
-            activeOpacity={0.8}
-          >
-            <Ionicons name="add" size={28} color="white" />
-          </TouchableOpacity>
-        </Animated.View>
-      </View>
-
-      {/* Bottom Info Card */}
-      <View className="absolute bottom-24 left-4 right-4">
-        <BlurView intensity={80} className="rounded-2xl overflow-hidden">
-          <View className="flex-row items-center justify-between px-4 py-3 bg-white/70">
-            <View className="flex-row items-center">
-              <View className="w-2 h-2 rounded-full bg-green-500 mr-2" />
-              <Text className="text-gray-700 font-medium">
-                {nearbyCount} {nearbyCount === 1 ? 'person' : 'people'} nearby
-              </Text>
-            </View>
-            
-            {showHotspots && hotspots.length > 0 && (
-              <View className="flex-row items-center">
-                <Ionicons name="flame" size={16} color="#F97316" />
-                <Text className="text-orange-600 font-medium ml-1">
-                  {hotspots.length} hotspots
-                </Text>
-              </View>
-            )}
-          </View>
-        </BlurView>
-      </View>
-
-      {/* Activity Intent Quick Status */}
-      {user?.activityIntent && (
-        <View className="absolute top-28 left-4">
-          <View className="bg-white/90 rounded-full px-3 py-2 flex-row items-center shadow-md">
-            <View className="w-2 h-2 rounded-full bg-green-500 mr-2" />
-            <Text className="text-gray-700 text-sm font-medium">
-              {user.activityIntent}
-            </Text>
-          </View>
-        </View>
-      )}
-
-      {/* Map Tutorial Overlay - First Time Users */}
+      {/* Tutorial Overlay */}
       {showTutorial && (
         <MapTutorialOverlay
           onComplete={() => setShowTutorial(false)}
+        />
+      )}
+
+      {/* Close Hot Zone Menu when tapping map */}
+      {showHotZoneMenu && (
+        <TouchableOpacity
+          activeOpacity={1}
+          onPress={() => setShowHotZoneMenu(false)}
+          className="absolute inset-0 z-20"
         />
       )}
     </View>
