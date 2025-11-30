@@ -94,6 +94,14 @@ export default function RootLayout() {
         />
         <Stack.Screen 
           name="settings/edit-profile" 
+        <Stack.Screen 
+          name="find-mingler" 
+          options={{ 
+            headerShown: true,
+            title: "Find a Mingler",
+            presentation: "modal",
+          }} 
+        />
           options={{ 
             headerShown: true,
             title: 'Edit Profile',
