@@ -12,29 +12,26 @@ interface Event {
   id: string;
   title: string;
   description: string;
-  date: Date;
-  time: string;
-  location: string;
+  startTime: string;
+  endTime?: string;
+  venueName: string;
+  venueAddress?: string;
   latitude: number;
   longitude: number;
   category: string;
-  capacity: number;
-  attendeesCount: number;
-  isAttending: boolean;
-  isCreator: boolean;
-  creator: {
+  maxAttendees?: number;
+  image?: string;
+  host: {
     id: string;
     name: string;
-    avatar: string;
+    image?: string;
   };
   attendees: Array<{
     id: string;
     name: string;
-    avatar: string;
+    image?: string;
     status: 'going' | 'maybe' | 'waitlist';
   }>;
-  waitlistCount: number;
-  image?: string;
 }
 
 interface Comment {
@@ -121,7 +118,7 @@ export function EventDetail() {
         text: newComment,
       });
 
-      setComments((prev) => [...prev, response.data]);
+      setComments((prev) => [...prev, response]);
       setNewComment('');
     } catch (error) {
       console.error('Failed to add comment:', error);
@@ -169,9 +166,23 @@ export function EventDetail() {
     );
   }
 
-  const isFull = event.attendeesCount >= event.capacity;
-  const canJoin = !event.isAttending && !isFull;
-  const isOnWaitlist = event.attendees.some(a => a.id === user?.id && a.status === 'waitlist');
+  const attendeesCount = event.attendees?.length || 0;
+  const capacity = event.maxAttendees || 999;
+  const isFull = attendeesCount >= capacity;
+  const isAttending = event.attendees?.some(a => a.id === user?.id);
+  const isCreator = event.host?.id === user?.id;
+  const canJoin = !isAttending && !isFull;
+  const isOnWaitlist = event.attendees?.some(a => a.id === user?.id && a.status === 'waitlist');
+
+  const formatEventDate = (dateStr: string) => {
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+  };
+
+  const formatEventTime = (dateStr: string) => {
+    const date = new Date(dateStr);
+    return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
@@ -191,14 +202,14 @@ export function EventDetail() {
                 {event.category}
               </span>
               <h1 className="text-3xl font-bold text-gray-900 mb-2">{event.title}</h1>
-              <Link href={`/profile/${event.creator.id}`}>
+              <Link to={`/profile/${event.host?.id}`}>
                 <div className="flex items-center text-gray-600 hover:text-gray-900">
                   <img
-                    src={event.creator.avatar || '/default-avatar.png'}
-                    alt={event.creator.name}
+                    src={event.host?.image || '/default-avatar.png'}
+                    alt={event.host?.name || 'Host'}
                     className="w-8 h-8 rounded-full mr-2"
                   />
-                  <span>Hosted by {event.creator.name}</span>
+                  <span>Hosted by {event.host?.name || 'Unknown'}</span>
                 </div>
               </Link>
             </div>
@@ -222,15 +233,15 @@ export function EventDetail() {
           <div className="space-y-3 mb-6">
             <div className="flex items-center text-gray-700">
               <Calendar className="w-5 h-5 mr-3 text-pink-600" />
-              <span>{new Date(event.date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
+              <span>{formatEventDate(event.startTime)}</span>
             </div>
             <div className="flex items-center text-gray-700">
               <Clock className="w-5 h-5 mr-3 text-pink-600" />
-              <span>{event.time}</span>
+              <span>{formatEventTime(event.startTime)}{event.endTime ? ` - ${formatEventTime(event.endTime)}` : ''}</span>
             </div>
             <div className="flex items-center text-gray-700">
               <MapPin className="w-5 h-5 mr-3 text-pink-600" />
-              <span>{event.location}</span>
+              <span>{event.venueName || event.venueAddress || 'Location TBD'}</span>
             </div>
             <div className="flex items-center text-gray-700">
               <Users className="w-5 h-5 mr-3 text-pink-600" />
@@ -238,15 +249,14 @@ export function EventDetail() {
                 onClick={() => setShowAttendeesModal(true)}
                 className="hover:underline"
               >
-                {event.attendeesCount} / {event.capacity} attending
-                {event.waitlistCount > 0 && ` · ${event.waitlistCount} on waitlist`}
+                {attendeesCount}{event.maxAttendees ? ` / ${event.maxAttendees}` : ''} attending
               </button>
             </div>
           </div>
 
           {/* RSVP Buttons */}
           <div className="border-t pt-4">
-            {event.isCreator ? (
+            {isCreator ? (
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-center">
                 <AlertCircle className="w-5 h-5 text-blue-600 mr-2" />
                 <span className="text-blue-900">You're the host of this event</span>
@@ -343,18 +353,18 @@ export function EventDetail() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg max-w-md w-full max-h-[80vh] overflow-hidden">
             <div className="flex items-center justify-between p-4 border-b">
-              <h3 className="text-lg font-bold">Attendees ({event.attendeesCount})</h3>
+              <h3 className="text-lg font-bold">Attendees ({attendeesCount})</h3>
               <button onClick={() => setShowAttendeesModal(false)}>
                 <X className="w-5 h-5" />
               </button>
             </div>
             <div className="overflow-y-auto max-h-[60vh] p-4">
               <div className="space-y-3">
-                {event.attendees.map((attendee) => (
-                  <Link key={attendee.id} href={`/profile/${attendee.id}`}>
+                {event.attendees?.map((attendee) => (
+                  <Link key={attendee.id} to={`/profile/${attendee.id}`}>
                     <div className="flex items-center gap-3 p-3 hover:bg-gray-50 rounded-lg">
                       <img
-                        src={attendee.avatar || '/default-avatar.png'}
+                        src={attendee.image || '/default-avatar.png'}
                         alt={attendee.name}
                         className="w-12 h-12 rounded-full"
                       />
