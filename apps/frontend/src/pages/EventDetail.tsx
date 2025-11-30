@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
   Calendar, MapPin, Users, Clock, Share2, Bookmark, MessageCircle,
-  UserPlus, UserMinus, AlertCircle, CheckCircle, X, Edit2, Trash2, Flag
+  UserPlus, UserMinus, AlertCircle, CheckCircle, X, Edit2, Trash2, Flag, ArrowLeft
 } from 'lucide-react';
 import { Button } from '../components/common/Button';
 import api from '../lib/api';
@@ -245,6 +245,16 @@ export function EventDetail() {
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
+      {/* Back Button */}
+      <div className="bg-white border-b sticky top-0 z-20">
+        <div className="max-w-4xl mx-auto px-4 py-3">
+          <button onClick={() => navigate(-1)} className="flex items-center text-gray-600 hover:text-gray-900">
+            <ArrowLeft className="w-5 h-5 mr-2" />
+            Back
+          </button>
+        </div>
+      </div>
+
       {/* Hero Image */}
       {event.image && (
         <div className="h-64 bg-gray-200">
