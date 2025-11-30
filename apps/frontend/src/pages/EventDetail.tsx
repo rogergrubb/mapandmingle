@@ -158,7 +158,7 @@ export function EventDetail() {
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Event Not Found</h2>
-          <Link href="/events">
+          <Link to="/events">
             <Button>Back to Events</Button>
           </Link>
         </div>
