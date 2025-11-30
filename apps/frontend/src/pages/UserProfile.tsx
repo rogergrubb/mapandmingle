@@ -134,7 +134,7 @@ export function UserProfile() {
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <h2 className="text-2xl font-bold text-gray-900 mb-2">User Not Found</h2>
-          <Link href="/map">
+          <Link to="/map">
             <Button>Back to Map</Button>
           </Link>
         </div>
