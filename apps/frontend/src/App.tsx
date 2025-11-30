@@ -26,6 +26,8 @@ import NotificationsSettings from './pages/settings/NotificationsSettings';
 import Subscription from './pages/settings/Subscription';
 import AccountSettings from './pages/settings/AccountSettings';
 import HelpSupport from './pages/settings/HelpSupport';
+import Privacy from './pages/Privacy';
+import Terms from './pages/Terms';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
@@ -48,6 +50,8 @@ function App() {
           <Route path="/forgot-password" element={<ForgotPassword />} />
         </Route>
         <Route path="/auth/callback" element={<AuthCallback />} />
+        <Route path="/privacy" element={<Privacy />} />
+        <Route path="/terms" element={<Terms />} />
         <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
         <Route element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
           <Route path="/" element={<MapPage />} />
