@@ -391,6 +391,44 @@ async function runMigrations() {
       ADD COLUMN IF NOT EXISTS "isArchived" BOOLEAN DEFAULT false;
     `).catch(() => {});
     
+    // Create EventComment table if not exists
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "EventComment" (
+        "id" TEXT NOT NULL,
+        "eventId" TEXT NOT NULL,
+        "userId" TEXT NOT NULL,
+        "text" TEXT NOT NULL,
+        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT "EventComment_pkey" PRIMARY KEY ("id"),
+        CONSTRAINT "EventComment_eventId_fkey" FOREIGN KEY ("eventId") REFERENCES "Event"("id") ON DELETE CASCADE,
+        CONSTRAINT "EventComment_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE
+      );
+    `).catch(() => {});
+    
+    await prisma.$executeRawUnsafe(`
+      CREATE INDEX IF NOT EXISTS "EventComment_eventId_createdAt_idx" ON "EventComment"("eventId", "createdAt");
+    `).catch(() => {});
+    
+    // Add new columns to Report table if not exists
+    await prisma.$executeRawUnsafe(`
+      ALTER TABLE "Report" 
+      ADD COLUMN IF NOT EXISTS "eventId" TEXT;
+    `).catch(() => {});
+    
+    await prisma.$executeRawUnsafe(`
+      ALTER TABLE "Report" 
+      ADD COLUMN IF NOT EXISTS "eventCommentId" TEXT;
+    `).catch(() => {});
+    
+    await prisma.$executeRawUnsafe(`
+      ALTER TABLE "Report" 
+      ADD COLUMN IF NOT EXISTS "adminNotes" TEXT;
+    `).catch(() => {});
+    
+    await prisma.$executeRawUnsafe(`
+      CREATE INDEX IF NOT EXISTS "Report_status_idx" ON "Report"("status");
+    `).catch(() => {});
+    
     console.log('✅ Database migrations complete');
   } catch (error) {
     console.error('⚠️ Migration error (non-fatal):', error);
