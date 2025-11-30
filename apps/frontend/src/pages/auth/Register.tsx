@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, Mail, Lock, User, AtSign, ArrowRight, Loader2 } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
 
-const API_URL = import.meta.env.VITE_API_URL || 'https://mapandmingle-api-production.up.railway.app';
+const API_URL = import.meta.env.VITE_API_URL || 'https://mapandmingle-api-492171901610.us-west1.run.app';
 
 export default function Register() {
   const [formData, setFormData] = useState({
@@ -13,6 +13,7 @@ export default function Register() {
     displayName: '',
   });
   const [showPassword, setShowPassword] = useState(false);
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [error, setError] = useState('');
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const register = useAuthStore((state) => state.register);
@@ -22,6 +23,11 @@ export default function Register() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    
+    if (!agreedToTerms) {
+      setError('You must agree to the Terms of Service and Privacy Policy');
+      return;
+    }
     
     try {
       await register(formData);
@@ -36,6 +42,10 @@ export default function Register() {
   };
 
   const handleGoogleSignUp = () => {
+    if (!agreedToTerms) {
+      setError('You must agree to the Terms of Service and Privacy Policy');
+      return;
+    }
     setIsGoogleLoading(true);
     window.location.href = `${API_URL}/api/auth/google`;
   };
@@ -78,14 +88,39 @@ export default function Register() {
         </div>
       )}
 
+      {/* Terms Agreement - Required before any signup method */}
+      <div className="flex items-start gap-3 p-4 bg-gray-50 rounded-xl mb-6 border border-gray-200">
+        <input 
+          type="checkbox" 
+          id="termsTop"
+          checked={agreedToTerms}
+          onChange={(e) => setAgreedToTerms(e.target.checked)}
+          className="w-5 h-5 mt-0.5 rounded border-gray-300 text-pink-500 focus:ring-pink-500 cursor-pointer" 
+        />
+        <label htmlFor="termsTop" className="text-sm text-gray-600 leading-relaxed">
+          I agree to the{' '}
+          <Link to="/terms" target="_blank" className="text-pink-500 hover:text-pink-600 hover:underline font-medium">
+            Terms of Service
+          </Link>
+          {' '}and{' '}
+          <Link to="/privacy" target="_blank" className="text-pink-500 hover:text-pink-600 hover:underline font-medium">
+            Privacy Policy
+          </Link>
+        </label>
+      </div>
+
       {/* Google Sign Up Button - Primary */}
       <button
         onClick={handleGoogleSignUp}
-        disabled={isGoogleLoading}
-        className="w-full flex items-center justify-center gap-3 py-3.5 mb-6
-                   bg-white border-2 border-gray-200 rounded-xl
-                   hover:bg-gray-50 hover:border-gray-300 hover:shadow-md
-                   transition-all duration-300 disabled:opacity-50"
+        disabled={isGoogleLoading || !agreedToTerms}
+        className={`w-full flex items-center justify-center gap-3 py-3.5 mb-6
+                   bg-white border-2 rounded-xl
+                   transition-all duration-300
+                   ${agreedToTerms 
+                     ? 'border-gray-200 hover:bg-gray-50 hover:border-gray-300 hover:shadow-md cursor-pointer' 
+                     : 'border-gray-100 bg-gray-50 cursor-not-allowed opacity-60'
+                   }
+                   disabled:opacity-50`}
       >
         {isGoogleLoading ? (
           <Loader2 className="w-5 h-5 animate-spin text-gray-600" />
@@ -223,25 +258,9 @@ export default function Register() {
           )}
         </div>
 
-        {/* Terms */}
-        <div className="flex items-start gap-2">
-          <input 
-            type="checkbox" 
-            id="terms"
-            required
-            className="w-4 h-4 mt-1 rounded border-gray-300 text-pink-500 focus:ring-pink-500" 
-          />
-          <label htmlFor="terms" className="text-sm text-gray-600">
-            I agree to the{' '}
-            <a href="#" className="text-pink-500 hover:underline">Terms of Service</a>
-            {' '}and{' '}
-            <a href="#" className="text-pink-500 hover:underline">Privacy Policy</a>
-          </label>
-        </div>
-
         <button
           type="submit"
-          disabled={isLoading}
+          disabled={isLoading || !agreedToTerms}
           className="w-full py-4 bg-gradient-to-r from-pink-500 to-purple-600 text-white rounded-xl
                      font-semibold text-lg shadow-lg shadow-pink-500/25
                      hover:shadow-xl hover:shadow-pink-500/30 hover:scale-[1.02]
