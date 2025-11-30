@@ -77,6 +77,7 @@ model User {
   messages              Message[]
   eventsHosted          Event[]               @relation("EventHost")
   eventAttendees        EventAttendee[]
+  eventComments         EventComment[]
   forumThreads          ForumThread[]
   forumPosts            ForumPost[]
   forumComments         ForumComment[]
@@ -356,9 +357,23 @@ model Event {
 
   host      User            @relation("EventHost", fields: [hostId], references: [id], onDelete: Cascade)
   attendees EventAttendee[]
+  comments  EventComment[]
 
   @@index([latitude, longitude])
   @@index([startTime])
+}
+
+model EventComment {
+  id        String   @id @default(cuid())
+  eventId   String
+  userId    String
+  text      String   @db.Text
+  createdAt DateTime @default(now())
+
+  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([eventId, createdAt])
 }
 
 model EventAttendee {
@@ -619,17 +634,22 @@ model Block {
 }
 
 model Report {
-  id             String   @id @default(cuid())
-  reporterId     String
-  reportedUserId String
-  reason         String   // spam, harassment, inappropriate, fake, other
-  description    String?  @db.VarChar(500)
-  status         String   @default("pending") // pending, reviewed, resolved, dismissed
-  createdAt      DateTime @default(now())
-  reviewedAt     DateTime?
+  id              String   @id @default(cuid())
+  reporterId      String
+  reportedUserId  String
+  reason          String   // spam, harassment, inappropriate, fake, other
+  description     String?  @db.VarChar(500)
+  status          String   @default("pending") // pending, reviewed, resolved, dismissed
+  eventId         String?  // Optional: if report is related to an event
+  eventCommentId  String?  // Optional: if reporting a specific comment
+  adminNotes      String?  @db.Text
+  createdAt       DateTime @default(now())
+  reviewedAt      DateTime?
 
   reporter     User @relation("ReportInitiator", fields: [reporterId], references: [id], onDelete: Cascade)
   reportedUser User @relation("ReportTarget", fields: [reportedUserId], references: [id], onDelete: Cascade)
+
+  @@index([status])
 }
 
 // ============================================================================
