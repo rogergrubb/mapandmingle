@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
   Calendar, MapPin, Users, Clock, Share2, Bookmark, MessageCircle,
-  UserPlus, UserMinus, AlertCircle, CheckCircle, X, Edit2, Trash2
+  UserPlus, UserMinus, AlertCircle, CheckCircle, X, Edit2, Trash2, Flag
 } from 'lucide-react';
 import { Button } from '../components/common/Button';
 import api from '../lib/api';
@@ -53,6 +53,9 @@ export function EventDetail() {
   const [loading, setLoading] = useState(true);
   const [rsvpStatus, setRsvpStatus] = useState<'going' | 'maybe' | null>(null);
   const [showAttendeesModal, setShowAttendeesModal] = useState(false);
+  const [reportModal, setReportModal] = useState<Comment | null>(null);
+  const [reportReason, setReportReason] = useState('inappropriate');
+  const [reportDescription, setReportDescription] = useState('');
 
   useEffect(() => {
     if (params.id) {
@@ -160,6 +163,44 @@ export function EventDetail() {
     } catch (error) {
       console.error('Failed to delete event:', error);
       alert('Failed to delete event. Please try again.');
+    }
+  };
+
+  const handleDeleteComment = async (commentId: string) => {
+    if (!event) return;
+    
+    const confirmed = window.confirm('Delete this comment?');
+    if (!confirmed) return;
+    
+    try {
+      await api.delete(`/api/events/${event.id}/comments/${commentId}`);
+      setComments(prev => prev.filter(c => c.id !== commentId));
+    } catch (error) {
+      console.error('Failed to delete comment:', error);
+      alert('Failed to delete comment');
+    }
+  };
+
+  const handleReportComment = (comment: Comment) => {
+    setReportModal(comment);
+    setReportReason('inappropriate');
+    setReportDescription('');
+  };
+
+  const submitReport = async () => {
+    if (!reportModal || !event) return;
+    
+    try {
+      await api.post(`/api/events/${event.id}/comments/${reportModal.id}/report`, {
+        reason: reportReason,
+        description: reportDescription,
+      });
+      
+      alert('Report submitted. Our team will review it.');
+      setReportModal(null);
+    } catch (error) {
+      console.error('Failed to submit report:', error);
+      alert('Failed to submit report. Please try again.');
     }
   };
 
@@ -364,26 +405,121 @@ export function EventDetail() {
           </form>
 
           <div className="space-y-4">
-            {comments.map((comment) => (
-              <div key={comment.id} className="flex gap-3">
-                <img
-                  src={comment.userAvatar || '/default-avatar.png'}
-                  alt={comment.userName}
-                  className="w-10 h-10 rounded-full"
-                />
-                <div className="flex-1">
-                  <div className="bg-gray-50 rounded-lg p-3">
-                    <div className="font-medium text-gray-900">{comment.userName}</div>
-                    <p className="text-gray-700">{comment.text}</p>
-                  </div>
-                  <div className="text-xs text-gray-500 mt-1">
-                    {new Date(comment.createdAt).toLocaleString()}
+            {comments.length === 0 ? (
+              <p className="text-gray-500 text-center py-4">No comments yet. Be the first to comment!</p>
+            ) : (
+              comments.map((comment) => (
+                <div key={comment.id} className="flex gap-3 group">
+                  <img
+                    src={comment.userAvatar || '/default-avatar.png'}
+                    alt={comment.userName}
+                    className="w-10 h-10 rounded-full"
+                  />
+                  <div className="flex-1">
+                    <div className="bg-gray-50 rounded-lg p-3">
+                      <div className="flex items-center justify-between">
+                        <div className="font-medium text-gray-900">{comment.userName}</div>
+                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          {/* Delete button - shown to comment author or event host */}
+                          {(comment.userId === user?.id || isCreator) && (
+                            <button
+                              onClick={() => handleDeleteComment(comment.id)}
+                              className="p-1 text-gray-400 hover:text-red-500"
+                              title="Delete comment"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
+                          {/* Report button - shown to event host for other users' comments */}
+                          {isCreator && comment.userId !== user?.id && (
+                            <button
+                              onClick={() => handleReportComment(comment)}
+                              className="p-1 text-gray-400 hover:text-orange-500"
+                              title="Report user"
+                            >
+                              <Flag className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                      <p className="text-gray-700">{comment.text}</p>
+                    </div>
+                    <div className="text-xs text-gray-500 mt-1">
+                      {new Date(comment.createdAt).toLocaleString()}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </div>
+
+        {/* Report Modal */}
+        {reportModal && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-lg max-w-md w-full">
+              <div className="flex items-center justify-between p-4 border-b">
+                <h3 className="text-lg font-bold text-red-600">Report User</h3>
+                <button onClick={() => setReportModal(null)}>
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="p-4 space-y-4">
+                <div className="bg-gray-50 rounded-lg p-3">
+                  <p className="text-sm text-gray-600 mb-1">Reporting comment by:</p>
+                  <p className="font-medium">{reportModal.userName}</p>
+                  <p className="text-gray-700 mt-2 italic">"{reportModal.text}"</p>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Reason for report
+                  </label>
+                  <select
+                    value={reportReason}
+                    onChange={(e) => setReportReason(e.target.value)}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                  >
+                    <option value="inappropriate">Inappropriate content</option>
+                    <option value="harassment">Harassment</option>
+                    <option value="spam">Spam</option>
+                    <option value="hate_speech">Hate speech</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Additional details (optional)
+                  </label>
+                  <textarea
+                    value={reportDescription}
+                    onChange={(e) => setReportDescription(e.target.value)}
+                    placeholder="Provide additional context for the admin..."
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg resize-none"
+                    rows={3}
+                  />
+                </div>
+                
+                <div className="flex gap-3">
+                  <Button
+                    variant="outline"
+                    onClick={() => setReportModal(null)}
+                    className="flex-1"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={submitReport}
+                    className="flex-1 bg-red-500 hover:bg-red-600"
+                  >
+                    Submit Report
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Attendees Modal */}
