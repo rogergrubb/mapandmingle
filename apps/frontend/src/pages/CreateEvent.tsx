@@ -598,7 +598,8 @@ export default function CreateEvent() {
                       {/* Map Container */}
                       <div 
                         ref={mapContainerRef}
-                        className="w-full h-64 rounded-2xl overflow-hidden border border-gray-200"
+                        className="w-full rounded-2xl overflow-hidden border border-gray-200"
+                        style={{ height: '256px', minHeight: '256px' }}
                       />
                       
                       {/* Use Current Location Button */}
