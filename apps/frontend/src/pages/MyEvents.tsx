@@ -50,7 +50,7 @@ export function MyEvents() {
         <div className="max-w-4xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between mb-4">
             <h1 className="text-2xl font-bold text-gray-900">My Events</h1>
-            <Link href="/events/create">
+            <Link to="/events/create">
               <Button>
                 <Plus className="w-4 h-4 mr-2" />
                 Create Event
@@ -97,7 +97,7 @@ export function MyEvents() {
                 ? 'Start exploring and join events to see them here'
                 : 'Create your first event to bring people together'}
             </p>
-            <Link href={activeTab === 'attending' ? '/events' : '/events/create'}>
+            <Link to={activeTab === 'attending' ? '/events' : '/events/create'}>
               <Button>
                 {activeTab === 'attending' ? 'Explore Events' : 'Create Event'}
               </Button>
