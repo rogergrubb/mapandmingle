@@ -483,7 +483,7 @@ model MingleEvent {
   hostId          String
   title           String    @db.VarChar(100)
   description     String?   @db.VarChar(500)
-  intentCard      String
+  intentCard      String?
   latitude        Float
   longitude       Float
   locationName    String?
@@ -491,11 +491,20 @@ model MingleEvent {
   startTime       DateTime
   duration        Int       @default(30) // minutes
   endTime         DateTime
-  status          String    @default("scheduled") // scheduled, live, ended, cancelled
+  status          String    @default("live") // scheduled, live, ended, cancelled
   maxParticipants Int?
   isRecurring     Boolean   @default(false)
   isPremiumOnly   Boolean   @default(false)
   viewCount       Int       @default(0)
+  
+  // NEW FIELDS FOR READY TO MINGLE FEATURE
+  isDraft         Boolean   @default(true)
+  isActive        Boolean   @default(true)
+  privacy         String    @default("public") // public, private, friends
+  tags            String[]  @default([])
+  photoUrl        String?
+  adminNotes      String?
+  
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
@@ -505,6 +514,32 @@ model MingleEvent {
 
   @@index([latitude, longitude])
   @@index([startTime])
+  @@index([hostId])
+  @@index([isDraft])
+  @@index([isActive])
+}
+
+model MingleParticipant {
+  id           String    @id @default(cuid())
+  mingleId     String
+  userId       String
+  status       String    @default("interested") // interested, confirmed, declined
+  joinedAt     DateTime  @default(now())
+  notifiedAt   DateTime?
+
+  mingle MingleEvent @relation(fields: [mingleId], references: [id], onDelete: Cascade)
+  user   User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([mingleId, userId])
+}
+
+model MingleView {
+  id        String   @id @default(cuid())
+  mingleId  String
+  visitorId String?  // null for anonymous
+  viewedAt  DateTime @default(now())
+
+  mingle MingleEvent @relation(fields: [mingleId], references: [id], onDelete: Cascade)
 }
 
 model MingleParticipant {
