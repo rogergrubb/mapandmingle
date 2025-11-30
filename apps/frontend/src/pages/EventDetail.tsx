@@ -66,9 +66,10 @@ export function EventDetail() {
 
   const fetchEventDetails = async () => {
     try {
-      const response = await api.get(`/api/events/${params.id}`);
-      setEvent(response.data);
-      if (response.data.isAttending) {
+      const response: any = await api.get(`/api/events/${params.id}`);
+      // API interceptor already extracts .data
+      setEvent(response);
+      if (response?.isAttending) {
         setRsvpStatus('going');
       }
     } catch (error) {
@@ -80,8 +81,8 @@ export function EventDetail() {
 
   const fetchComments = async () => {
     try {
-      const response = await api.get(`/api/events/${params.id}/comments`);
-      setComments(response.data);
+      const response: any = await api.get(`/api/events/${params.id}/comments`);
+      setComments(response || []);
     } catch (error) {
       console.error('Failed to fetch comments:', error);
     }
