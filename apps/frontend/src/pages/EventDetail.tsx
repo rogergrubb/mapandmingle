@@ -114,7 +114,7 @@ export function EventDetail() {
     if (!newComment.trim() || !event) return;
 
     try {
-      const response = await api.post(`/api/events/${event.id}/comments`, {
+      const response: Comment = await api.post(`/api/events/${event.id}/comments`, {
         text: newComment,
       });
 
