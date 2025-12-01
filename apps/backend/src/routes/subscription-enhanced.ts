@@ -9,20 +9,20 @@ const app = new Hono();
 // Get JWT secret from env
 const JWT_SECRET = process.env.JWT_SECRET || '';
 
-// Auth middleware - extract userId from Bearer token
-app.use('*', async (c, next) => {
-  const authHeader = c.req.header('Authorization');
-  if (authHeader && authHeader.startsWith('Bearer ')) {
-    const token = authHeader.substring(7);
-    try {
-      const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
-      c.set('userId', decoded.userId);
-    } catch (err) {
-      // Invalid token, continue without userId
-    }
+// Helper to extract userId from JWT token in Authorization header
+function extractUserIdFromToken(authHeader: string | null): string | null {
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return null;
   }
-  await next();
-});
+  
+  const token = authHeader.substring(7);
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
+    return decoded.userId;
+  } catch (err) {
+    return null;
+  }
+}
 
 // Initialize Stripe with API key
 const stripeKey = process.env.STRIPE_SECRET_KEY;
@@ -51,7 +51,13 @@ app.post('/create-checkout', async (c) => {
     return c.json({ error: 'Stripe is not configured' }, 503);
   }
 
-  const userId = requireUserId(c);
+  // Extract userId from Authorization header
+  const authHeader = c.req.header('Authorization');
+  const userId = extractUserIdFromToken(authHeader);
+  
+  if (!userId) {
+    return c.json({ error: 'Unauthorized' }, 401);
+  }
   const { tier } = await c.req.json();
 
   if (!tier || !['basic', 'premium'].includes(tier)) {
