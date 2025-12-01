@@ -33,6 +33,8 @@ import HelpSupport from './pages/settings/HelpSupport';
 import Privacy from './pages/Privacy';
 import Terms from './pages/Terms';
 import { AdminReports } from './pages/admin/AdminReports';
+import ProfileInterestsSetup from './components/ProfileInterestsSetup';
+import { useProfileSetup } from './hooks/useProfileSetup';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
@@ -41,6 +43,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
 function App() {
   const fetchUser = useAuthStore((state) => state.fetchUser);
+  const { showInterestsSetup, closeInterestsSetup } = useProfileSetup();
 
   useEffect(() => {
     fetchUser();
@@ -48,6 +51,7 @@ function App() {
 
   return (
     <BrowserRouter>
+      <ProfileInterestsSetup isOpen={showInterestsSetup} onComplete={closeInterestsSetup} />
       <Routes>
         <Route element={<AuthLayout />}>
           <Route path="/login" element={<Login />} />
