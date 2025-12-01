@@ -52,7 +52,7 @@ import { settingsRoutes } from './routes/settings';
 // Import trial & usage middleware
 import { rateLimitMiddleware as trialRateLimitMiddleware } from './middleware/rateLimit';
 import { checkTrialExpiration } from './middleware/usageLimits';
-import subscriptionRoutes from './routes/subscription-trial';
+// Trial system handled by middleware
 import { initializeUsageMetricsForExistingUsers } from './utils/admin.utils';
 
 // Import websocket utilities
@@ -281,7 +281,6 @@ app.route('/api/push', push);
 app.route('/api/settings', settingsRoutes);
 app.route('/api/admin', admin);
 app.route('/webhook', stripeWebhookRoutes);
-app.route('/api/subscription', subscriptionRoutes);
 
 // Start server
 const PORT = Number(process.env.PORT) || 3000;
