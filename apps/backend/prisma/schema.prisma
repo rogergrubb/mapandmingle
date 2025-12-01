@@ -98,6 +98,8 @@ model User {
   hotspotActivities     HotspotActivity[]
   notifications         Notification[]
   uploads               Upload[]
+  usageMetrics          UsageMetrics?
+  rateLimitLogs         RateLimitLog[]
   wavesSent             Wave[]               @relation("WaveSender")
   wavesReceived         Wave[]               @relation("WaveReceiver")
 }
