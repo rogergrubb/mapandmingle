@@ -72,13 +72,20 @@ export default function Subscription() {
 
     try {
       // Create checkout session
-      const response = await api.post('/api/payments/create-checkout', {
-        priceId: `price_${planId}_${billingPeriod}`,
-        plan: planId,
+      // Map plan to tier for API
+      const tier = planId === 'premium' ? 'premium' : 'basic';
+      
+      const response = await api.post('/api/subscription/create-checkout', {
+        tier: tier,
       });
 
       // Redirect to Stripe checkout
-      window.location.href = response.data.checkoutUrl;
+      const checkoutUrl = response.data.url || response.data.checkoutUrl;
+      if (checkoutUrl) {
+        window.location.href = checkoutUrl;
+      } else {
+        throw new Error('No checkout URL returned from server');
+      }
     } catch (error) {
       console.error('Stripe checkout error:', error);
       alert('Failed to start checkout. Please try again.');
