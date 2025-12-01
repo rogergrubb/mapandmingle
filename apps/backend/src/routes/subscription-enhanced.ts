@@ -1,9 +1,28 @@
 import { Hono } from 'hono';
 import Stripe from 'stripe';
+import jwt from 'jsonwebtoken';
 import { requireUserId } from '../middleware/auth';
 import { prisma } from '../lib/prisma';
 
 const app = new Hono();
+
+// Get JWT secret from env
+const JWT_SECRET = process.env.JWT_SECRET || '';
+
+// Auth middleware - extract userId from Bearer token
+app.use('*', async (c, next) => {
+  const authHeader = c.req.header('Authorization');
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    const token = authHeader.substring(7);
+    try {
+      const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
+      c.set('userId', decoded.userId);
+    } catch (err) {
+      // Invalid token, continue without userId
+    }
+  }
+  await next();
+});
 
 // Initialize Stripe with API key
 const stripeKey = process.env.STRIPE_SECRET_KEY;
