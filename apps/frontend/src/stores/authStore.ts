@@ -13,7 +13,7 @@ interface AuthState {
   logout: () => void;
   updateProfile: (data: Partial<User>) => Promise<void>;
   fetchUser: () => Promise<void>;
-  setTokens: (accessToken: string, refreshToken: string) => void;
+  setTokens: (accessToken: string, refreshToken: string, userId?: string) => void;
 }
 
 interface RegisterData {
@@ -39,6 +39,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       
       localStorage.setItem('token', token);
       localStorage.setItem('refreshToken', refreshToken);
+      localStorage.setItem('userId', user.id);
       
       set({ user, token, isAuthenticated: true, isLoading: false });
       
@@ -60,6 +61,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       
       localStorage.setItem('token', token);
       localStorage.setItem('refreshToken', refreshToken);
+      localStorage.setItem('userId', user.id);
       
       set({ user, token, isAuthenticated: true, isLoading: false });
       
@@ -74,6 +76,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   logout: () => {
     localStorage.removeItem('token');
     localStorage.removeItem('refreshToken');
+    localStorage.removeItem('userId');
     wsClient.disconnect();
     set({ user: null, token: null, isAuthenticated: false });
   },
@@ -104,9 +107,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   // Set tokens from OAuth callback
-  setTokens: (accessToken: string, refreshToken: string) => {
+  setTokens: (accessToken: string, refreshToken: string, userId?: string) => {
     localStorage.setItem('token', accessToken);
     localStorage.setItem('refreshToken', refreshToken);
+    if (userId) {
+      localStorage.setItem('userId', userId);
+    }
     set({ token: accessToken, isAuthenticated: true });
     
     // Connect WebSocket
