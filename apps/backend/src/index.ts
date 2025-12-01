@@ -49,6 +49,12 @@ import { push } from './routes/push';
 import admin from './routes/admin';
 import { settingsRoutes } from './routes/settings';
 
+// Import trial & usage middleware
+import { rateLimitMiddleware as trialRateLimitMiddleware } from './middleware/rateLimit';
+import { checkTrialExpiration } from './middleware/usageLimits';
+import subscriptionRoutes from './routes/subscription-trial';
+import { initializeUsageMetricsForExistingUsers } from './utils/admin.utils';
+
 // Import websocket utilities
 import { wsConnections, broadcastToUser, broadcastToAll } from './lib/websocket';
 
@@ -85,7 +91,17 @@ app.use('*', cors({
   maxAge: 86400, // 24 hours
 }));
 
-// Health check (no rate limiting)
+// Apply trial system rate limiting middleware
+app.use('*', trialRateLimitMiddleware);
+app.use('*', checkTrialExpiration);
+
+// Initialize usage metrics for existing users (runs once)
+initializeUsageMetricsForExistingUsers().catch(err => 
+  console.warn('Could not initialize usage metrics:', err.message)
+);
+
+// Health check
+ (no rate limiting)
 app.get('/', (c) => c.json({ status: 'ok', message: 'Map Mingle API v1.0' }));
 app.get('/health', (c) => c.json({ status: 'healthy', timestamp: new Date().toISOString() }));
 
@@ -266,6 +282,7 @@ app.route('/api/push', push);
 app.route('/api/settings', settingsRoutes);
 app.route('/api/admin', admin);
 app.route('/webhook', stripeWebhookRoutes);
+app.route('/api/subscription', subscriptionRoutes);
 
 // Start server
 const PORT = Number(process.env.PORT) || 3000;
