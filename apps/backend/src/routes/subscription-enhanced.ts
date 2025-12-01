@@ -13,9 +13,14 @@ const stripe = stripeKey && stripeKey.startsWith('sk_') ? new Stripe(stripeKey, 
 
 // Price IDs for subscription tiers
 const PRICE_IDS = {
-  basic: process.env.STRIPE_BASIC_PRICE_ID || 'price_1Rzad0Q32c2nzfSVylNI1a5t',
-  premium: process.env.STRIPE_PREMIUM_PRICE_ID || 'price_1RzaeGQ32c2nzfSVKMBqzzWG',
+  basic: process.env.STRIPE_BASIC_PRICE_ID,
+  premium: process.env.STRIPE_PREMIUM_PRICE_ID,
 };
+// Validate that Price IDs are configured
+if (!PRICE_IDS.basic || !PRICE_IDS.premium) {
+  console.warn('⚠️ Stripe Price IDs not configured. Set STRIPE_BASIC_PRICE_ID and STRIPE_PREMIUM_PRICE_ID env vars.');
+}
+
 
 /**
  * Create a checkout session for subscription with 30-day free trial
