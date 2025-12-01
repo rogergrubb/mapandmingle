@@ -100,8 +100,7 @@ initializeUsageMetricsForExistingUsers().catch(err =>
   console.warn('Could not initialize usage metrics:', err.message)
 );
 
-// Health check
- (no rate limiting)
+// Health check (no rate limiting)
 app.get('/', (c) => c.json({ status: 'ok', message: 'Map Mingle API v1.0' }));
 app.get('/health', (c) => c.json({ status: 'healthy', timestamp: new Date().toISOString() }));
 
