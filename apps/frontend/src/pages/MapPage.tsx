@@ -68,7 +68,7 @@ export default function MapPage() {
       (position) => {
         const pos: [number, number] = [position.coords.latitude, position.coords.longitude];
         setUserPosition(pos);
-        setUserLocation(pos);
+        setUserLocation({ latitude: pos[0], longitude: pos[1] });
         setIsLocating(false);
       },
       () => {
@@ -138,7 +138,7 @@ export default function MapPage() {
         {showHotspots &&
           hotspots.map((hotspot) => (
             <Circle
-              key={hotspot.id}
+              key={`hotspot-${hotspot.latitude}-${hotspot.longitude}`}
               center={[hotspot.latitude, hotspot.longitude]}
               radius={hotspot.radius}
               pathOptions={{
@@ -156,7 +156,7 @@ export default function MapPage() {
             {/* Map Status Bar - Consolidated UI */}
       <MapStatusBar
         peopleCount={pins.length}
-        timeFilter={filter}
+        timeFilter={filter as "24h" | "week"}
         showHotspots={showHotspots}
         onTimeFilterChange={(newFilter) => setFilter(newFilter)}
         onToggleHotspots={() => setShowHotspots(!showHotspots)}

@@ -74,7 +74,7 @@ export default function FindMinglerPage() {
       }
 
       const response = await api.get(`/api/mingles/search?${params.toString()}`);
-      setResults(response || []);
+      setResults(response?.data || []);
     } catch (error) {
       console.error('Search failed:', error);
     } finally {
