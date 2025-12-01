@@ -836,3 +836,40 @@ model Wave {
   @@unique([fromUserId, toUserId])
   @@index([toUserId])
 }
+
+// ============================================================================
+// TRIAL & USAGE TRACKING
+// ============================================================================
+
+model UsageMetrics {
+  id                  String   @id @default(cuid())
+  userId              String   @unique
+  pinsToday           Int      @default(0)
+  pinsThisMonth       Int      @default(0)
+  minglestoday        Int      @default(0)
+  minglesThisMonth    Int      @default(0)
+  messagesToday       Int      @default(0)
+  messagesThisMonth   Int      @default(0)
+  lastDailyReset      DateTime @default(now())
+  lastMonthlyReset    DateTime @default(now())
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model RateLimitLog {
+  id        String   @id @default(cuid())
+  userId    String
+  endpoint  String
+  method    String
+  timestamp DateTime @default(now())
+  blocked   Boolean  @default(false)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([timestamp])
+}
