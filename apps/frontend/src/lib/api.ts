@@ -7,12 +7,18 @@ export const api = axios.create({
   // Don't set default Content-Type - let axios auto-detect for FormData
 });
 
-// Request interceptor to add auth token and handle Content-Type
+// Request interceptor to add auth token and headers
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+    }
+    
+    // Add X-User-Id header if available
+    const userId = localStorage.getItem('userId');
+    if (userId) {
+      config.headers['X-User-Id'] = userId;
     }
     
     // Only set Content-Type to JSON if not FormData
