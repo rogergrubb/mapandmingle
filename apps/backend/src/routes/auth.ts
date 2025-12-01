@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import { TrialService } from '../services/trial.service';
 import { prisma } from '../index';
 import { z } from 'zod';
 import * as bcrypt from 'bcryptjs';
@@ -79,6 +80,9 @@ authRoutes.post('/register', async (c) => {
         emailVerified: false,
       },
     });
+
+    // Initialize 14-day trial for new users
+    await TrialService.initializeTrial(user.id);
     
     // Create account with hashed password
     await prisma.account.create({
