@@ -2,6 +2,25 @@ import { Hono } from 'hono';
 import { prisma, broadcastToAll } from '../index';
 import { z } from 'zod';
 
+
+// Helper to extract userId from JWT token
+function extractUserIdFromToken(authHeader: string | undefined): string | null {
+  if (!authHeader) return null;
+  
+  const token = authHeader.replace('Bearer ', '');
+  if (!token) return null;
+  
+  try {
+    const JWT = require('jsonwebtoken');
+    const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+    const decoded = JWT.verify(token, JWT_SECRET) as any;
+    return decoded.userId || null;
+  } catch (error) {
+    console.error('JWT verification failed:', error);
+    return null;
+  }
+}
+
 export const pinRoutes = new Hono();
 
 // Validation schemas
