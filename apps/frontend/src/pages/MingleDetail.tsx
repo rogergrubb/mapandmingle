@@ -1,354 +1,160 @@
-import { useState, useEffect, useRef } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
-import {
-  MapPin, Users, Clock, Zap, Send, UserPlus, UserMinus, X, ArrowLeft
-} from 'lucide-react';
-import { Button } from '../components/common/Button';
-import { useWebSocket } from '../lib/websocket';
+import { useParams } from 'react-router-dom';
+import { useEffect, useState } from 'react';
 import { useAuthStore } from '../stores/authStore';
+import { MessageCircle, Flag, Share2, Heart, MapPin, Calendar } from 'lucide-react';
 import api from '../lib/api';
+import ReportModal from '../components/ReportModal';
 
-interface Mingle {
-  id: string;
-  title: string;
-  description: string;
-  location: string;
-  latitude: number;
-  longitude: number;
-  category: string;
-  participantsCount: number;
-  maxParticipants: number;
-  startsAt: Date;
-  endsAt: Date;
-  isActive: boolean;
-  isParticipating: boolean;
-  isCreator: boolean;
-  creator: {
-    id: string;
-    name: string;
-    avatar: string;
-  };
-  participants: Array<{
-    id: string;
-    name: string;
-    avatar: string;
-  }>;
-}
-
-interface ChatMessage {
-  id: string;
-  userId: string;
-  userName: string;
-  userAvatar: string;
-  text: string;
-  createdAt: Date;
-}
-
-export function MingleDetail() {
-  const params = useParams<{ id: string }>();
-  const navigate = useNavigate();
-  const user = useAuthStore((state) => state.user);
-  const { socket, isConnected } = useWebSocket();
-  const [mingle, setMingle] = useState<Mingle | null>(null);
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [newMessage, setNewMessage] = useState('');
+export default function MingleDetail() {
+  const { id } = useParams<{ id: string }>();
+  const { user } = useAuthStore();
+  const [mingle, setMingle] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [showParticipants, setShowParticipants] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [liked, setLiked] = useState(false);
+  const [showReportModal, setShowReportModal] = useState(false);
 
   useEffect(() => {
-    if (params.id) {
-      fetchMingle();
-      fetchMessages();
-    }
-  }, [params.id]);
+    loadMingle();
+  }, [id]);
 
-  useEffect(() => {
-    if (!socket || !isConnected || !params.id) return;
-
-    // Join mingle chat room
-    socket.send('join_mingle', { mingleId: params.id });
-
-    // Listen for new messages
-    const handleNewMessage = (message: ChatMessage) => {
-      setMessages((prev) => [...prev, message]);
-      scrollToBottom();
-    };
-
-    // Listen for participant updates
-    const handleParticipantJoined = ({ participant }: { participant: any }) => {
-      if (mingle) {
-        setMingle({
-          ...mingle,
-          participants: [...mingle.participants, participant],
-          participantsCount: mingle.participantsCount + 1,
-        });
-      }
-    };
-
-    const handleParticipantLeft = ({ userId }: { userId: string }) => {
-      if (mingle) {
-        setMingle({
-          ...mingle,
-          participants: mingle.participants.filter((p) => p.id !== userId),
-          participantsCount: mingle.participantsCount - 1,
-        });
-      }
-    };
-
-    socket.on('mingle_message', handleNewMessage);
-    socket.on('participant_joined', handleParticipantJoined);
-    socket.on('participant_left', handleParticipantLeft);
-
-    return () => {
-      socket.off('mingle_message', handleNewMessage);
-      socket.off('participant_joined', handleParticipantJoined);
-      socket.off('participant_left', handleParticipantLeft);
-      socket.send('leave_mingle', { mingleId: params.id });
-    };
-  }, [socket, isConnected, params.id, mingle]);
-
-  const fetchMingle = async () => {
+  const loadMingle = async () => {
     try {
-      const response = await api.get(`/api/pins/${params.id}`);
-      setMingle(response.data);
+      const response = await api.get(`/api/pins/${id}`);
+      setMingle(response);
+      setLiked(response.isLiked || false);
     } catch (error) {
-      console.error('Failed to fetch mingle:', error);
+      console.error('Failed to load mingle:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const fetchMessages = async () => {
+  const handleLike = async () => {
     try {
-      const response = await api.get(`/api/pins/${params.id}/messages`);
-      setMessages(response.data);
-      scrollToBottom();
+      await api.post(`/api/pins/${id}/like`);
+      setLiked(!liked);
     } catch (error) {
-      console.error('Failed to fetch messages:', error);
-    }
-  };
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
-
-  const handleJoin = async () => {
-    if (!mingle) return;
-
-    try {
-      await api.post(`/api/pins/${mingle.id}/join`);
-      setMingle({ ...mingle, isParticipating: true });
-      fetchMingle(); // Refresh to get updated participant list
-    } catch (error) {
-      console.error('Failed to join mingle:', error);
-    }
-  };
-
-  const handleLeave = async () => {
-    if (!mingle) return;
-
-    try {
-      await api.post(`/api/pins/${mingle.id}/leave`);
-      setMingle({ ...mingle, isParticipating: false });
-      fetchMingle();
-    } catch (error) {
-      console.error('Failed to leave mingle:', error);
-    }
-  };
-
-  const handleSendMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newMessage.trim() || !mingle) return;
-
-    const tempMessage: ChatMessage = {
-      id: `temp-${Date.now()}`,
-      userId: user?.id || '',
-      userName: user?.name || '',
-      userAvatar: user?.avatar || '',
-      text: newMessage,
-      createdAt: new Date(),
-    };
-
-    setMessages((prev) => [...prev, tempMessage]);
-    setNewMessage('');
-    scrollToBottom();
-
-    try {
-      const response = await api.post(`/api/pins/${mingle.id}/messages`, {
-        text: newMessage,
-      });
-
-      setMessages((prev) =>
-        prev.map((msg) => (msg.id === tempMessage.id ? response.data : msg))
-      );
-    } catch (error) {
-      console.error('Failed to send message:', error);
-      setMessages((prev) => prev.filter((msg) => msg.id !== tempMessage.id));
+      console.error('Failed to like:', error);
     }
   };
 
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-gray-600">Loading mingle...</div>
-      </div>
-    );
+    return <div className="flex justify-center items-center h-screen">Loading...</div>;
   }
 
   if (!mingle) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Mingle Not Found</h2>
-          <Link to="/mingles">
-            <Button>Back to Mingles</Button>
-          </Link>
-        </div>
-      </div>
-    );
+    return <div className="flex justify-center items-center h-screen">Mingle not found</div>;
   }
 
-  const isFull = mingle.participantsCount >= mingle.maxParticipants;
+  const isOwnPin = user?.id === mingle.userId;
 
   return (
-    <div className="h-screen flex flex-col bg-gray-50">
-      {/* Header */}
-      <div className="bg-white border-b p-4">
-        <button onClick={() => navigate(-1)} className="flex items-center text-gray-600 hover:text-gray-900 mb-3">
-          <ArrowLeft className="w-5 h-5 mr-2" />
-          Back
-        </button>
-        <div className="flex items-center gap-2 mb-3">
-          <span className="inline-block px-2 py-1 bg-pink-100 text-pink-600 rounded text-xs font-medium">
-            {mingle.category}
-          </span>
-          {mingle.isActive && (
-            <span className="inline-flex items-center px-2 py-1 bg-green-100 text-green-600 rounded text-xs font-medium">
-              <Zap className="w-3 h-3 mr-1" />
-              Active
-            </span>
+    <div className="min-h-screen bg-white">
+      {/* Header with image */}
+      {mingle.image && (
+        <div className="w-full h-96 bg-gray-200 overflow-hidden">
+          <img src={mingle.image} alt={mingle.title} className="w-full h-full object-cover" />
+        </div>
+      )}
+
+      {/* Content */}
+      <div className="max-w-2xl mx-auto px-4 py-6">
+        {/* Title and basic info */}
+        <div className="mb-6">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">{mingle.title}</h1>
+          
+          {/* Location and time */}
+          <div className="flex flex-wrap gap-4 text-gray-600 mb-4">
+            {mingle.address && (
+              <div className="flex items-center gap-2">
+                <MapPin size={18} />
+                <span>{mingle.address}</span>
+              </div>
+            )}
+            {mingle.createdAt && (
+              <div className="flex items-center gap-2">
+                <Calendar size={18} />
+                <span>{new Date(mingle.createdAt).toLocaleDateString()}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Tags */}
+          {mingle.tags && mingle.tags.length > 0 && (
+            <div className="flex flex-wrap gap-2 mb-4">
+              {mingle.tags.map((tag: string) => (
+                <span key={tag} className="bg-pink-100 text-pink-700 px-3 py-1 rounded-full text-sm">
+                  {tag}
+                </span>
+              ))}
+            </div>
           )}
         </div>
 
-        <h1 className="text-2xl font-bold text-gray-900 mb-3">{mingle.title}</h1>
-        <p className="text-gray-600 mb-4">{mingle.description}</p>
-
-        <div className="flex items-center gap-4 text-sm text-gray-500 mb-4">
-          <div className="flex items-center">
-            <MapPin className="w-4 h-4 mr-1" />
-            {mingle.location}
+        {/* Description */}
+        {mingle.description && (
+          <div className="mb-6">
+            <p className="text-gray-700 whitespace-pre-wrap">{mingle.description}</p>
           </div>
-          <button
-            onClick={() => setShowParticipants(true)}
-            className="flex items-center hover:text-gray-900"
-          >
-            <Users className="w-4 h-4 mr-1" />
-            {mingle.participantsCount}/{mingle.maxParticipants}
-          </button>
-          <div className="flex items-center">
-            <Clock className="w-4 h-4 mr-1" />
-            Ends {new Date(mingle.endsAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-          </div>
-        </div>
-
-        {/* Join/Leave Button */}
-        {!mingle.isCreator && (
-          mingle.isParticipating ? (
-            <Button variant="outline" onClick={handleLeave} className="w-full">
-              <UserMinus className="w-4 h-4 mr-2" />
-              Leave Mingle
-            </Button>
-          ) : (
-            <Button onClick={handleJoin} disabled={isFull} className="w-full">
-              <UserPlus className="w-4 h-4 mr-2" />
-              {isFull ? 'Mingle Full' : 'Join Mingle'}
-            </Button>
-          )
         )}
-      </div>
 
-      {/* Chat Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-3">
-        {messages.map((message) => {
-          const isMine = message.userId === user?.id;
-          return (
-            <div key={message.id} className={`flex gap-2 ${isMine ? 'flex-row-reverse' : ''}`}>
-              <img
-                src={message.userAvatar || '/default-avatar.png'}
-                alt={message.userName}
-                className="w-8 h-8 rounded-full flex-shrink-0"
-              />
-              <div className={`flex-1 ${isMine ? 'text-right' : ''}`}>
-                <div className="text-xs text-gray-500 mb-1">{message.userName}</div>
-                <div
-                  className={`inline-block px-4 py-2 rounded-2xl ${
-                    isMine ? 'bg-pink-600 text-white' : 'bg-white text-gray-900'
-                  }`}
-                >
-                  {message.text}
-                </div>
-                <div className="text-xs text-gray-400 mt-1">
-                  {new Date(message.createdAt).toLocaleTimeString([], {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  })}
-                </div>
+        {/* User info */}
+        {mingle.user && (
+          <div className="bg-gray-50 rounded-lg p-4 mb-6">
+            <h3 className="font-semibold text-gray-900 mb-2">Posted by</h3>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-semibold text-gray-900">{mingle.user.name}</p>
+                <p className="text-sm text-gray-600">{mingle.user.email}</p>
               </div>
             </div>
-          );
-        })}
-        <div ref={messagesEndRef} />
-      </div>
-
-      {/* Message Input */}
-      {mingle.isParticipating && (
-        <form onSubmit={handleSendMessage} className="border-t p-4 bg-white">
-          <div className="flex items-center gap-2">
-            <input
-              type="text"
-              value={newMessage}
-              onChange={(e) => setNewMessage(e.target.value)}
-              placeholder="Type a message..."
-              className="flex-1 px-4 py-2 border border-gray-300 rounded-full focus:ring-2 focus:ring-pink-500 focus:border-transparent"
-            />
-            <Button type="submit" disabled={!newMessage.trim()} className="rounded-full p-3">
-              <Send className="w-5 h-5" />
-            </Button>
           </div>
-        </form>
-      )}
+        )}
 
-      {/* Participants Modal */}
-      {showParticipants && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-md w-full max-h-[80vh] overflow-hidden">
-            <div className="flex items-center justify-between p-4 border-b">
-              <h3 className="text-lg font-bold">Participants ({mingle.participantsCount})</h3>
-              <button onClick={() => setShowParticipants(false)}>
-                <X className="w-5 h-5" />
+        {/* Action buttons */}
+        <div className="flex gap-3 sticky bottom-0 bg-white py-4 border-t">
+          {!isOwnPin && (
+            <>
+              <button
+                onClick={handleLike}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg font-semibold transition-colors ${
+                  liked
+                    ? 'bg-pink-500 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                <Heart size={20} fill={liked ? 'currentColor' : 'none'} />
+                {liked ? 'Liked' : 'Like'}
               </button>
-            </div>
-            <div className="overflow-y-auto max-h-[60vh] p-4">
-              <div className="space-y-3">
-                {mingle.participants.map((participant) => (
-                  <Link key={participant.id} href={`/profile/${participant.id}`}>
-                    <div className="flex items-center gap-3 p-3 hover:bg-gray-50 rounded-lg">
-                      <img
-                        src={participant.avatar || '/default-avatar.png'}
-                        alt={participant.name}
-                        className="w-12 h-12 rounded-full"
-                      />
-                      <div className="flex-1">
-                        <div className="font-medium text-gray-900">{participant.name}</div>
-                      </div>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            </div>
-          </div>
+
+              <button
+                className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg font-semibold hover:bg-blue-600"
+              >
+                <MessageCircle size={20} />
+                Message
+              </button>
+
+              <button
+                onClick={() => setShowReportModal(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-red-50 text-red-600 rounded-lg font-semibold hover:bg-red-100"
+              >
+                <Flag size={20} />
+                Report
+              </button>
+            </>
+          )}
         </div>
+      </div>
+
+      {/* Report Modal */}
+      {mingle.user && (
+        <ReportModal
+          isOpen={showReportModal}
+          onClose={() => setShowReportModal(false)}
+          reportedUserId={mingle.userId}
+          reportedUserName={mingle.user.name}
+          pinId={id}
+        />
       )}
     </div>
   );
