@@ -169,7 +169,12 @@ export default function MapPage() {
             key={pin.id}
             position={[pin.latitude, pin.longitude]}
             eventHandlers={{
-              click: () => navigate(`/mingles/${pin.id}`),
+              click: () => {
+                // Only navigate to other users' pins, not your own
+                if (pin.createdBy?.id !== user?.id) {
+                  navigate(`/mingles/${pin.id}`);
+                }
+              },
             }}
           >
             <Popup>
