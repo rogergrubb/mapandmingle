@@ -52,6 +52,8 @@ export default function MapPage() {
   const [showHotZoneMenu, setShowHotZoneMenu] = useState(false);
   const [creatingPin, setCreatingPin] = useState(false);
   const [pinCreationSuccess, setPinCreationSuccess] = useState(false);
+  const [userPin, setUserPin] = useState<any>(null);
+  const [loadingUserPin, setLoadingUserPin] = useState(true);
   const menuRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map>(null);
 
@@ -66,7 +68,25 @@ export default function MapPage() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // Load user's pin and geolocation
   useEffect(() => {
+    const loadUserData = async () => {
+      try {
+        // Get user's pins
+        const response = await api.get('/api/users/me/pins');
+        if (response.data && response.data.length > 0) {
+          setUserPin(response.data[0]); // Get first pin
+        }
+      } catch (err) {
+        console.log('No pins found');
+      } finally {
+        setLoadingUserPin(false);
+      }
+    };
+    
+    loadUserData();
+    
+    // Get geolocation
     navigator.geolocation.getCurrentPosition(
       (position) => {
         const pos: [number, number] = [position.coords.latitude, position.coords.longitude];
@@ -125,7 +145,12 @@ export default function MapPage() {
       }
     } catch (err: any) {
       console.error('Failed to create pin:', err);
-      alert(err.response?.data?.error || 'Failed to create pin. You may already have a pin.');
+      const errorMsg = err.response?.data?.error || err.message;
+      if (errorMsg?.includes('already has a pin')) {
+        alert('You already have a pin on the map. Delete it in your profile to create a new one.');
+      } else {
+        alert(errorMsg || 'Failed to create pin');
+      }
     } finally {
       setCreatingPin(false);
     }
