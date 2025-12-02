@@ -5,719 +5,675 @@ import {
   TouchableOpacity,
   Animated,
   Dimensions,
+  Platform,
   Alert,
   StatusBar,
-  Image,
-  StyleSheet,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
+import { RTCView, MediaStream } from 'react-native-webrtc';
 import { useAuthStore } from '../../src/stores/auth';
 import api from '../../src/lib/api';
-
-// WebRTC imports
-import {
-  RTCPeerConnection,
-  RTCView,
-  mediaDevices,
-  RTCIceCandidate,
-  RTCSessionDescription,
-  MediaStream,
-} from 'react-native-webrtc';
+import WebRTCService, { CallState } from '../../src/lib/webrtc';
 
 const { width, height } = Dimensions.get('window');
 
-// STUN/TURN servers for NAT traversal
-const configuration = {
-  iceServers: [
-    { urls: 'stun:stun.l.google.com:19302' },
-    { urls: 'stun:stun1.l.google.com:19302' },
-    { urls: 'stun:stun2.l.google.com:19302' },
-  ],
-};
-
-interface OtherUser {
+interface CallParticipant {
   id: string;
   name: string;
-  avatar?: string;
+  avatar: string | null;
+}
+
+interface CallData {
+  id: string;
+  callerId: string;
+  calleeId: string;
+  status: string;
+  startedAt?: string;
+  endedAt?: string;
 }
 
 export default function VideoCallScreen() {
   const { id: otherUserId } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const { user } = useAuthStore();
+  const { user, token } = useAuthStore();
 
   // Call state
-  const [callId, setCallId] = useState<string | null>(null);
-  const [callStatus, setCallStatus] = useState<'initializing' | 'connecting' | 'ringing' | 'connected' | 'ended'>('initializing');
+  const [callState, setCallState] = useState<CallState>('idle');
+  const [callData, setCallData] = useState<CallData | null>(null);
   const [callDuration, setCallDuration] = useState(0);
   const [isMuted, setIsMuted] = useState(false);
   const [isVideoOff, setIsVideoOff] = useState(false);
-  const [isSpeakerOn, setIsSpeakerOn] = useState(true);
-  const [isFrontCamera, setIsFrontCamera] = useState(true);
+  const [isSpeakerOn, setIsSpeakerOn] = useState(false);
   const [showControls, setShowControls] = useState(true);
-  const [otherUser, setOtherUser] = useState<OtherUser | null>(null);
-  const [isIncoming, setIsIncoming] = useState(false);
-
-  // WebRTC state
+  const [participant, setParticipant] = useState<CallParticipant | null>(null);
+  
+  // Streams
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
-  const peerConnection = useRef<RTCPeerConnection | null>(null);
-  const iceCandidatesQueue = useRef<RTCIceCandidate[]>([]);
+
+  // Refs
+  const webrtcRef = useRef<WebRTCService | null>(null);
+  const wsRef = useRef<WebSocket | null>(null);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Animations
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const controlsOpacity = useRef(new Animated.Value(1)).current;
+  const selfVideoScale = useRef(new Animated.Value(1)).current;
+  const connectionDots = useRef(new Animated.Value(0)).current;
 
-  // Timer ref
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
-  const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const wsRef = useRef<WebSocket | null>(null);
-
-  // Initialize WebSocket for signaling
+  // Fetch participant info
   useEffect(() => {
-    const wsUrl = process.env.EXPO_PUBLIC_WS_URL || 'wss://api.mapmingle.app/ws';
-    const ws = new WebSocket(wsUrl);
-    wsRef.current = ws;
-
-    ws.onopen = () => {
-      console.log('WebSocket connected for video call');
-      ws.send(JSON.stringify({ type: 'auth', userId: user?.id }));
+    const fetchParticipant = async () => {
+      try {
+        const userData = await api.get(`/api/users/${otherUserId}`);
+        setParticipant({
+          id: userData.id,
+          name: userData.name || userData.profile?.displayName || 'User',
+          avatar: userData.profile?.avatar || null,
+        });
+      } catch (error) {
+        console.error('Error fetching participant:', error);
+        setParticipant({
+          id: otherUserId || '',
+          name: 'User',
+          avatar: null,
+        });
+      }
     };
-
-    ws.onmessage = async (event) => {
-      const message = JSON.parse(event.data);
-      await handleSignalingMessage(message);
-    };
-
-    ws.onerror = (error) => {
-      console.error('WebSocket error:', error);
-    };
-
-    return () => {
-      ws.close();
-    };
-  }, [user?.id]);
-
-  // Handle incoming signaling messages
-  const handleSignalingMessage = async (message: any) => {
-    const { type, callId: msgCallId, payload, fromUserId, caller } = message;
-
-    switch (type) {
-      case 'incoming_call':
-        // Incoming call notification
-        setCallId(msgCallId);
-        setIsIncoming(true);
-        setCallStatus('ringing');
-        setOtherUser(caller);
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        break;
-
-      case 'call_answered':
-        // Our call was answered
-        setCallStatus('connected');
-        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        break;
-
-      case 'call_declined':
-        // Our call was declined
-        setCallStatus('ended');
-        Alert.alert('Call Declined', 'The user declined your call');
-        setTimeout(() => router.back(), 1500);
-        break;
-
-      case 'call_ended':
-        // Other party ended the call
-        setCallStatus('ended');
-        cleanupCall();
-        setTimeout(() => router.back(), 1500);
-        break;
-
-      case 'webrtc_offer':
-        // Received offer - create answer
-        if (peerConnection.current) {
-          await peerConnection.current.setRemoteDescription(
-            new RTCSessionDescription(payload)
-          );
-          const answer = await peerConnection.current.createAnswer();
-          await peerConnection.current.setLocalDescription(answer);
-          sendSignal('answer', answer);
-
-          // Process queued ICE candidates
-          iceCandidatesQueue.current.forEach((candidate) => {
-            peerConnection.current?.addIceCandidate(candidate);
-          });
-          iceCandidatesQueue.current = [];
-        }
-        break;
-
-      case 'webrtc_answer':
-        // Received answer to our offer
-        if (peerConnection.current) {
-          await peerConnection.current.setRemoteDescription(
-            new RTCSessionDescription(payload)
-          );
-
-          // Process queued ICE candidates
-          iceCandidatesQueue.current.forEach((candidate) => {
-            peerConnection.current?.addIceCandidate(candidate);
-          });
-          iceCandidatesQueue.current = [];
-        }
-        break;
-
-      case 'webrtc_ice-candidate':
-        // Received ICE candidate
-        const candidate = new RTCIceCandidate(payload);
-        if (peerConnection.current?.remoteDescription) {
-          await peerConnection.current.addIceCandidate(candidate);
-        } else {
-          iceCandidatesQueue.current.push(candidate);
-        }
-        break;
+    
+    if (otherUserId) {
+      fetchParticipant();
     }
-  };
-
-  // Send signaling message via API
-  const sendSignal = async (type: string, payload: any) => {
-    if (!callId) return;
-    try {
-      await api.post(`/api/video-calls/${callId}/signal`, { type, payload });
-    } catch (error) {
-      console.error('Failed to send signal:', error);
-    }
-  };
-
-  // Initialize call
-  useEffect(() => {
-    if (!otherUserId) return;
-    initializeCall();
-    return () => cleanupCall();
   }, [otherUserId]);
 
-  const initializeCall = async () => {
-    try {
-      // Fetch other user info
-      const userData = await api.get(`/api/users/${otherUserId}`);
-      setOtherUser({
-        id: userData.id,
-        name: userData.profile?.displayName || userData.name || 'User',
-        avatar: userData.profile?.avatar,
-      });
-
-      // Get local media stream
-      const stream = await mediaDevices.getUserMedia({
-        audio: true,
-        video: {
-          facingMode: 'user',
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
-        },
-      });
-      setLocalStream(stream);
-
-      // Create peer connection
-      const pc = new RTCPeerConnection(configuration);
-      peerConnection.current = pc;
-
-      // Add local stream tracks
-      stream.getTracks().forEach((track) => {
-        pc.addTrack(track, stream);
-      });
-
-      // Handle remote stream
-      pc.ontrack = (event) => {
-        if (event.streams && event.streams[0]) {
-          setRemoteStream(event.streams[0]);
-        }
-      };
-
-      // Handle ICE candidates
-      pc.onicecandidate = (event) => {
-        if (event.candidate) {
-          sendSignal('ice-candidate', event.candidate);
-        }
-      };
-
-      // Monitor connection state
-      pc.onconnectionstatechange = () => {
-        console.log('Connection state:', pc.connectionState);
-        if (pc.connectionState === 'connected') {
-          setCallStatus('connected');
-        } else if (pc.connectionState === 'disconnected' || pc.connectionState === 'failed') {
-          handleEndCall();
-        }
-      };
-
-      // Initiate the call (if not incoming)
-      if (!isIncoming) {
-        setCallStatus('connecting');
-        const response = await api.post('/api/video-calls', { receiverId: otherUserId });
-        setCallId(response.callId);
-        setCallStatus('ringing');
-
-        // Create and send offer
-        const offer = await pc.createOffer({
-          offerToReceiveAudio: true,
-          offerToReceiveVideo: true,
+  // Initialize WebRTC
+  useEffect(() => {
+    const initCall = async () => {
+      try {
+        // Create WebRTC service with callbacks
+        const webrtc = new WebRTCService({
+          onLocalStream: (stream) => {
+            console.log('[VideoCall] Local stream received');
+            setLocalStream(stream);
+          },
+          onRemoteStream: (stream) => {
+            console.log('[VideoCall] Remote stream received');
+            setRemoteStream(stream);
+          },
+          onCallStateChange: (state) => {
+            console.log('[VideoCall] State changed:', state);
+            setCallState(state);
+          },
+          onError: (error) => {
+            console.error('[VideoCall] Error:', error);
+            Alert.alert('Call Error', error.message);
+          },
+          onIceCandidate: (candidate) => {
+            // Send ICE candidate to remote peer via signaling
+            sendSignal('ice-candidate', { candidate });
+          },
         });
-        await pc.setLocalDescription(offer);
 
-        // Wait a moment for call to be registered, then send offer
-        setTimeout(() => {
-          sendSignal('offer', offer);
-        }, 500);
+        webrtcRef.current = webrtc;
+
+        // Initialize local media
+        await webrtc.initLocalStream(true, true);
+        
+        // Connect to signaling server
+        connectSignaling();
+        
+        // Initiate call via API
+        initiateCall();
+
+      } catch (error) {
+        console.error('[VideoCall] Init error:', error);
+        Alert.alert('Error', 'Failed to initialize video call');
+        router.back();
       }
-    } catch (error) {
-      console.error('Failed to initialize call:', error);
-      Alert.alert('Error', 'Failed to start video call');
-      router.back();
-    }
-  };
+    };
 
-  // Cleanup
-  const cleanupCall = () => {
-    if (localStream) {
-      localStream.getTracks().forEach((track) => track.stop());
+    initCall();
+
+    return () => {
+      cleanup();
+    };
+  }, []);
+
+  // Connect to WebSocket for signaling
+  const connectSignaling = useCallback(() => {
+    const wsUrl = process.env.EXPO_PUBLIC_WS_URL || 'wss://mapandmingle-api-492171901610.us-west1.run.app/ws';
+    
+    try {
+      const ws = new WebSocket(`${wsUrl}?token=${token}`);
+      
+      ws.onopen = () => {
+        console.log('[VideoCall] Signaling connected');
+        // Authenticate
+        ws.send(JSON.stringify({ type: 'auth', userId: user?.id }));
+      };
+      
+      ws.onmessage = (event) => {
+        try {
+          const message = JSON.parse(event.data);
+          handleSignalingMessage(message);
+        } catch (error) {
+          console.error('[VideoCall] Error parsing message:', error);
+        }
+      };
+      
+      ws.onerror = (error) => {
+        console.error('[VideoCall] Signaling error:', error);
+      };
+      
+      ws.onclose = () => {
+        console.log('[VideoCall] Signaling disconnected');
+      };
+      
+      wsRef.current = ws;
+    } catch (error) {
+      console.error('[VideoCall] Error connecting to signaling:', error);
     }
-    if (peerConnection.current) {
-      peerConnection.current.close();
-      peerConnection.current = null;
+  }, [token, user?.id]);
+
+  // Handle incoming signaling messages
+  const handleSignalingMessage = useCallback(async (message: any) => {
+    console.log('[VideoCall] Received signal:', message.type);
+    
+    switch (message.type) {
+      case 'webrtc_offer':
+        // Incoming call - handle offer
+        if (webrtcRef.current && message.offer) {
+          const answer = await webrtcRef.current.handleOffer(message.offer);
+          sendSignal('answer', { answer });
+        }
+        break;
+        
+      case 'webrtc_answer':
+        // Call answered - handle answer
+        if (webrtcRef.current && message.answer) {
+          await webrtcRef.current.handleAnswer(message.answer);
+        }
+        break;
+        
+      case 'webrtc_ice_candidate':
+        // ICE candidate received
+        if (webrtcRef.current && message.candidate) {
+          await webrtcRef.current.addIceCandidate(message.candidate);
+        }
+        break;
+        
+      case 'call_declined':
+        Alert.alert('Call Declined', 'The user declined your call');
+        router.back();
+        break;
+        
+      case 'call_ended':
+        handleEndCall();
+        break;
     }
-    if (timerRef.current) {
-      clearInterval(timerRef.current);
+  }, []);
+
+  // Send signaling message
+  const sendSignal = useCallback((type: string, data: any) => {
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({
+        type: `webrtc_${type}`,
+        targetUserId: otherUserId,
+        callId: callData?.id,
+        ...data,
+      }));
+    }
+  }, [otherUserId, callData?.id]);
+
+  // Initiate call via API
+  const initiateCall = async () => {
+    try {
+      setCallState('connecting');
+      
+      // Create call record
+      const call = await api.post('/api/video-calls', {
+        calleeId: otherUserId,
+      });
+      
+      setCallData(call);
+      
+      // Create and send offer
+      if (webrtcRef.current) {
+        const offer = await webrtcRef.current.startCall();
+        sendSignal('offer', { offer, callId: call.id });
+      }
+      
+    } catch (error: any) {
+      console.error('[VideoCall] Error initiating call:', error);
+      if (error.status === 403) {
+        Alert.alert('Cannot Call', 'This user has blocked you or you have blocked them');
+      } else {
+        Alert.alert('Error', 'Failed to initiate call');
+      }
+      router.back();
     }
   };
 
   // Call duration timer
   useEffect(() => {
-    if (callStatus === 'connected') {
+    if (callState === 'connected') {
       timerRef.current = setInterval(() => {
         setCallDuration((prev) => prev + 1);
       }, 1000);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     }
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-    };
-  }, [callStatus]);
 
-  // Pulse animation for ringing
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+      }
+    };
+  }, [callState]);
+
+  // Pulse animation for ringing state
   useEffect(() => {
-    if (callStatus === 'ringing' || callStatus === 'connecting') {
+    if (callState === 'ringing' || callState === 'connecting') {
       const pulse = Animated.loop(
         Animated.sequence([
-          Animated.timing(pulseAnim, { toValue: 1.2, duration: 800, useNativeDriver: true }),
-          Animated.timing(pulseAnim, { toValue: 1, duration: 800, useNativeDriver: true }),
+          Animated.timing(pulseAnim, {
+            toValue: 1.1,
+            duration: 1000,
+            useNativeDriver: true,
+          }),
+          Animated.timing(pulseAnim, {
+            toValue: 1,
+            duration: 1000,
+            useNativeDriver: true,
+          }),
         ])
       );
       pulse.start();
-      return () => pulse.stop();
+
+      const dots = Animated.loop(
+        Animated.timing(connectionDots, {
+          toValue: 3,
+          duration: 1500,
+          useNativeDriver: false,
+        })
+      );
+      dots.start();
+
+      return () => {
+        pulse.stop();
+        dots.stop();
+      };
     }
-  }, [callStatus]);
+  }, [callState]);
 
   // Auto-hide controls
   useEffect(() => {
-    if (callStatus === 'connected' && showControls) {
+    if (callState === 'connected' && showControls) {
       controlsTimeoutRef.current = setTimeout(() => {
-        Animated.timing(controlsOpacity, {
-          toValue: 0,
-          duration: 300,
-          useNativeDriver: true,
-        }).start(() => setShowControls(false));
+        hideControls();
       }, 5000);
     }
-    return () => {
-      if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
-    };
-  }, [showControls, callStatus]);
 
-  const formatDuration = (seconds: number): string => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    return () => {
+      if (controlsTimeoutRef.current) {
+        clearTimeout(controlsTimeoutRef.current);
+      }
+    };
+  }, [callState, showControls]);
+
+  const hideControls = () => {
+    Animated.timing(controlsOpacity, {
+      toValue: 0,
+      duration: 300,
+      useNativeDriver: true,
+    }).start(() => setShowControls(false));
   };
 
-  const handleScreenTap = () => {
-    if (callStatus === 'connected') {
-      if (controlsTimeoutRef.current) clearTimeout(controlsTimeoutRef.current);
-      if (!showControls) {
-        setShowControls(true);
-        Animated.timing(controlsOpacity, {
-          toValue: 1,
-          duration: 200,
-          useNativeDriver: true,
-        }).start();
-      }
+  const toggleControls = () => {
+    if (showControls) {
+      hideControls();
+    } else {
+      setShowControls(true);
+      Animated.timing(controlsOpacity, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }).start();
     }
+  };
+
+  const formatDuration = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
   const handleEndCall = async () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-    setCallStatus('ended');
-
-    if (callId) {
-      try {
-        await api.put(`/api/video-calls/${callId}/end`);
-      } catch (error) {
-        console.error('Failed to end call:', error);
+    
+    try {
+      if (callData?.id) {
+        await api.put(`/api/video-calls/${callData.id}/end`);
       }
-    }
-
-    cleanupCall();
-    setTimeout(() => router.back(), 1000);
-  };
-
-  const handleAnswerCall = async () => {
-    if (!callId) return;
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-
-    try {
-      await api.put(`/api/video-calls/${callId}/answer`);
-      setCallStatus('connected');
     } catch (error) {
-      console.error('Failed to answer call:', error);
+      console.error('[VideoCall] Error ending call:', error);
     }
-  };
-
-  const handleDeclineCall = async () => {
-    if (!callId) return;
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-
-    try {
-      await api.put(`/api/video-calls/${callId}/decline`);
-    } catch (error) {
-      console.error('Failed to decline call:', error);
-    }
-
-    cleanupCall();
+    
+    cleanup();
     router.back();
+  };
+
+  const cleanup = () => {
+    webrtcRef.current?.destroy();
+    webrtcRef.current = null;
+    
+    wsRef.current?.close();
+    wsRef.current = null;
+    
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+    }
+    if (controlsTimeoutRef.current) {
+      clearTimeout(controlsTimeoutRef.current);
+    }
   };
 
   const handleToggleMute = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    if (localStream) {
-      localStream.getAudioTracks().forEach((track) => {
-        track.enabled = !track.enabled;
-      });
-      setIsMuted(!isMuted);
-    }
+    const newMuted = !isMuted;
+    setIsMuted(newMuted);
+    webrtcRef.current?.toggleAudio(!newMuted);
   };
 
   const handleToggleVideo = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    if (localStream) {
-      localStream.getVideoTracks().forEach((track) => {
-        track.enabled = !track.enabled;
-      });
-      setIsVideoOff(!isVideoOff);
-    }
+    const newVideoOff = !isVideoOff;
+    setIsVideoOff(newVideoOff);
+    webrtcRef.current?.toggleVideo(!newVideoOff);
   };
 
-  const handleFlipCamera = async () => {
+  const handleToggleSpeaker = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    if (localStream) {
-      const videoTrack = localStream.getVideoTracks()[0];
-      if (videoTrack) {
-        try {
-          // @ts-ignore - _switchCamera exists on react-native-webrtc
-          await videoTrack._switchCamera();
-          setIsFrontCamera(!isFrontCamera);
-        } catch (error) {
-          console.error('Failed to switch camera:', error);
-        }
-      }
-    }
+    setIsSpeakerOn(!isSpeakerOn);
+    // Note: Speaker toggle would require native audio routing module
   };
 
-  const displayName = otherUser?.name || 'User';
-  const avatarUrl = otherUser?.avatar;
+  const handleFlipCamera = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    webrtcRef.current?.switchCamera();
+    
+    Animated.sequence([
+      Animated.timing(selfVideoScale, {
+        toValue: 0.8,
+        duration: 150,
+        useNativeDriver: true,
+      }),
+      Animated.timing(selfVideoScale, {
+        toValue: 1,
+        duration: 150,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  };
 
-  // Render incoming call UI
-  if (isIncoming && callStatus === 'ringing') {
+  const renderConnectionDots = () => {
+    const dotCount = Math.floor((connectionDots as any)._value || 0) + 1;
+    return '.'.repeat(Math.min(dotCount, 3));
+  };
+
+  // Connecting/Ringing State
+  if (callState !== 'connected' && callState !== 'ended') {
     return (
-      <View style={styles.container}>
+      <View className="flex-1 bg-gray-900">
         <StatusBar barStyle="light-content" />
-        <LinearGradient colors={['#1a1a2e', '#16213e', '#0f3460']} style={styles.gradient}>
-          <View style={styles.incomingCallContainer}>
-            <Animated.View style={[styles.avatarContainer, { transform: [{ scale: pulseAnim }] }]}>
-              {avatarUrl ? (
-                <Image source={{ uri: avatarUrl }} style={styles.avatarLarge} />
-              ) : (
-                <View style={styles.avatarPlaceholder}>
-                  <Text style={styles.avatarText}>{displayName[0]?.toUpperCase()}</Text>
-                </View>
-              )}
-            </Animated.View>
+        
+        <LinearGradient
+          colors={['#1a1a2e', '#16213e', '#0f3460']}
+          className="flex-1 items-center justify-center"
+        >
+          {/* Back Button */}
+          <TouchableOpacity
+            onPress={() => router.back()}
+            className="absolute top-14 left-4 p-3 rounded-full bg-white/10"
+          >
+            <Ionicons name="chevron-back" size={24} color="white" />
+          </TouchableOpacity>
 
-            <Text style={styles.callerName}>{displayName}</Text>
-            <Text style={styles.incomingLabel}>Incoming video call...</Text>
-
-            <View style={styles.incomingActions}>
-              <TouchableOpacity style={styles.declineButton} onPress={handleDeclineCall}>
-                <Ionicons name="close" size={32} color="#fff" />
-              </TouchableOpacity>
-
-              <TouchableOpacity style={styles.answerButton} onPress={handleAnswerCall}>
-                <Ionicons name="videocam" size={32} color="#fff" />
-              </TouchableOpacity>
+          {/* Self Preview (small) */}
+          {localStream && !isVideoOff && (
+            <View className="absolute top-14 right-4 w-24 h-32 rounded-xl overflow-hidden border-2 border-white/30">
+              <RTCView
+                streamURL={localStream.toURL()}
+                style={{ width: '100%', height: '100%' }}
+                objectFit="cover"
+                mirror={true}
+              />
             </View>
-          </View>
+          )}
+
+          {/* Avatar */}
+          <Animated.View
+            style={{ transform: [{ scale: pulseAnim }] }}
+            className="mb-8"
+          >
+            <View className="w-32 h-32 rounded-full bg-gradient-to-br from-pink-400 to-purple-500 items-center justify-center shadow-2xl">
+              <View className="w-28 h-28 rounded-full bg-gray-800 items-center justify-center">
+                <Text className="text-4xl font-bold text-white">
+                  {participant?.name?.charAt(0) || 'U'}
+                </Text>
+              </View>
+            </View>
+          </Animated.View>
+
+          {/* Name & Status */}
+          <Text className="text-2xl font-bold text-white mb-2">
+            {participant?.name || 'Connecting...'}
+          </Text>
+          <Text className="text-gray-400 text-lg">
+            {callState === 'connecting' 
+              ? `Connecting${renderConnectionDots()}`
+              : callState === 'ringing'
+              ? 'Ringing...'
+              : 'Starting call...'}
+          </Text>
+
+          {/* End Call Button */}
+          <TouchableOpacity
+            onPress={handleEndCall}
+            className="absolute bottom-16 bg-red-500 w-16 h-16 rounded-full items-center justify-center shadow-lg"
+            style={{
+              shadowColor: '#EF4444',
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.5,
+              shadowRadius: 8,
+            }}
+          >
+            <Ionicons name="call" size={28} color="white" style={{ transform: [{ rotate: '135deg' }] }} />
+          </TouchableOpacity>
         </LinearGradient>
       </View>
     );
   }
 
+  // Connected State - Full Video Call UI
   return (
-    <TouchableOpacity style={styles.container} activeOpacity={1} onPress={handleScreenTap}>
+    <TouchableOpacity
+      activeOpacity={1}
+      onPress={toggleControls}
+      className="flex-1 bg-black"
+    >
       <StatusBar barStyle="light-content" />
 
       {/* Remote Video (Full Screen) */}
       {remoteStream ? (
         <RTCView
           streamURL={remoteStream.toURL()}
-          style={styles.remoteVideo}
+          style={{ width: '100%', height: '100%' }}
           objectFit="cover"
-          mirror={false}
+          zOrder={0}
         />
       ) : (
-        <LinearGradient colors={['#1a1a2e', '#16213e', '#0f3460']} style={styles.gradient}>
-          {/* Connecting/Ringing State */}
-          <View style={styles.connectingContainer}>
-            <Animated.View style={[styles.avatarContainer, { transform: [{ scale: pulseAnim }] }]}>
-              {avatarUrl ? (
-                <Image source={{ uri: avatarUrl }} style={styles.avatarLarge} />
-              ) : (
-                <View style={styles.avatarPlaceholder}>
-                  <Text style={styles.avatarText}>{displayName[0]?.toUpperCase()}</Text>
-                </View>
-              )}
-            </Animated.View>
-
-            <Text style={styles.callerName}>{displayName}</Text>
-            <Text style={styles.statusText}>
-              {callStatus === 'connecting' && 'Connecting...'}
-              {callStatus === 'ringing' && 'Ringing...'}
-              {callStatus === 'ended' && 'Call ended'}
+        <View className="flex-1 items-center justify-center bg-gray-900">
+          <View className="w-24 h-24 rounded-full bg-gray-700 items-center justify-center">
+            <Text className="text-3xl font-bold text-white">
+              {participant?.name?.charAt(0) || 'U'}
             </Text>
           </View>
-        </LinearGradient>
-      )}
-
-      {/* Local Video (Picture-in-Picture) */}
-      {localStream && !isVideoOff && (
-        <View style={styles.localVideoContainer}>
-          <RTCView
-            streamURL={localStream.toURL()}
-            style={styles.localVideo}
-            objectFit="cover"
-            mirror={isFrontCamera}
-          />
+          <Text className="text-white mt-4 text-lg">{participant?.name}</Text>
+          <Text className="text-gray-400 mt-2">Camera off</Text>
         </View>
       )}
 
-      {/* Top Bar */}
-      <Animated.View style={[styles.topBar, { opacity: controlsOpacity }]}>
-        {callStatus === 'connected' && (
-          <View style={styles.callInfo}>
-            <View style={styles.callIndicator} />
-            <Text style={styles.durationText}>{formatDuration(callDuration)}</Text>
+      {/* Self Video (Picture-in-Picture) */}
+      <Animated.View
+        style={{
+          position: 'absolute',
+          top: Platform.OS === 'ios' ? 60 : 40,
+          right: 16,
+          transform: [{ scale: selfVideoScale }],
+        }}
+        className="w-28 h-40 rounded-2xl overflow-hidden border-2 border-white/30 shadow-lg"
+      >
+        {localStream && !isVideoOff ? (
+          <RTCView
+            streamURL={localStream.toURL()}
+            style={{ width: '100%', height: '100%' }}
+            objectFit="cover"
+            mirror={true}
+            zOrder={1}
+          />
+        ) : (
+          <View className="flex-1 bg-gray-800 items-center justify-center">
+            <Ionicons name="videocam-off" size={24} color="#9CA3AF" />
+          </View>
+        )}
+        
+        {isMuted && (
+          <View className="absolute bottom-2 right-2 bg-red-500 rounded-full p-1">
+            <Ionicons name="mic-off" size={12} color="white" />
           </View>
         )}
       </Animated.View>
 
-      {/* Controls */}
+      {/* Controls Overlay */}
       {showControls && (
-        <Animated.View style={[styles.controls, { opacity: controlsOpacity }]}>
-          <View style={styles.controlsRow}>
-            <TouchableOpacity
-              style={[styles.controlButton, isMuted && styles.controlButtonActive]}
-              onPress={handleToggleMute}
-            >
-              <Ionicons name={isMuted ? 'mic-off' : 'mic'} size={24} color="#fff" />
-            </TouchableOpacity>
+        <Animated.View
+          style={{ opacity: controlsOpacity }}
+          className="absolute inset-0"
+        >
+          {/* Top Bar */}
+          <LinearGradient
+            colors={['rgba(0,0,0,0.7)', 'transparent']}
+            className="absolute top-0 left-0 right-0 pt-14 pb-8 px-4"
+          >
+            <View className="flex-row items-center justify-between">
+              <TouchableOpacity
+                onPress={() => router.back()}
+                className="p-2"
+              >
+                <Ionicons name="chevron-back" size={28} color="white" />
+              </TouchableOpacity>
+              
+              <View className="items-center">
+                <Text className="text-white font-semibold text-lg">
+                  {participant?.name}
+                </Text>
+                <Text className="text-green-400 text-sm">
+                  {formatDuration(callDuration)}
+                </Text>
+              </View>
+              
+              <TouchableOpacity
+                onPress={handleFlipCamera}
+                className="p-2"
+              >
+                <Ionicons name="camera-reverse" size={24} color="white" />
+              </TouchableOpacity>
+            </View>
+          </LinearGradient>
 
-            <TouchableOpacity
-              style={[styles.controlButton, isVideoOff && styles.controlButtonActive]}
-              onPress={handleToggleVideo}
-            >
-              <Ionicons name={isVideoOff ? 'videocam-off' : 'videocam'} size={24} color="#fff" />
-            </TouchableOpacity>
+          {/* Bottom Controls */}
+          <LinearGradient
+            colors={['transparent', 'rgba(0,0,0,0.8)']}
+            className="absolute bottom-0 left-0 right-0 pt-20 pb-12 px-6"
+          >
+            <View className="flex-row items-center justify-around">
+              {/* Mute Button */}
+              <TouchableOpacity
+                onPress={handleToggleMute}
+                className={`w-14 h-14 rounded-full items-center justify-center ${
+                  isMuted ? 'bg-red-500' : 'bg-white/20'
+                }`}
+              >
+                <Ionicons
+                  name={isMuted ? 'mic-off' : 'mic'}
+                  size={24}
+                  color="white"
+                />
+              </TouchableOpacity>
 
-            <TouchableOpacity style={styles.controlButton} onPress={handleFlipCamera}>
-              <Ionicons name="camera-reverse" size={24} color="#fff" />
-            </TouchableOpacity>
-          </View>
+              {/* Video Button */}
+              <TouchableOpacity
+                onPress={handleToggleVideo}
+                className={`w-14 h-14 rounded-full items-center justify-center ${
+                  isVideoOff ? 'bg-red-500' : 'bg-white/20'
+                }`}
+              >
+                <Ionicons
+                  name={isVideoOff ? 'videocam-off' : 'videocam'}
+                  size={24}
+                  color="white"
+                />
+              </TouchableOpacity>
 
-          <TouchableOpacity style={styles.endCallButton} onPress={handleEndCall}>
-            <Ionicons name="call" size={32} color="#fff" style={{ transform: [{ rotate: '135deg' }] }} />
-          </TouchableOpacity>
+              {/* End Call Button */}
+              <TouchableOpacity
+                onPress={handleEndCall}
+                className="w-16 h-16 rounded-full bg-red-500 items-center justify-center shadow-lg"
+                style={{
+                  shadowColor: '#EF4444',
+                  shadowOffset: { width: 0, height: 4 },
+                  shadowOpacity: 0.5,
+                  shadowRadius: 8,
+                }}
+              >
+                <Ionicons
+                  name="call"
+                  size={28}
+                  color="white"
+                  style={{ transform: [{ rotate: '135deg' }] }}
+                />
+              </TouchableOpacity>
+
+              {/* Speaker Button */}
+              <TouchableOpacity
+                onPress={handleToggleSpeaker}
+                className={`w-14 h-14 rounded-full items-center justify-center ${
+                  isSpeakerOn ? 'bg-blue-500' : 'bg-white/20'
+                }`}
+              >
+                <Ionicons
+                  name={isSpeakerOn ? 'volume-high' : 'volume-medium'}
+                  size={24}
+                  color="white"
+                />
+              </TouchableOpacity>
+
+              {/* Flip Camera Button */}
+              <TouchableOpacity
+                onPress={handleFlipCamera}
+                className="w-14 h-14 rounded-full bg-white/20 items-center justify-center"
+              >
+                <Ionicons name="camera-reverse-outline" size={24} color="white" />
+              </TouchableOpacity>
+            </View>
+          </LinearGradient>
         </Animated.View>
       )}
     </TouchableOpacity>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#000',
-  },
-  gradient: {
-    flex: 1,
-  },
-  remoteVideo: {
-    flex: 1,
-    width: '100%',
-    height: '100%',
-  },
-  localVideoContainer: {
-    position: 'absolute',
-    top: 60,
-    right: 16,
-    width: 120,
-    height: 160,
-    borderRadius: 12,
-    overflow: 'hidden',
-    borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.3)',
-  },
-  localVideo: {
-    flex: 1,
-  },
-  topBar: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    paddingTop: 50,
-    paddingHorizontal: 20,
-    paddingBottom: 20,
-    flexDirection: 'row',
-    justifyContent: 'center',
-  },
-  callInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-  },
-  callIndicator: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#4ade80',
-    marginRight: 8,
-  },
-  durationText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  controls: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    paddingBottom: 50,
-    paddingHorizontal: 20,
-    alignItems: 'center',
-  },
-  controlsRow: {
-    flexDirection: 'row',
-    marginBottom: 24,
-    gap: 20,
-  },
-  controlButton: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  controlButtonActive: {
-    backgroundColor: 'rgba(255,255,255,0.4)',
-  },
-  endCallButton: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: '#ef4444',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  connectingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  incomingCallContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  avatarContainer: {
-    marginBottom: 24,
-  },
-  avatarLarge: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    borderWidth: 3,
-    borderColor: 'rgba(255,255,255,0.3)',
-  },
-  avatarPlaceholder: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 3,
-    borderColor: 'rgba(255,255,255,0.3)',
-  },
-  avatarText: {
-    fontSize: 48,
-    fontWeight: 'bold',
-    color: '#fff',
-  },
-  callerName: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 8,
-  },
-  statusText: {
-    fontSize: 16,
-    color: 'rgba(255,255,255,0.7)',
-  },
-  incomingLabel: {
-    fontSize: 16,
-    color: 'rgba(255,255,255,0.7)',
-    marginBottom: 60,
-  },
-  incomingActions: {
-    flexDirection: 'row',
-    gap: 60,
-  },
-  declineButton: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: '#ef4444',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  answerButton: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: '#22c55e',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-});
