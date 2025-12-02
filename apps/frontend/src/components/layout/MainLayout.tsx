@@ -29,7 +29,6 @@ export default function MainLayout() {
         ghostMode: !ghostMode,
       });
       setGhostMode(!ghostMode);
-      // Hide arrow for 5 seconds after first click
       setShowArrow(false);
     } catch (err) {
       console.error('Failed to toggle ghost mode:', err);
@@ -45,6 +44,10 @@ export default function MainLayout() {
     { path: '/messages', icon: MessageCircle, label: 'Messages' },
     { path: '/profile', icon: User, label: 'Profile' },
   ];
+
+  const ghostButtonClass = ghostMode
+    ? 'bg-gray-900 text-white shadow-lg'
+    : 'bg-gray-200 text-gray-700 hover:bg-gray-300';
 
   return (
     <div className="h-screen flex flex-col bg-gray-50 overflow-hidden">
@@ -66,11 +69,7 @@ export default function MainLayout() {
           <button
             onClick={handleGhostModeToggle}
             disabled={loadingGhost}
-            className={\`w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 font-bold text-lg \${
-              ghostMode
-                ? 'bg-gray-900 text-white shadow-lg'
-                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-            } disabled:opacity-50\`}
+            className={`w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 font-bold text-lg ${ghostButtonClass} disabled:opacity-50`}
             title={ghostMode ? 'Click to become visible' : 'Click to go invisible'}
           >
             {loadingGhost ? (
@@ -105,16 +104,18 @@ export default function MainLayout() {
         <div className="flex justify-around items-center h-16 px-2">
           {navItems.map(({ path, icon: Icon, label }) => {
             const isActive = location.pathname === path;
+            const activeClass = isActive ? 'text-primary-500' : 'text-gray-500 hover:text-gray-700';
+            const strokeWidth = isActive ? 'stroke-2' : 'stroke-1.5';
+            const fontWeight = isActive ? 'font-semibold' : 'font-medium';
+            
             return (
               <Link
                 key={path}
                 to={path}
-                className={\`flex flex-col items-center justify-center flex-1 h-full transition-colors \${
-                  isActive ? 'text-primary-500' : 'text-gray-500 hover:text-gray-700'
-                }\`}
+                className={`flex flex-col items-center justify-center flex-1 h-full transition-colors ${activeClass}`}
               >
-                <Icon size={24} className={isActive ? 'stroke-2' : 'stroke-1.5'} />
-                <span className={\`text-xs mt-1 \${isActive ? 'font-semibold' : 'font-medium'}\`}>
+                <Icon size={24} className={strokeWidth} />
+                <span className={`text-xs mt-1 ${fontWeight}`}>
                   {label}
                 </span>
               </Link>
