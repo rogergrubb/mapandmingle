@@ -63,7 +63,6 @@ waveRoutes.post('/:userId', async (c) => {
     }
 
     // Send push notification
-    await // sendWaveNotification(fromUserId, toUserId);
 
     // Send real-time WebSocket notification
     const fromUser = await prisma.user.findUnique({
@@ -128,7 +127,6 @@ waveRoutes.post('/:userId/wave-back', async (c) => {
     });
 
     // Send push notification
-    await // sendWaveNotification(fromUserId, toUserId);
 
     // Send real-time WebSocket notification
     const fromUser = await prisma.user.findUnique({
