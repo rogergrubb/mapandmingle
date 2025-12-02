@@ -2,7 +2,7 @@
 
 A location-based social app for meeting new people and discovering activities nearby. Built with React Native (Expo) and Node.js.
 
-## Features
+## Features, edited to trigger fresh push....
 
 ### 🗺️ Map & Discovery
 - **Interactive Map** - View pins, events, and people nearby
