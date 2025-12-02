@@ -380,7 +380,7 @@ forumRoutes.post('/posts/:id/like', async (c) => {
         
         const displayName = user?.profile?.displayName || user?.name || 'Someone';
         
-        await sendPushNotification(
+        await // sendPushNotification(
           post.authorId,
           `${displayName} liked your post`,
           post.title.slice(0, 50),
@@ -459,7 +459,7 @@ forumRoutes.post('/posts/:id/comments', async (c) => {
       
       const displayName = user?.profile?.displayName || user?.name || 'Someone';
       
-      await sendPushNotification(
+      await // sendPushNotification(
         post.authorId,
         `${displayName} commented on your post`,
         content.slice(0, 50),
@@ -482,7 +482,7 @@ forumRoutes.post('/posts/:id/comments', async (c) => {
         
         const displayName = user?.profile?.displayName || user?.name || 'Someone';
         
-        await sendPushNotification(
+        await // sendPushNotification(
           parentComment.authorId,
           `${displayName} replied to your comment`,
           content.slice(0, 50),

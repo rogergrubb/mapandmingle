@@ -136,7 +136,7 @@ streakRoutes.post('/track', async (c) => {
     
     // Send milestone notification
     if (hitMilestone) {
-      await sendStreakMilestone(userId, milestoneValue);
+      await // sendStreakMilestone(userId, milestoneValue);
     }
     
     return c.json({ 

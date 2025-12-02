@@ -280,7 +280,7 @@ proximityAlertRoutes.post('/check', async (c) => {
       const sharedInterests = userInterests.filter(i => alertOwnerInterests.includes(i));
       
       // Send notification to alert owner
-      await sendProximityNotification(alert.userId, {
+      await // sendProximityNotification(alert.userId, {
         id: userId,
         displayName: currentUserProfile.displayName || 'Someone',
         sharedInterests,

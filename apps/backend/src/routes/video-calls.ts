@@ -62,7 +62,7 @@ videoCallRoutes.post('/', async (c) => {
     const callerName = caller?.profile?.displayName || caller?.name || 'Someone';
     
     // Send push notification
-    await sendPushNotification(
+    await // sendPushNotification(
       receiverId,
       `Incoming video call`,
       `${callerName} is calling you`,
