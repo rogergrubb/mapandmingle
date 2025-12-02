@@ -275,6 +275,7 @@ app.route('/api/activity-intents', activityIntentRoutes);
 app.route('/api/reports', reportRoutes);
 app.route('/api/messages', messagesRoutes);
 app.route('/api/blocking', blockingRoutes);
+app.route('/api/calls', callsRoutes);
 app.route('/api/users', userRoutes);
 app.route('/api/upload', uploadRoutes);
 app.route('/api/notifications', notificationsRoutes);
