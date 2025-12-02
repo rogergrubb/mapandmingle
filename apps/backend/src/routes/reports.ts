@@ -2,22 +2,17 @@ import { Hono } from 'hono';
 import { prisma } from '../index';
 import { z } from 'zod';
 
-const reportsRoutes = new Hono();
+export const reportRoutes = new Hono();
 
 const createReportSchema = z.object({
   reportedUserId: z.string(),
-  category: z.enum(['harassment', 'threats', 'sexual_content', 'spam', 'fraud', 'other']),
+  category: z.enum(['harassment', 'threats', 'sexual_content', 'spam', 'fraud', 'other']).optional(),
   description: z.string().min(10).max(1000),
-  screenshots: z.array(z.string()).max(5).optional(),
   pinId: z.string().optional(),
 });
 
-function generateConfirmationNumber(): string {
-  return 'RPT' + Date.now().toString(36).toUpperCase() + Math.random().toString(36).substring(2, 7).toUpperCase();
-}
-
 // POST /api/reports - Submit a report
-reportsRoutes.post('/', async (c: any) => {
+reportRoutes.post('/', async (c: any) => {
   try {
     const userId = c.req.header('X-User-Id');
     if (!userId) {
@@ -31,24 +26,25 @@ reportsRoutes.post('/', async (c: any) => {
       return c.json({ error: 'Invalid report data' }, 400);
     }
 
-    const { reportedUserId, category, description, screenshots, pinId } = parsed.data;
+    const { reportedUserId, description } = parsed.data;
 
     if (userId === reportedUserId) {
       return c.json({ error: 'Cannot report yourself' }, 400);
     }
 
-    const confirmationNumber = generateConfirmationNumber();
+    // Create report using available fields
     const report = await prisma.report.create({
       data: {
-        reporterId: userId,
-        reportedUserId,
-        category,
-        description,
         type: 'user_report',
-        status: 'pending',
         reason: description,
+        status: 'pending',
+        description: description,
+        reportedUserId: reportedUserId,
       },
     });
+
+    // Generate confirmation number from report ID
+    const confirmationNumber = 'RPT' + report.id.substring(0, 10).toUpperCase();
 
     return c.json({
       success: true,
@@ -63,26 +59,25 @@ reportsRoutes.post('/', async (c: any) => {
 });
 
 // GET /api/reports/status/:id - Check report status
-reportsRoutes.get('/status/:id', async (c: any) => {
+reportRoutes.get('/status/:id', async (c: any) => {
   try {
     const { id } = c.req.param();
 
     const report = await prisma.report.findUnique({
       where: { id },
-      select: {
-        id: true,
-        status: true,
-        category: true,
-        createdAt: true,
-        reason: true,
-      },
     });
 
     if (!report) {
       return c.json({ error: 'Report not found' }, 404);
     }
 
-    return c.json(report);
+    return c.json({
+      id: report.id,
+      status: report.status,
+      createdAt: report.createdAt,
+      reason: report.reason,
+      type: report.type,
+    });
   } catch (error) {
     console.error('Error fetching report status:', error);
     return c.json({ error: 'Failed to fetch report status' }, 500);
@@ -90,7 +85,7 @@ reportsRoutes.get('/status/:id', async (c: any) => {
 });
 
 // GET /api/admin/reports - Get all reports (admin only)
-reportsRoutes.get('/admin/all', async (c: any) => {
+reportRoutes.get('/admin/all', async (c: any) => {
   try {
     const userId = c.req.header('X-User-Id');
     if (!userId) {
@@ -108,10 +103,7 @@ reportsRoutes.get('/admin/all', async (c: any) => {
     }
 
     const reports = await prisma.report.findMany({
-      include: {
-        initiator: { select: { id: true, name: true, email: true } },
-        target: { select: { id: true, name: true, email: true } },
-      },
+      where: { type: 'user_report' },
       orderBy: { createdAt: 'desc' },
     });
 
@@ -123,7 +115,7 @@ reportsRoutes.get('/admin/all', async (c: any) => {
 });
 
 // POST /api/admin/reports/:id/action - Take action on report
-reportsRoutes.post('/admin/:id/action', async (c: any) => {
+reportRoutes.post('/admin/:id/action', async (c: any) => {
   try {
     const userId = c.req.header('X-User-Id');
     if (!userId) {
@@ -148,15 +140,6 @@ reportsRoutes.post('/admin/:id/action', async (c: any) => {
       return c.json({ error: 'Invalid action' }, 400);
     }
 
-    const report = await prisma.report.findUnique({
-      where: { id },
-      include: { target: true },
-    });
-
-    if (!report) {
-      return c.json({ error: 'Report not found' }, 404);
-    }
-
     // Update report status
     const updatedReport = await prisma.report.update({
       where: { id },
@@ -175,5 +158,3 @@ reportsRoutes.post('/admin/:id/action', async (c: any) => {
     return c.json({ error: 'Failed to take action' }, 500);
   }
 });
-
-export default reportsRoutes;
