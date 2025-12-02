@@ -40,6 +40,8 @@ import { webhookRoutes as stripeWebhookRoutes } from './routes/webhook-enhanced'
 import { reportRoutes } from './routes/reports';
 import messagesRoutes from './routes/messages';
 import blockingRoutes from './routes/blocking';
+import notificationsRoutes from './routes/notifications';
+import callsRoutes from './routes/calls';
 import { userRoutes } from './routes/users';
 import { uploadRoutes } from './routes/upload';
 import { notificationRoutes } from './routes/notifications';
