@@ -200,7 +200,6 @@ proximityAlertRoutes.post('/check', async (c) => {
         longitude,
         alert.latitude,
         alert.longitude
-      );
       
       if (distance > alert.radiusMeters) {
         continue;

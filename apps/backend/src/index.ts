@@ -35,7 +35,7 @@ import { safetyRoutes } from './routes/safety';
 import { activityRoutes } from './routes/activity';
 import { savedPinsRoutes } from './routes/saved-pins';
 import { activityIntentRoutes } from './routes/activity-intents';
-import { webhookRoutes as stripeWebhookRoutes } from './routes/webhook';-enhanced';
+import { webhookRoutes as stripeWebhookRoutes } from './routes/webhook';
 import { reportRoutes } from './routes/reports';
 import messagesRoutes from './routes/messages';
 import blockingRoutes from './routes/blocking';

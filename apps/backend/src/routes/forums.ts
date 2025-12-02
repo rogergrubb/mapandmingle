@@ -381,7 +381,6 @@ forumRoutes.post('/posts/:id/like', async (c) => {
         const displayName = user?.profile?.displayName || user?.name || 'Someone';
         
           post.authorId,
-          `${displayName} liked your post`,
           post.title.slice(0, 50),
       }
 
@@ -457,10 +456,7 @@ forumRoutes.post('/posts/:id/comments', async (c) => {
       const displayName = user?.profile?.displayName || user?.name || 'Someone';
       
         post.authorId,
-        `${displayName} commented on your post`,
         content.slice(0, 50),
-        { type: 'forum_reply', postId }
-      );
     }
 
     // If replying to a comment, notify that author too
@@ -479,7 +475,6 @@ forumRoutes.post('/posts/:id/comments', async (c) => {
         const displayName = user?.profile?.displayName || user?.name || 'Someone';
         
           parentComment.authorId,
-          `${displayName} replied to your comment`,
           content.slice(0, 50),
       }
     }
@@ -595,12 +590,6 @@ forumRoutes.get('/categories', async (c) => {
     });
 
     const categoryList = [
-      { id: 'general', name: 'General', icon: 'chatbubbles', color: '#3B82F6' },
-      { id: 'meetups', name: 'Meetups', icon: 'people', color: '#EC4899' },
-      { id: 'events', name: 'Events', icon: 'calendar', color: '#F59E0B' },
-      { id: 'places', name: 'Places', icon: 'location', color: '#10B981' },
-      { id: 'tips', name: 'Tips & Advice', icon: 'bulb', color: '#8B5CF6' },
-      { id: 'questions', name: 'Questions', icon: 'help-circle', color: '#06B6D4' },
     ];
 
     return c.json({

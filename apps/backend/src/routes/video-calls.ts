@@ -31,8 +31,6 @@ videoCallRoutes.post('/', async (c) => {
     const block = await prisma.block.findFirst({
       where: {
         OR: [
-          { blockerId: userId, blockedUserId: receiverId },
-          { blockerId: receiverId, blockedUserId: userId },
         ],
       },
     });
@@ -63,16 +61,12 @@ videoCallRoutes.post('/', async (c) => {
     
     // Send push notification
       receiverId,
-      `Incoming video call`,
-      `${callerName} is calling you`,
-      {
         type: 'video_call',
         callId: call.id,
         callerId: userId,
         callerName,
         callerAvatar: caller?.profile?.avatar,
       }
-    );
     
     // Send WebSocket notification
     broadcastToUser(receiverId, {
