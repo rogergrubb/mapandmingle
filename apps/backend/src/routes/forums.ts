@@ -383,8 +383,6 @@ forumRoutes.post('/posts/:id/like', async (c) => {
           post.authorId,
           `${displayName} liked your post`,
           post.title.slice(0, 50),
-          { type: 'pin_like', postId }
-        );
       }
 
       return c.json({ liked: true });
@@ -483,8 +481,6 @@ forumRoutes.post('/posts/:id/comments', async (c) => {
           parentComment.authorId,
           `${displayName} replied to your comment`,
           content.slice(0, 50),
-          { type: 'forum_reply', postId }
-        );
       }
     }
 
