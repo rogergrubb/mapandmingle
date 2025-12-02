@@ -313,7 +313,6 @@ model Conversation {
   updatedAt DateTime @updatedAt
 
   participants ConversationParticipant[]
-  messages     Message[]
 }
 
 model ConversationParticipant {
