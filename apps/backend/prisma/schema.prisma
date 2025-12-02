@@ -74,7 +74,6 @@ model User {
   pinLikes              PinLike[]
   savedPins             SavedPin[]
   conversations         ConversationParticipant[]
-  messages              Message[]
   eventsHosted          Event[]               @relation("EventHost")
   eventAttendees        EventAttendee[]
   eventComments         EventComment[]
@@ -96,13 +95,21 @@ model User {
   proximityAlerts       ProximityAlert[]
   proximityAlertMatches ProximityAlertMatch[]
   hotspotActivities     HotspotActivity[]
-  notifications         Notification[]
   uploads               Upload[]
   usageMetrics          UsageMetrics?
   rateLimitLogs         RateLimitLog[]
   wavesSent             Wave[]               @relation("WaveSender")
   wavesReceived         Wave[]               @relation("WaveReceiver")
   phoneNumber        String?
+  
+  sentMessages      Message[]    @relation("MessageSender")
+  receivedMessages  Message[]    @relation("MessageReceiver")
+  callsInitiated    Call[]       @relation("CallInitiator")
+  callsReceived     Call[]       @relation("CallRecipient")
+  notificationsFor  Notification[] @relation("Notifications")
+  notificationsFrom Notification[] @relation("NotificationsFrom")
+  blockedUsers      BlockedUser[] @relation("BlockedBy")
+  blockingUsers     BlockedUser[] @relation("Blocks")
 }
 
   // Messaging and call relations
@@ -137,15 +144,6 @@ model Account {
 
   @@unique([providerId, accountId])
   
-  // Messaging relations
-  sentMessages      Message[]    @relation("MessageSender")
-  receivedMessages  Message[]    @relation("MessageReceiver")
-  callsInitiated    Call[]       @relation("CallInitiator")
-  callsReceived     Call[]       @relation("CallRecipient")
-  notificationsFor  Notification[] @relation("Notifications")
-  notificationsFrom Notification[] @relation("NotificationsFrom")
-  blockedUsers      BlockedUser[] @relation("BlockedBy")
-  blockingUsers     BlockedUser[] @relation("Blocks")
 }
 
 model Verification {
