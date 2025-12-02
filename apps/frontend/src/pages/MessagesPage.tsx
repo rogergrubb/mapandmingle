@@ -3,30 +3,23 @@ import { useNavigate } from 'react-router-dom';
 import { MessageCircle, Search } from 'lucide-react';
 import api from '../lib/api';
 
-interface ConversationParticipant {
-  id: string;
-  name: string;
-  image?: string;
-  avatar?: string;
-}
-
-interface ConversationListItem {
-  id: string;
-  participants: ConversationParticipant[];
-  lastMessage?: {
+// New API format from /api/messages/conversations
+interface Conversation {
+  partnerId: string;
+  partner: {
     id: string;
-    content: string;
-    senderId: string;
-    createdAt: string;
+    name: string | null;
+    email: string;
+    avatar: string | null;
   };
+  lastMessage: string;
+  lastMessageAt: string;
   unreadCount: number;
-  createdAt: string;
-  updatedAt: string;
 }
 
 export default function MessagesPage() {
   const navigate = useNavigate();
-  const [conversations, setConversations] = useState<ConversationListItem[]>([]);
+  const [conversations, setConversations] = useState<Conversation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -36,7 +29,8 @@ export default function MessagesPage() {
 
   const fetchConversations = async () => {
     try {
-      const data: ConversationListItem[] = await api.get('/api/conversations');
+      // Use new API endpoint
+      const data: Conversation[] = await api.get('/api/messages/conversations');
       setConversations(data || []);
     } catch (error) {
       console.error('Error fetching conversations:', error);
@@ -46,9 +40,7 @@ export default function MessagesPage() {
   };
 
   const filteredConversations = conversations.filter((conv) =>
-    conv.participants.some((p) =>
-      (p.name || '').toLowerCase().includes(searchQuery.toLowerCase())
-    )
+    (conv.partner.name || '').toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const formatTime = (dateString: string) => {
@@ -58,7 +50,7 @@ export default function MessagesPage() {
     const hours = Math.floor(diff / (1000 * 60 * 60));
     
     if (hours < 1) return 'Just now';
-    if (hours < 24) return `${hours}h ago`;
+    if (hours < 24) return \`\${hours}h ago\`;
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   };
 
@@ -100,13 +92,12 @@ export default function MessagesPage() {
           </div>
         ) : (
           filteredConversations.map((conversation) => {
-            const otherParticipant = conversation.participants[0]; // Assuming 1-on-1 chats
-            const displayName = otherParticipant?.name || 'User';
-            const avatarUrl = otherParticipant?.avatar || otherParticipant?.image;
+            const displayName = conversation.partner.name || 'User';
+            const avatarUrl = conversation.partner.avatar;
             return (
               <div
-                key={conversation.id}
-                onClick={() => navigate(`/chat/${conversation.id}`)}
+                key={conversation.partnerId}
+                onClick={() => navigate(\`/chat/\${conversation.partnerId}\`)}
                 className="bg-white border-b border-gray-100 p-4 hover:bg-gray-50 cursor-pointer transition-colors"
               >
                 <div className="flex items-start space-x-3">
@@ -134,12 +125,12 @@ export default function MessagesPage() {
                         {displayName}
                       </h3>
                       <span className="text-xs text-gray-500">
-                        {formatTime(conversation.updatedAt)}
+                        {formatTime(conversation.lastMessageAt)}
                       </span>
                     </div>
                     
                     <p className="text-sm text-gray-600 truncate">
-                      {conversation.lastMessage?.content || 'No messages yet'}
+                      {conversation.lastMessage || 'No messages yet'}
                     </p>
                   </div>
 
