@@ -460,6 +460,50 @@ pinRoutes.post('/:id/like', async (c) => {
   }
 });
 
+
+// GET /api/pins/user/mine - Get current user's pins
+pinRoutes.get('/user/mine', async (c) => {
+  try {
+    const userId = c.req.header('X-User-Id');
+    if (!userId) {
+      return c.json({ error: 'Unauthorized' }, 401);
+    }
+
+    const userPins = await prisma.pin.findMany({
+      where: { userId },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            image: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return c.json(userPins.map(pin => ({
+      id: pin.id,
+      latitude: pin.latitude,
+      longitude: pin.longitude,
+      description: pin.description,
+      image: pin.image,
+      likesCount: pin.likesCount,
+      createdAt: pin.createdAt.toISOString(),
+      updatedAt: pin.updatedAt.toISOString(),
+      createdBy: {
+        id: pin.user.id,
+        name: pin.user.name,
+        image: pin.user.image,
+      },
+    })));
+  } catch (error) {
+    console.error('Error fetching user pins:', error);
+    return c.json({ error: 'Failed to fetch pins' }, 500);
+  }
+});
+
 // DELETE /api/pins/:id - Delete a pin
 pinRoutes.delete('/:id', async (c) => {
   try {
