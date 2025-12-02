@@ -11,42 +11,38 @@ import api from '../lib/api';
 
 interface Message {
   id: string;
-  conversationId: string;
   senderId: string;
+  receiverId: string;
   content: string;
   readAt?: string | null;
   createdAt: string;
   sender?: {
     id: string;
     name: string;
-    image?: string;
+    avatar?: string;
+  };
+  receiver?: {
+    id: string;
+    name: string;
     avatar?: string;
   };
 }
 
-interface Participant {
+interface OtherUser {
   id: string;
   name: string;
-  image?: string;
-  avatar?: string;
-}
-
-interface ConversationData {
-  id: string;
-  participants: Participant[];
-  lastMessage?: Message;
-  unreadCount: number;
-  createdAt: string;
-  updatedAt: string;
+  email: string;
+  avatar?: string | null;
 }
 
 export function Chat() {
-  const params = useParams<{ conversationId: string }>();
+  // Route param is now the other user's ID
+  const params = useParams<{ id: string }>();
+  const otherUserId = params.id;
   const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
   const { socket, isConnected } = useWebSocket();
-  const [conversation, setConversation] = useState<ConversationData | null>(null);
-  const [otherUser, setOtherUser] = useState<Participant | null>(null);
+  const [otherUser, setOtherUser] = useState<OtherUser | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -58,14 +54,13 @@ export function Chat() {
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (params.conversationId) {
-      fetchConversation();
+    if (otherUserId) {
       fetchMessages();
     }
-  }, [params.conversationId]);
+  }, [otherUserId]);
 
   useEffect(() => {
-    if (!socket || !isConnected || !params.conversationId || !user?.id) return;
+    if (!socket || !isConnected || !otherUserId || !user?.id) return;
 
     // Authenticate WebSocket
     socket.send('auth', { userId: user.id });
@@ -73,24 +68,24 @@ export function Chat() {
     // Listen for new messages
     const handleNewMessage = (data: any) => {
       const message = data.message || data;
-      if (message?.conversationId === params.conversationId) {
+      // Check if message is from/to the other user
+      if (message?.senderId === otherUserId || message?.receiverId === otherUserId) {
         setMessages((prev) => {
-          // Avoid duplicates
           if (prev.some(m => m.id === message.id)) return prev;
           return [...prev, message];
         });
         scrollToBottom();
         
         // Mark as read if from other user
-        if (message.senderId !== user.id) {
-          api.post(`/api/conversations/${params.conversationId}/mark-read`).catch(() => {});
+        if (message.senderId === otherUserId) {
+          api.put(\`/api/messages/\${message.id}/read\`).catch(() => {});
         }
       }
     };
 
     // Listen for typing indicators
-    const handleTyping = (data: { conversationId: string; userId: string; isTyping: boolean }) => {
-      if (data.conversationId === params.conversationId && data.userId !== user.id) {
+    const handleTyping = (data: { userId: string; isTyping: boolean }) => {
+      if (data.userId === otherUserId) {
         setIsTyping(data.isTyping);
         if (data.isTyping) {
           setTimeout(() => setIsTyping(false), 3000);
@@ -98,48 +93,49 @@ export function Chat() {
       }
     };
 
-    // Listen for read receipts
-    const handleMessagesRead = (data: { conversationId: string; readBy: string }) => {
-      if (data.conversationId === params.conversationId && data.readBy !== user.id) {
-        setMessages((prev) =>
-          prev.map((msg) =>
-            msg.senderId === user.id ? { ...msg, readAt: new Date().toISOString() } : msg
-          )
-        );
-      }
-    };
-
     socket.on('new_message', handleNewMessage);
     socket.on('typing', handleTyping);
-    socket.on('messages_read', handleMessagesRead);
 
     return () => {
       socket.off('new_message', handleNewMessage);
       socket.off('typing', handleTyping);
-      socket.off('messages_read', handleMessagesRead);
     };
-  }, [socket, isConnected, params.conversationId, user?.id]);
-
-  const fetchConversation = async () => {
-    try {
-      const data: ConversationData = await api.get(`/api/conversations/${params.conversationId}`);
-      setConversation(data);
-      
-      // Find the other user (not the current user)
-      const other = data.participants?.find(p => p.id !== user?.id);
-      if (other) {
-        setOtherUser(other);
-      }
-    } catch (error) {
-      console.error('Failed to fetch conversation:', error);
-    }
-  };
+  }, [socket, isConnected, otherUserId, user?.id]);
 
   const fetchMessages = async () => {
     try {
       setIsLoading(true);
-      const data: Message[] = await api.get(`/api/conversations/${params.conversationId}/messages`);
-      setMessages(data);
+      // Use new API endpoint - gets messages with a specific user
+      const data: Message[] = await api.get(\`/api/messages/conversation/\${otherUserId}\`);
+      setMessages(data || []);
+      
+      // Extract other user info from messages
+      if (data && data.length > 0) {
+        const firstMsg = data[0];
+        const other = firstMsg.senderId === user?.id ? firstMsg.receiver : firstMsg.sender;
+        if (other) {
+          setOtherUser({
+            id: other.id,
+            name: other.name || 'User',
+            email: '',
+            avatar: other.avatar
+          });
+        }
+      } else {
+        // No messages yet, fetch user profile
+        try {
+          const userData = await api.get(\`/api/users/\${otherUserId}\`);
+          setOtherUser({
+            id: userData.id,
+            name: userData.name || 'User',
+            email: userData.email || '',
+            avatar: userData.profile?.avatar || userData.avatar
+          });
+        } catch (e) {
+          setOtherUser({ id: otherUserId || '', name: 'User', email: '' });
+        }
+      }
+      
       scrollToBottom();
     } catch (error) {
       console.error('Failed to fetch messages:', error);
@@ -156,13 +152,13 @@ export function Chat() {
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newMessage.trim() || !params.conversationId || isSending) return;
+    if (!newMessage.trim() || !otherUserId || isSending) return;
 
-    const tempId = `temp-${Date.now()}`;
+    const tempId = \`temp-\${Date.now()}\`;
     const tempMessage: Message = {
       id: tempId,
-      conversationId: params.conversationId,
       senderId: user?.id || '',
+      receiverId: otherUserId,
       content: newMessage,
       createdAt: new Date().toISOString(),
     };
@@ -173,7 +169,9 @@ export function Chat() {
     scrollToBottom();
 
     try {
-      const response: Message = await api.post(`/api/conversations/${params.conversationId}/messages`, {
+      // Use new API endpoint
+      const response: Message = await api.post('/api/messages', {
+        receiverId: otherUserId,
         content: newMessage,
       });
 
@@ -182,7 +180,6 @@ export function Chat() {
       );
     } catch (error) {
       console.error('Failed to send message:', error);
-      // Remove temp message on error
       setMessages((prev) => prev.filter((msg) => msg.id !== tempId));
     } finally {
       setIsSending(false);
@@ -191,40 +188,31 @@ export function Chat() {
   };
 
   const handleTypingInput = () => {
-    if (socket && isConnected && params.conversationId) {
+    if (socket && isConnected && otherUserId) {
       socket.send('typing', {
-        conversationId: params.conversationId,
+        toUserId: otherUserId,
         isTyping: true,
       });
 
-      // Clear previous timeout
       if (typingTimeoutRef.current) {
         clearTimeout(typingTimeoutRef.current);
       }
 
-      // Set new timeout to stop typing
       typingTimeoutRef.current = window.setTimeout(() => {
         socket.send('typing', {
-          conversationId: params.conversationId,
+          toUserId: otherUserId,
           isTyping: false,
         });
       }, 1000);
     }
   };
 
-  const handleDelete = async () => {
-    if (!conversation || !confirm('Delete this conversation? This cannot be undone.')) return;
-    try {
-      await api.delete(`/api/conversations/${conversation.id}`);
-      navigate('/messages');
-    } catch (error) {
-      console.error('Failed to delete conversation:', error);
-    }
-  };
-
   const formatTime = (dateString: string) => {
     const date = new Date(dateString);
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    return date.toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+    });
   };
 
   const formatDateHeader = (dateString: string) => {
@@ -233,52 +221,32 @@ export function Chat() {
     const yesterday = new Date(today);
     yesterday.setDate(yesterday.getDate() - 1);
 
-    if (date.toDateString() === today.toDateString()) {
-      return 'Today';
-    } else if (date.toDateString() === yesterday.toDateString()) {
-      return 'Yesterday';
-    } else {
-      return date.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
-    }
+    if (date.toDateString() === today.toDateString()) return 'Today';
+    if (date.toDateString() === yesterday.toDateString()) return 'Yesterday';
+    return date.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
   };
 
   // Group messages by date
   const groupedMessages = messages.reduce((groups: { [key: string]: Message[] }, message) => {
     const date = new Date(message.createdAt).toDateString();
-    if (!groups[date]) {
-      groups[date] = [];
-    }
+    if (!groups[date]) groups[date] = [];
     groups[date].push(message);
     return groups;
   }, {});
 
-  if (isLoading && !conversation) {
+  const displayName = otherUser?.name || 'User';
+  const avatarUrl = otherUser?.avatar;
+
+  if (isLoading) {
     return (
-      <div className="h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-500 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading conversation...</p>
-        </div>
+      <div className="h-full flex items-center justify-center bg-gray-50">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-500"></div>
       </div>
     );
   }
-
-  if (!conversation) {
-    return (
-      <div className="h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <p className="text-gray-600 mb-4">Conversation not found</p>
-          <Button onClick={() => navigate('/messages')}>Back to Messages</Button>
-        </div>
-      </div>
-    );
-  }
-
-  const displayName = otherUser?.name || 'Unknown User';
-  const avatarUrl = otherUser?.avatar || otherUser?.image;
 
   return (
-    <div className="h-screen flex flex-col bg-gray-50">
+    <div className="h-full flex flex-col bg-gray-50">
       {/* Header */}
       <div className="bg-white border-b px-4 py-3 flex items-center justify-between shadow-sm">
         <div className="flex items-center gap-3">
@@ -289,7 +257,10 @@ export function Chat() {
             <ArrowLeft className="w-5 h-5 text-gray-600" />
           </button>
           
-          <Link to={otherUser ? `/profile/${otherUser.id}` : '#'} className="flex items-center gap-3">
+          <Link 
+            to={\`/user/\${otherUserId}\`}
+            className="flex items-center gap-3 hover:opacity-80 transition-opacity"
+          >
             <div className="relative">
               {avatarUrl ? (
                 <img
@@ -304,7 +275,6 @@ export function Chat() {
                   </span>
                 </div>
               )}
-              {/* Online indicator - could be added with presence tracking */}
             </div>
             <div>
               <div className="font-semibold text-gray-900">{displayName}</div>
@@ -323,7 +293,10 @@ export function Chat() {
           <button className="p-2 hover:bg-gray-100 rounded-full transition-colors">
             <Phone className="w-5 h-5 text-gray-600" />
           </button>
-          <button className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+          <button 
+            onClick={() => navigate(\`/video-call/\${otherUserId}\`)}
+            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+          >
             <Video className="w-5 h-5 text-gray-600" />
           </button>
           <div className="relative">
@@ -341,11 +314,11 @@ export function Chat() {
                 />
                 <div className="absolute right-0 top-full mt-2 bg-white rounded-lg shadow-lg border py-2 w-48 z-20">
                   <button
-                    onClick={handleDelete}
+                    onClick={() => {/* TODO: Block user */}}
                     className="w-full px-4 py-2 text-left hover:bg-gray-50 flex items-center gap-2 text-red-600"
                   >
                     <Trash2 className="w-4 h-4" />
-                    Delete Conversation
+                    Block User
                   </button>
                 </div>
               </>
@@ -381,7 +354,7 @@ export function Chat() {
                 return (
                   <div 
                     key={message.id} 
-                    className={`flex mb-2 ${isMine ? 'justify-end' : 'justify-start'}`}
+                    className={\`flex mb-2 \${isMine ? 'justify-end' : 'justify-start'}\`}
                   >
                     {/* Avatar for other user */}
                     {!isMine && (
@@ -405,16 +378,16 @@ export function Chat() {
                     )}
 
                     <div 
-                      className={`max-w-[70%] ${
+                      className={\`max-w-[70%] \${
                         isMine 
                           ? 'bg-gradient-to-r from-pink-500 to-purple-600 text-white' 
                           : 'bg-white text-gray-900 border border-gray-200'
-                      } rounded-2xl px-4 py-2 shadow-sm`}
+                      } rounded-2xl px-4 py-2 shadow-sm\`}
                     >
                       <p className="whitespace-pre-wrap break-words">{message.content}</p>
-                      <div className={`text-xs mt-1 flex items-center justify-end gap-1 ${
+                      <div className={\`text-xs mt-1 flex items-center justify-end gap-1 \${
                         isMine ? 'text-pink-100' : 'text-gray-400'
-                      }`}>
+                      }\`}>
                         <span>{formatTime(message.createdAt)}</span>
                         {isMine && (
                           message.readAt ? (
@@ -500,11 +473,11 @@ export function Chat() {
           <button 
             type="submit" 
             disabled={!newMessage.trim() || isSending}
-            className={`p-3 rounded-full transition-all ${
+            className={\`p-3 rounded-full transition-all \${
               newMessage.trim() && !isSending
                 ? 'bg-gradient-to-r from-pink-500 to-purple-600 text-white shadow-md hover:shadow-lg'
                 : 'bg-gray-200 text-gray-400'
-            }`}
+            }\`}
           >
             <Send className="w-5 h-5" />
           </button>
