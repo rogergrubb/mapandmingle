@@ -104,120 +104,7 @@ model User {
   wavesReceived         Wave[]               @relation("WaveReceiver")
   phoneNumber        String?
   // Messaging and call relations
-model User {
-  id            String    @id @default(cuid())
-  email         String    @unique
-  name          String?
-  image         String?
-  emailVerified Boolean   @default(false)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  deletedAt     DateTime?
 
-  // Stripe subscription fields
-  stripeCustomerId      String?   @unique
-  stripeSubscriptionId  String?   @unique
-  subscriptionTier      String?   @default("free") // free, basic, premium
-  subscriptionStatus    String?   // trialing, active, past_due, canceled, etc.
-  trialEndsAt           DateTime?
-  subscriptionEnd       DateTime?
-  lastActiveAt          DateTime?
-  pushToken             String?
-  phone                 String?
-
-  // Profile fields (for integration compatibility) - Updated for AI features
-  username              String?   @unique
-  displayName           String?
-  bio                   String?
-  interests             String[]  @default([])
-  location              String?
-  activityLevel         String?   // active, moderate, casual
-  isPremium             Boolean   @default(false)
-
-  // Privacy settings
-  profileVisibility     String?   @default("public") // public, friends, private
-  showLocation          Boolean   @default(true)
-  showActivity          Boolean   @default(true)
-  allowMessages         String?   @default("everyone") // everyone, friends, nobody
-  allowTags             Boolean   @default(true)
-  showOnlineStatus      Boolean   @default(true)
-  shareData             Boolean   @default(false)
-
-  // Notification settings
-  notifyMessages        Boolean   @default(true)
-  notifyLikes           Boolean   @default(true)
-  notifyComments        Boolean   @default(true)
-  notifyFollows         Boolean   @default(true)
-  notifyEvents          Boolean   @default(true)
-  notifyProximity       Boolean   @default(true)
-  notifyEmail           Boolean   @default(true)
-  notifyPush            Boolean   @default(true)
-
-  // Security
-  twoFactorEnabled      Boolean   @default(false)
-
-  // Relations
-  profile               Profile?
-  sessions              Session[]
-  accounts              Account[]
-  pins                  Pin[]
-  pinLikes              PinLike[]
-  savedPins             SavedPin[]
-  conversations         ConversationParticipant[]
-  messages              Message[]
-  eventsHosted          Event[]               @relation("EventHost")
-  eventAttendees        EventAttendee[]
-  eventComments         EventComment[]
-  forumThreads          ForumThread[]
-  forumPosts            ForumPost[]
-  forumComments         ForumComment[]
-  minglesHosted         MingleEvent[]         @relation("MingleHost")
-  mingleParticipants    MingleParticipant[]
-  videoCallsInitiated   VideoCall[]           @relation("Caller")
-  videoCallsReceived    VideoCall[]           @relation("Receiver")
-  videoRoomsHosted      VideoRoom[]           @relation("RoomHost")
-  roomParticipants      RoomParticipant[]
-  streaks               UserStreak[]
-  dailyActivities       DailyActivity[]
-  blocksInitiated       Block[]               @relation("BlockInitiator")
-  blocksReceived        Block[]               @relation("BlockTarget")
-  reportsInitiated      Report[]              @relation("ReportInitiator")
-  reportsReceived       Report[]              @relation("ReportTarget")
-  proximityAlerts       ProximityAlert[]
-  proximityAlertMatches ProximityAlertMatch[]
-  hotspotActivities     HotspotActivity[]
-  notifications         Notification[]
-  uploads               Upload[]
-  usageMetrics          UsageMetrics?
-  rateLimitLogs         RateLimitLog[]
-  wavesSent             Wave[]               @relation("WaveSender")
-  wavesReceived         Wave[]               @relation("WaveReceiver")
-  phoneNumber        String?
-  // Messaging and call relations
-  blockingUsers     BlockedUser[] @relation("Blocks")
-  
-  sentMessages      Message[]    @relation("MessageSender")
-  receivedMessages  Message[]    @relation("MessageReceiver")
-  callsInitiated    Call[]       @relation("CallInitiator")
-  callsReceived     Call[]       @relation("CallRecipient")
-  notificationsFor  Notification[] @relation("Notifications")
-  notificationsFrom Notification[] @relation("NotificationsFrom")
-  blockedUsers      BlockedUser[] @relation("BlockedBy")
-  blockingUsers     BlockedUser[] @relation("Blocks")
-}
-
-model Session {
-  id        String   @id @default(cuid())
-  userId    String
-  token     String   @unique
-  expiresAt DateTime
-  ipAddress String?
-  userAgent String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-}
 
 model Account {
   id                String  @id @default(cuid())
@@ -237,6 +124,16 @@ model Account {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([providerId, accountId])
+  
+  // Messaging relations
+  sentMessages      Message[]    @relation("MessageSender")
+  receivedMessages  Message[]    @relation("MessageReceiver")
+  callsInitiated    Call[]       @relation("CallInitiator")
+  callsReceived     Call[]       @relation("CallRecipient")
+  notificationsFor  Notification[] @relation("Notifications")
+  notificationsFrom Notification[] @relation("NotificationsFrom")
+  blockedUsers      BlockedUser[] @relation("BlockedBy")
+  blockingUsers     BlockedUser[] @relation("Blocks")
 }
 
 model Verification {
