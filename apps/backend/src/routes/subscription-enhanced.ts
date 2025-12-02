@@ -52,7 +52,7 @@ app.post('/create-checkout', async (c) => {
   }
 
   // Extract userId from Authorization header
-  const authHeader = c.req.header('Authorization');
+  const authHeader = c.req.header('Authorization') || '';
   const userId = extractUserIdFromToken(authHeader);
   
   if (!userId) {
