@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { prisma, broadcastToUser } from '../index';
-import { sendWaveNotification } from './notifications';
+// import { sendWaveNotification } from './notifications';
 
 export const waveRoutes = new Hono();
 

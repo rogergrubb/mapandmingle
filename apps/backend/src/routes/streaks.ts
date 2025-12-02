@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { prisma } from '../index';
-import { sendStreakMilestone } from './notifications';
+// import { sendStreakMilestone } from './notifications';
 
 export const streakRoutes = new Hono();
 

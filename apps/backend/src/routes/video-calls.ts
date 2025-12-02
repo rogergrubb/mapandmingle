@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { prisma, broadcastToUser } from '../index';
-import { sendPushNotification } from './notifications';
+// import { sendPushNotification } from './notifications';
 
 export const videoCallRoutes = new Hono();
 

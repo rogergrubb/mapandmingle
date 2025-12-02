@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { prisma, broadcastToUser } from '../index';
-import { sendProximityNotification } from './notifications';
+// import { sendProximityNotification } from './notifications';
 
 export const proximityAlertRoutes = new Hono();
 
