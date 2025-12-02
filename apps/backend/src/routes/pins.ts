@@ -129,7 +129,7 @@ pinRoutes.get('/', async (c) => {
         },
       },
       orderBy: { createdAt: 'desc' },
-      take: 1000, // Limit to 1000 most recent pins
+      take: 100, // Limit to 100 most recent pins for performance
     });
     
     // Get viewer ID from header
