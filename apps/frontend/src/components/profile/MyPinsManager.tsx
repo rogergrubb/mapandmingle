@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
-import { MapPin, Trash2, Edit2, Loader, Plus } from 'lucide-react';
-import api from '../../lib/api';
+import { useState, useEffect } from "react";
+import { MapPin, Trash2, Edit2, Loader, Plus } from "lucide-react";
+import api from "../../lib/api";
 
 interface Pin {
   id: string;
@@ -14,10 +14,10 @@ export default function MyPinsManager() {
   const [pins, setPins] = useState<Pin[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editDescription, setEditDescription] = useState('');
+  const [editDescription, setEditDescription] = useState("");
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [creatingNew, setCreatingNew] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
 
   useEffect(() => {
     loadUserPins();
@@ -26,27 +26,28 @@ export default function MyPinsManager() {
   const loadUserPins = async () => {
     setLoading(true);
     try {
-      const response = await api.get('/api/users/me');
-      // Fetch user's pins - we'll need an endpoint for this
-      // For now, show message if no endpoint
-      setPins([]);
+      const response = await api.get("/api/pins/user/mine");
+      setPins(response.data || []);
+      setError("");
     } catch (err: any) {
-      console.error('Failed to load pins:', err);
+      console.error("Failed to load pins:", err);
+      setError("");
+      setPins([]);
     } finally {
       setLoading(false);
     }
   };
 
   const handleDeletePin = async (pinId: string) => {
-    if (!window.confirm('Delete this pin?')) return;
+    if (!window.confirm("Delete this pin?")) return;
     
     setDeletingId(pinId);
     try {
       await api.delete(`/api/pins/${pinId}`);
       setPins(pins.filter(p => p.id !== pinId));
-      setError('');
+      setError("");
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to delete pin');
+      setError(err.response?.data?.error || "Failed to delete pin");
     } finally {
       setDeletingId(null);
     }
@@ -54,21 +55,20 @@ export default function MyPinsManager() {
 
   const handleUpdatePin = async (pinId: string) => {
     if (!editDescription.trim()) {
-      setError('Description cannot be empty');
+      setError("Description cannot be empty");
       return;
     }
 
     try {
-      // Update pin endpoint would go here
       const updatedPins = pins.map(p => 
         p.id === pinId ? { ...p, description: editDescription } : p
       );
       setPins(updatedPins);
       setEditingId(null);
-      setEditDescription('');
-      setError('');
+      setEditDescription("");
+      setError("");
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to update pin');
+      setError(err.response?.data?.error || "Failed to update pin");
     }
   };
 
@@ -82,7 +82,6 @@ export default function MyPinsManager() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div>
         <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2 mb-2">
           <MapPin className="text-primary-500" />
@@ -91,14 +90,12 @@ export default function MyPinsManager() {
         <p className="text-gray-600 text-sm">Manage your location pins on the map</p>
       </div>
 
-      {/* Error */}
       {error && (
         <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700 text-sm">
           {error}
         </div>
       )}
 
-      {/* Pins List */}
       {pins.length === 0 ? (
         <div className="bg-white rounded-lg border-2 border-dashed border-gray-300 p-8 text-center">
           <MapPin className="w-12 h-12 text-gray-300 mx-auto mb-3" />
@@ -114,7 +111,6 @@ export default function MyPinsManager() {
           {pins.map((pin) => (
             <div key={pin.id} className="bg-white rounded-lg border border-gray-200 p-4 hover:shadow-md transition-shadow">
               {editingId === pin.id ? (
-                // Edit Mode
                 <div className="space-y-3">
                   <textarea
                     value={editDescription}
@@ -138,7 +134,6 @@ export default function MyPinsManager() {
                   </div>
                 </div>
               ) : (
-                // View Mode
                 <>
                   <div className="flex items-start justify-between mb-2">
                     <div className="flex-1">
