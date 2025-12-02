@@ -92,20 +92,10 @@ export function UserProfile() {
     }
   };
 
-  const handleMessage = async () => {
+  const handleMessage = () => {
     if (!profile) return;
-    
-    try {
-      // Create or get existing conversation
-      const data: { id: string } = await api.post('/api/conversations', {
-        participantId: profile.id,
-      });
-      
-      // Navigate to the conversation
-      navigate(`/chat/${data.id}`);
-    } catch (error) {
-      console.error('Failed to start conversation:', error);
-    }
+    // Navigate directly to chat with user ID
+    navigate(`/chat/${profile.id}`);
   };
 
   const handleReport = async () => {
@@ -340,3 +330,4 @@ export function UserProfile() {
     </div>
   );
 }
+
