@@ -8,6 +8,7 @@ import Register from './pages/auth/Register';
 import AuthCallback from './pages/auth/AuthCallback';
 import ForgotPassword from './pages/auth/ForgotPassword';
 import ResetPassword from './pages/auth/ResetPassword';
+import ReportStatus from './pages/ReportStatus';
 import { Onboarding } from './pages/Onboarding';
 import MapPage from './pages/MapPage';
 import EventsPage from './pages/EventsPage';
@@ -60,6 +61,9 @@ function App() {
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
         </Route>
+
+        {/* Report Status */}
+        <Route path="/report-status" element={<ReportStatus />} />
         <Route path="/auth/callback" element={<AuthCallback />} />
         <Route path="/privacy" element={<Privacy />} />
         <Route path="/terms" element={<Terms />} />
