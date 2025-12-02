@@ -4,7 +4,7 @@ import { z } from 'zod';
 
 
 // Helper to extract userId from JWT token
-function extractUserIdFromToken(authHeader: string | undefined): string | null {
+function extractUserIdFromToken(authHeader: string | undefined): string | undefined {
   if (!authHeader) return null;
   
   const token = authHeader.replace('Bearer ', '');
@@ -17,7 +17,7 @@ function extractUserIdFromToken(authHeader: string | undefined): string | null {
     return decoded.userId || null;
   } catch (error) {
     console.error('JWT verification failed:', error);
-    return null;
+    return undefined;
   }
 }
 
