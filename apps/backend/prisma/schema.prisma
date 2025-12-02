@@ -103,6 +103,8 @@ model User {
   wavesSent             Wave[]               @relation("WaveSender")
   wavesReceived         Wave[]               @relation("WaveReceiver")
   phoneNumber        String?
+}
+
   // Messaging and call relations
 
 
