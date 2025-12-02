@@ -1,5 +1,6 @@
 {
   "name": "@mapmingle/backend",
+  "_rebuild_timestamp": "1764677506",
   "version": "1.0.0",
   "scripts": {
     "dev": "tsx watch src/index.ts",
