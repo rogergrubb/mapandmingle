@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { Heart, X, Check } from 'lucide-react';
+import { Heart, X, Check, MapPin, Loader } from 'lucide-react';
 import api from '../lib/api';
+import { useGeolocation } from '../hooks/useGeolocation';
 
 interface ProfileInterestsSetupProps {
   isOpen: boolean;
@@ -35,10 +36,17 @@ const INTEREST_OPTIONS = [
   { id: 'outdoor', label: '⛺ Outdoor', emoji: '⛺' },
 ];
 
+type Step = 'interests' | 'pin';
+
 export default function ProfileInterestsSetup({ isOpen, onComplete, initialInterests = [] }: ProfileInterestsSetupProps) {
+  const [step, setStep] = useState<Step>('interests');
   const [selectedInterests, setSelectedInterests] = useState<string[]>(initialInterests);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  
+  // Geolocation hook
+  const { coordinates, loading: geoLoading, error: geoError, requestPermission } = useGeolocation();
+  const [pinCreated, setPinCreated] = useState(false);
 
   if (!isOpen) return null;
 
@@ -48,7 +56,7 @@ export default function ProfileInterestsSetup({ isOpen, onComplete, initialInter
     );
   };
 
-  const handleComplete = async () => {
+  const handleCompleteInterests = async () => {
     if (selectedInterests.length === 0) {
       setError('Please select at least one interest');
       return;
@@ -61,7 +69,7 @@ export default function ProfileInterestsSetup({ isOpen, onComplete, initialInter
       await api.patch('/api/users/me', {
         interests: selectedInterests,
       });
-      onComplete();
+      setStep('pin');
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to save interests');
     } finally {
@@ -69,96 +77,250 @@ export default function ProfileInterestsSetup({ isOpen, onComplete, initialInter
     }
   };
 
+  const handleCreatePin = async () => {
+    if (!coordinates) {
+      setError('Location not available. Please enable location access.');
+      return;
+    }
+
+    setIsLoading(true);
+    setError('');
+
+    try {
+      await api.post('/api/pins/auto-create', {
+        latitude: coordinates.latitude,
+        longitude: coordinates.longitude,
+      });
+      
+      setPinCreated(true);
+      // Complete onboarding after 2 seconds to show success
+      setTimeout(() => {
+        onComplete();
+      }, 2000);
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Failed to create pin');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleRequestLocation = async () => {
+    await requestPermission();
+  };
+
+  // Step 1: Interests
+  if (step === 'interests') {
+    return (
+      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+          {/* Header */}
+          <div className="sticky top-0 bg-gradient-to-r from-pink-500 to-purple-600 p-6 border-b border-pink-200">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Heart className="w-6 h-6 text-white fill-white" />
+                <div>
+                  <h2 className="text-2xl font-bold text-white">Tell Us About You</h2>
+                  <p className="text-pink-100 text-sm">Step 1 of 2</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Content */}
+          <div className="p-8">
+            {/* Error Message */}
+            {error && (
+              <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6 flex items-center gap-2">
+                <span className="text-red-600 font-medium text-sm">{error}</span>
+              </div>
+            )}
+
+            {/* Instructions */}
+            <p className="text-gray-600 mb-6 text-center">
+              Pick at least 1 interest to help us match you with like-minded people
+            </p>
+
+            {/* Interest Grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 mb-8">
+              {INTEREST_OPTIONS.map(interest => (
+                <button
+                  key={interest.id}
+                  onClick={() => toggleInterest(interest.id)}
+                  className={\`p-4 rounded-2xl border-2 transition-all duration-200 flex flex-col items-center gap-2 \${
+                    selectedInterests.includes(interest.id)
+                      ? 'border-pink-500 bg-pink-50 shadow-md scale-105'
+                      : 'border-gray-200 bg-white hover:border-pink-300'
+                  }\`}
+                >
+                  <span className="text-3xl">{interest.emoji}</span>
+                  <span className="text-xs font-medium text-gray-700 text-center line-clamp-2">
+                    {interest.label.split(' ').slice(1).join(' ')}
+                  </span>
+                  {selectedInterests.includes(interest.id) && (
+                    <Check className="w-4 h-4 text-pink-500 absolute mt-12" />
+                  )}
+                </button>
+              ))}
+            </div>
+
+            {/* Selected Count */}
+            <div className="text-center mb-6">
+              <p className="text-sm text-gray-600">
+                Selected: <span className="font-bold text-pink-600">{selectedInterests.length}</span> interest{selectedInterests.length !== 1 ? 's' : ''}
+              </p>
+            </div>
+
+            {/* Buttons */}
+            <div className="flex gap-3">
+              <button
+                onClick={onComplete}
+                disabled={isLoading}
+                className="flex-1 px-6 py-3 bg-gray-200 text-gray-700 rounded-xl font-semibold
+                           hover:bg-gray-300 transition-colors disabled:opacity-50"
+              >
+                Skip for now
+              </button>
+              <button
+                onClick={handleCompleteInterests}
+                disabled={isLoading || selectedInterests.length === 0}
+                className="flex-1 px-6 py-3 bg-gradient-to-r from-pink-500 to-purple-600 text-white rounded-xl font-semibold
+                           hover:shadow-lg hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed
+                           flex items-center justify-center gap-2"
+              >
+                {isLoading ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Check className="w-5 h-5" />
+                    Next Step
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Step 2: Create Pin
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+      <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full">
         {/* Header */}
-        <div className="sticky top-0 bg-gradient-to-r from-pink-500 to-purple-600 p-6 border-b border-pink-200">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Heart className="w-6 h-6 text-white fill-white" />
-              <div>
-                <h2 className="text-2xl font-bold text-white">Tell Us About You</h2>
-                <p className="text-pink-100 text-sm">Select your interests to find your people</p>
-              </div>
+        <div className="bg-gradient-to-r from-pink-500 to-purple-600 p-6 border-b border-pink-200">
+          <div className="flex items-center gap-3">
+            <MapPin className="w-6 h-6 text-white fill-white" />
+            <div>
+              <h2 className="text-2xl font-bold text-white">Create Your Pin</h2>
+              <p className="text-pink-100 text-sm">Step 2 of 2</p>
             </div>
           </div>
         </div>
 
         {/* Content */}
-        <div className="p-8">
+        <div className="p-8 space-y-6">
           {/* Error Message */}
           {error && (
-            <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6 flex items-center gap-2">
+            <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-center gap-2">
               <span className="text-red-600 font-medium text-sm">{error}</span>
             </div>
           )}
 
-          {/* Instructions */}
-          <p className="text-gray-600 mb-6 text-center">
-            Pick at least 1 interest to help us match you with like-minded people
-          </p>
+          {/* Success State */}
+          {pinCreated && (
+            <div className="text-center space-y-4">
+              <div className="w-16 h-16 mx-auto bg-green-100 rounded-full flex items-center justify-center">
+                <Check className="w-8 h-8 text-green-600" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-gray-900">Pin Created!</h3>
+                <p className="text-gray-600 text-sm mt-1">You're now visible on the map</p>
+              </div>
+            </div>
+          )}
 
-          {/* Interest Grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 mb-8">
-            {INTEREST_OPTIONS.map(interest => (
-              <button
-                key={interest.id}
-                onClick={() => toggleInterest(interest.id)}
-                className={`p-4 rounded-2xl border-2 transition-all duration-200 flex flex-col items-center gap-2 ${
-                  selectedInterests.includes(interest.id)
-                    ? 'border-pink-500 bg-pink-50 shadow-md scale-105'
-                    : 'border-gray-200 bg-white hover:border-pink-300'
-                }`}
-              >
-                <span className="text-3xl">{interest.emoji}</span>
-                <span className="text-xs font-medium text-gray-700 text-center line-clamp-2">
-                  {interest.label.split(' ').slice(1).join(' ')}
-                </span>
-                {selectedInterests.includes(interest.id) && (
-                  <Check className="w-4 h-4 text-pink-500 absolute mt-12" />
-                )}
-              </button>
-            ))}
-          </div>
+          {/* Location Status */}
+          {!pinCreated && (
+            <>
+              <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                <p className="text-blue-900 font-medium text-sm">
+                  📍 Your pin will be placed at your current location
+                </p>
+              </div>
 
-          {/* Selected Count */}
-          <div className="text-center mb-6">
-            <p className="text-sm text-gray-600">
-              Selected: <span className="font-bold text-pink-600">{selectedInterests.length}</span> interest{selectedInterests.length !== 1 ? 's' : ''}
-            </p>
-          </div>
-
-          {/* Buttons */}
-          <div className="flex gap-3">
-            <button
-              onClick={onComplete}
-              disabled={isLoading}
-              className="flex-1 px-6 py-3 bg-gray-200 text-gray-700 rounded-xl font-semibold
-                         hover:bg-gray-300 transition-colors disabled:opacity-50"
-            >
-              Skip for now
-            </button>
-            <button
-              onClick={handleComplete}
-              disabled={isLoading || selectedInterests.length === 0}
-              className="flex-1 px-6 py-3 bg-gradient-to-r from-pink-500 to-purple-600 text-white rounded-xl font-semibold
-                         hover:shadow-lg hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed
-                         flex items-center justify-center gap-2"
-            >
-              {isLoading ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                <>
-                  <Check className="w-5 h-5" />
-                  Continue
-                </>
+              {/* Current Location Display */}
+              {coordinates && (
+                <div className="bg-gray-50 rounded-xl p-4 space-y-2">
+                  <p className="text-xs text-gray-500 font-semibold">LOCATION DETECTED</p>
+                  <p className="text-sm text-gray-700 font-mono">
+                    {coordinates.latitude.toFixed(4)}, {coordinates.longitude.toFixed(4)}
+                  </p>
+                </div>
               )}
-            </button>
-          </div>
+
+              {/* Buttons */}
+              <div className="space-y-3">
+                {!coordinates ? (
+                  <button
+                    onClick={handleRequestLocation}
+                    disabled={geoLoading || isLoading}
+                    className="w-full px-6 py-3 bg-gradient-to-r from-pink-500 to-purple-600 text-white rounded-xl font-semibold
+                               hover:shadow-lg hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed
+                               flex items-center justify-center gap-2"
+                  >
+                    {geoLoading ? (
+                      <>
+                        <Loader className="w-5 h-5 animate-spin" />
+                        Getting Location...
+                      </>
+                    ) : (
+                      <>
+                        <MapPin className="w-5 h-5" />
+                        Enable Location
+                      </>
+                    )}
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleCreatePin}
+                    disabled={isLoading}
+                    className="w-full px-6 py-3 bg-gradient-to-r from-pink-500 to-purple-600 text-white rounded-xl font-semibold
+                               hover:shadow-lg hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed
+                               flex items-center justify-center gap-2"
+                  >
+                    {isLoading ? (
+                      <>
+                        <Loader className="w-5 h-5 animate-spin" />
+                        Creating Pin...
+                      </>
+                    ) : (
+                      <>
+                        <Check className="w-5 h-5" />
+                        Create Pin
+                      </>
+                    )}
+                  </button>
+                )}
+
+                {geoError && (
+                  <p className="text-xs text-red-600 text-center">{geoError}</p>
+                )}
+              </div>
+
+              <button
+                onClick={onComplete}
+                disabled={isLoading}
+                className="w-full px-6 py-3 bg-gray-200 text-gray-700 rounded-xl font-semibold
+                           hover:bg-gray-300 transition-colors disabled:opacity-50"
+              >
+                Skip & Finish
+              </button>
+            </>
+          )}
         </div>
       </div>
     </div>
