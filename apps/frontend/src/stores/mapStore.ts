@@ -35,27 +35,32 @@ export const useMapStore = create<MapState>((set, get) => ({
   fetchPins: async (bounds) => {
     set({ isLoading: true });
     try {
-      const pins: any = await api.get('/api/pins', {
+      const response: any = await api.get('/api/pins', {
         params: {
           ...bounds,
           filter: get().filter,
         },
       });
+      // Ensure pins is always an array
+      const pins = Array.isArray(response) ? response : (response?.data || response?.pins || []);
       set({ pins, isLoading: false });
     } catch (error) {
       console.error('Error fetching pins:', error);
-      set({ isLoading: false });
+      set({ pins: [], isLoading: false });
     }
   },
 
   fetchHotspots: async (location) => {
     try {
-      const hotspots: any = await api.get('/api/hotspots', {
+      const response: any = await api.get('/api/hotspots', {
         params: location,
       });
+      // Ensure hotspots is always an array
+      const hotspots = Array.isArray(response) ? response : (response?.data || response?.hotspots || []);
       set({ hotspots });
     } catch (error) {
       console.error('Error fetching hotspots:', error);
+      set({ hotspots: [] });
     }
   },
 
