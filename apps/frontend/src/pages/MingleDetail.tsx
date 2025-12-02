@@ -1,11 +1,12 @@
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { useAuthStore } from '../stores/authStore';
-import { MessageCircle, Flag, Share2, Heart, MapPin, Calendar } from 'lucide-react';
+import { MessageCircle, Flag, Heart, MapPin, Calendar } from 'lucide-react';
 import api from '../lib/api';
 import ReportModal from '../components/ReportModal';
 
 export default function MingleDetail() {
+  const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const { user } = useAuthStore();
   const [mingle, setMingle] = useState<any>(null);
@@ -19,9 +20,9 @@ export default function MingleDetail() {
 
   const loadMingle = async () => {
     try {
-      const response = await api.get(`/api/pins/${id}`);
+      const response: any = await api.get(`/api/pins/${id}`);
       setMingle(response);
-      setLiked(response.isLiked || false);
+      setLiked(response?.isLiked || false);
     } catch (error) {
       console.error('Failed to load mingle:', error);
     } finally {
