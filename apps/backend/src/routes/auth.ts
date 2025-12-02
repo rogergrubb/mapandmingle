@@ -359,8 +359,29 @@ authRoutes.post('/request-reset', async (c) => {
       },
     });
     
-    // TODO: Send email with reset link using Resend
-    console.log(`Password reset token for ${email}: ${token}`);
+    // Send email with reset link using Resend
+    const resetLink = `${process.env.FRONTEND_URL}/reset-password?token=${token}`;
+    
+    try {
+      const resendApiKey = process.env.RESEND_API_KEY;
+      if (resendApiKey) {
+        await fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${resendApiKey}`,
+          },
+          body: JSON.stringify({
+            from: 'noreply@mapandmingle.com',
+            to: email,
+            subject: 'Reset Your Map & Mingle Password',
+            html: `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto;"><div style="background: linear-gradient(135deg, #ec4899 0%, #a855f7 100%); padding: 30px; text-align: center; border-radius: 12px 12px 0 0;"><h1 style="color: white; margin: 0;">Map & Mingle</h1></div><div style="background: #f9fafb; padding: 40px 30px; border-radius: 0 0 12px 12px;"><h2 style="color: #1f2937; margin-top: 0;">Password Reset Request</h2><p style="color: #6b7280; line-height: 1.6;">You requested a password reset. Click the button to set a new password.</p><div style="text-align: center; margin: 30px 0;"><a href="${resetLink}" style="background: linear-gradient(135deg, #ec4899 0%, #a855f7 100%); color: white; padding: 12px 40px; text-decoration: none; border-radius: 8px; font-weight: 600; display: inline-block;">Reset Password</a></div><p style="color: #9ca3af; font-size: 13px; margin-top: 30px; border-top: 1px solid #e5e7eb; padding-top: 20px;">This link expires in 1 hour. If you didn't request a password reset, you can safely ignore this email.</p></div></div>`,
+          }),
+        });
+      }
+    } catch (emailError) {
+      console.error('Failed to send reset email:', emailError);
+    }
     
     return c.json({ success: true, message: 'If an account exists, a reset email has been sent' });
   } catch (error) {
