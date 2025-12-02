@@ -49,12 +49,10 @@ export default function MapPage() {
   const { user, isAuthenticated } = useAuthStore();
   const [userPosition, setUserPosition] = useState<[number, number] | null>(null);
   const [isLocating, setIsLocating] = useState(true);
-  const [showHotZoneMenu, setShowHotZoneMenu] = useState(false);
   const [creatingPin, setCreatingPin] = useState(false);
   const [pinCreationSuccess, setPinCreationSuccess] = useState(false);
   const [userPin, setUserPin] = useState<any>(null);
   const [loadingUserPin, setLoadingUserPin] = useState(true);
-  const menuRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map>(null);
 
   useEffect(() => {
@@ -351,13 +349,6 @@ export default function MapPage() {
         </button>
       </div>
 
-      {/* Close Menu on Map Click */}
-      {showHotZoneMenu && (
-        <div
-          className="absolute inset-0 z-[999]"
-          onClick={() => setShowHotZoneMenu(false)}
-        />
-      )}
     </div>
   );
 }
