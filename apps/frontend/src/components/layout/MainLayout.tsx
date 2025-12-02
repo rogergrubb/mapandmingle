@@ -7,19 +7,20 @@ export default function MainLayout() {
   const location = useLocation();
   const [ghostMode, setGhostMode] = useState(false);
   const [loadingGhost, setLoadingGhost] = useState(false);
-  const [showArrow, setShowArrow] = useState(true);
+  const [subscriptionTier, setSubscriptionTier] = useState('free');
 
-  // Load ghost mode state on mount
+  // Load user data on mount
   useEffect(() => {
-    const loadGhostMode = async () => {
+    const loadUserData = async () => {
       try {
         const response = await api.get('/api/users/me');
         setGhostMode(response.data?.profile?.ghostMode || false);
+        setSubscriptionTier(response.data?.profile?.subscriptionStatus || 'free');
       } catch (err) {
-        console.error('Failed to load ghost mode state:', err);
+        console.error('Failed to load user data:', err);
       }
     };
-    loadGhostMode();
+    loadUserData();
   }, []);
 
   const handleGhostModeToggle = async () => {
@@ -29,7 +30,6 @@ export default function MainLayout() {
         ghostMode: !ghostMode,
       });
       setGhostMode(!ghostMode);
-      setShowArrow(false);
     } catch (err) {
       console.error('Failed to toggle ghost mode:', err);
     } finally {
@@ -45,50 +45,83 @@ export default function MainLayout() {
     { path: '/profile', icon: User, label: 'Profile' },
   ];
 
-  const ghostButtonClass = ghostMode
-    ? 'bg-gray-900 text-white shadow-lg'
-    : 'bg-gray-200 text-gray-700 hover:bg-gray-300';
+  const getSubscriptionBadge = () => {
+    switch (subscriptionTier) {
+      case 'premium':
+        return {
+          label: 'Premium',
+          color: 'bg-gradient-to-r from-amber-400 to-yellow-500 text-white',
+          icon: '✨',
+        };
+      case 'basic':
+        return {
+          label: 'Basic',
+          color: 'bg-blue-100 text-blue-700',
+          icon: '⭐',
+        };
+      default:
+        return null;
+    }
+  };
+
+  const badge = getSubscriptionBadge();
 
   return (
-    <div className="h-screen flex flex-col bg-gray-50 overflow-hidden">
-      {/* Top Header with Ghost Mode Button */}
-      <header className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between safe-area-top">
-        <div className="text-lg font-bold text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-purple-600">
-          MapMingle
-        </div>
-        
-        {/* Ghost Mode Button - Upper Right */}
-        <div className="relative">
-          {showArrow && (
-            <div className="absolute -top-6 right-0 flex flex-col items-center">
-              <div className="text-sm text-gray-600 font-semibold mb-1">Go Ghost</div>
-              <div className="text-xl animate-bounce">↓</div>
+    <div className="h-screen flex flex-col bg-gradient-to-b from-gray-50 to-white overflow-hidden">
+      {/* Professional Top Navigation - Apple-inspired */}
+      <header className="bg-white/80 backdrop-blur-xl border-b border-gray-200/50 safe-area-top sticky top-0 z-40">
+        <div className="max-w-full px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between">
+          {/* Left: Brand */}
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="flex-shrink-0">
+              <div className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-pink-500 via-purple-500 to-blue-500 bg-clip-text text-transparent">
+                Map & Mingle
+              </div>
             </div>
-          )}
-          
+          </div>
+
+          {/* Center: Status Indicators */}
+          <div className="flex items-center gap-2 sm:gap-3">
+            {/* Subscription Badge */}
+            {badge && (
+              <div className={`hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${badge.color}`}>
+                <span>{badge.icon}</span>
+                <span>{badge.label}</span>
+              </div>
+            )}
+
+            {/* Ghost Mode Indicator */}
+            <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
+              ghostMode
+                ? 'bg-gray-900 text-white'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}>
+              <span className="text-sm">{ghostMode ? '👻' : '👁️'}</span>
+              <span className="hidden sm:inline">{ghostMode ? 'Invisible' : 'Visible'}</span>
+            </div>
+          </div>
+
+          {/* Right: Ghost Toggle Button */}
           <button
             onClick={handleGhostModeToggle}
             disabled={loadingGhost}
-            className={`w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 font-bold text-lg ${ghostButtonClass} disabled:opacity-50`}
-            title={ghostMode ? 'Click to become visible' : 'Click to go invisible'}
+            className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200 font-semibold text-lg ring-1 ring-transparent hover:ring-gray-300 ${
+              ghostMode
+                ? 'bg-gray-900 text-white shadow-md'
+                : 'bg-white text-gray-700 shadow-sm hover:shadow-md'
+            } disabled:opacity-50 disabled:cursor-not-allowed`}
+            title={ghostMode ? 'Become visible' : 'Go invisible'}
           >
             {loadingGhost ? (
-              <div className="w-5 h-5 border-2 border-current border-t-transparent rounded-full animate-spin" />
+              <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
             ) : (
               '👻'
             )}
           </button>
-          
-          {/* Status indicator */}
-          {ghostMode && (
-            <div className="absolute -bottom-6 right-0 text-xs font-semibold text-gray-600 whitespace-nowrap">
-              Invisible
-            </div>
-          )}
         </div>
       </header>
 
-      {/* Main Content - scrollable container */}
+      {/* Main Content */}
       <main 
         className="flex-1 overflow-y-auto overscroll-contain"
         style={{ 
@@ -99,25 +132,34 @@ export default function MainLayout() {
         <Outlet />
       </main>
 
-      {/* Bottom Navigation - fixed at bottom */}
-      <nav className="bg-white border-t border-gray-200 safe-area-bottom flex-shrink-0">
-        <div className="flex justify-around items-center h-16 px-2">
+      {/* Bottom Navigation - Clean & Minimal */}
+      <nav className="bg-white/80 backdrop-blur-xl border-t border-gray-200/50 safe-area-bottom flex-shrink-0">
+        <div className="flex justify-around items-stretch px-2 sm:px-4">
           {navItems.map(({ path, icon: Icon, label }) => {
             const isActive = location.pathname === path;
-            const activeClass = isActive ? 'text-primary-500' : 'text-gray-500 hover:text-gray-700';
-            const strokeWidth = isActive ? 'stroke-2' : 'stroke-1.5';
-            const fontWeight = isActive ? 'font-semibold' : 'font-medium';
-            
             return (
               <Link
                 key={path}
                 to={path}
-                className={`flex flex-col items-center justify-center flex-1 h-full transition-colors ${activeClass}`}
+                className={`flex-1 flex flex-col items-center justify-center py-3 sm:py-4 px-2 transition-colors relative group ${
+                  isActive
+                    ? 'text-pink-600'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
               >
-                <Icon size={24} className={strokeWidth} />
-                <span className={`text-xs mt-1 ${fontWeight}`}>
+                <Icon
+                  size={24}
+                  strokeWidth={isActive ? 2 : 1.5}
+                  className={`transition-transform ${isActive ? 'scale-110' : 'group-hover:scale-105'}`}
+                />
+                <span className={`text-xs mt-1 font-medium transition-all ${
+                  isActive ? 'font-semibold' : ''
+                }`}>
                   {label}
                 </span>
+                {isActive && (
+                  <div className="absolute bottom-0 h-0.5 w-6 bg-pink-600 rounded-t" />
+                )}
               </Link>
             );
           })}
