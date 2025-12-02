@@ -168,7 +168,11 @@ pinRoutes.get('/', async (c) => {
 // POST /api/pins/auto-create - Auto-create a pin at user's current location
 pinRoutes.post('/auto-create', async (c) => {
   try {
-    const userId = c.req.header('X-User-Id');
+    let userId = c.req.header('X-User-Id');
+    if (!userId) {
+      const authHeader = c.req.header('Authorization');
+      userId = extractUserIdFromToken(authHeader);
+    }
     if (!userId) {
       return c.json({ error: 'Unauthorized' }, 401);
     }
@@ -311,7 +315,11 @@ pinRoutes.get('/:id', async (c) => {
 // POST /api/pins - Create a new pin
 pinRoutes.post('/', async (c) => {
   try {
-    const userId = c.req.header('X-User-Id');
+    let userId = c.req.header('X-User-Id');
+    if (!userId) {
+      const authHeader = c.req.header('Authorization');
+      userId = extractUserIdFromToken(authHeader);
+    }
     if (!userId) {
       return c.json({ error: 'Unauthorized' }, 401);
     }
@@ -404,7 +412,11 @@ pinRoutes.post('/', async (c) => {
 // POST /api/pins/:id/like - Like/unlike a pin
 pinRoutes.post('/:id/like', async (c) => {
   try {
-    const userId = c.req.header('X-User-Id');
+    let userId = c.req.header('X-User-Id');
+    if (!userId) {
+      const authHeader = c.req.header('Authorization');
+      userId = extractUserIdFromToken(authHeader);
+    }
     if (!userId) {
       return c.json({ error: 'Unauthorized' }, 401);
     }
@@ -464,7 +476,11 @@ pinRoutes.post('/:id/like', async (c) => {
 // GET /api/pins/user/mine - Get current user's pins
 pinRoutes.get('/user/mine', async (c) => {
   try {
-    const userId = c.req.header('X-User-Id');
+    let userId = c.req.header('X-User-Id');
+    if (!userId) {
+      const authHeader = c.req.header('Authorization');
+      userId = extractUserIdFromToken(authHeader);
+    }
     if (!userId) {
       return c.json({ error: 'Unauthorized' }, 401);
     }
@@ -507,7 +523,11 @@ pinRoutes.get('/user/mine', async (c) => {
 // DELETE /api/pins/:id - Delete a pin
 pinRoutes.delete('/:id', async (c) => {
   try {
-    const userId = c.req.header('X-User-Id');
+    let userId = c.req.header('X-User-Id');
+    if (!userId) {
+      const authHeader = c.req.header('Authorization');
+      userId = extractUserIdFromToken(authHeader);
+    }
     if (!userId) {
       return c.json({ error: 'Unauthorized' }, 401);
     }
