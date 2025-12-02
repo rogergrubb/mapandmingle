@@ -47,6 +47,8 @@ export default function ProfileInterestsSetup({ isOpen, onComplete, initialInter
   // Geolocation hook
   const { coordinates, loading: geoLoading, error: geoError, requestPermission } = useGeolocation();
   const [pinCreated, setPinCreated] = useState(false);
+  const [ghostModeEnabled, setGhostModeEnabled] = useState(false);
+  const [enablingGhost, setEnablingGhost] = useState(false);
 
   if (!isOpen) return null;
 
@@ -106,6 +108,20 @@ export default function ProfileInterestsSetup({ isOpen, onComplete, initialInter
 
   const handleRequestLocation = async () => {
     await requestPermission();
+  };
+
+  const handleEnableGhostMode = async () => {
+    setEnablingGhost(true);
+    try {
+      await api.patch('/api/users/me', {
+        ghostMode: true,
+      });
+      setGhostModeEnabled(true);
+    } catch (err: any) {
+      console.error('Failed to enable ghost mode:', err);
+    } finally {
+      setEnablingGhost(false);
+    }
   };
 
   // Step 1: Interests
@@ -232,13 +248,59 @@ export default function ProfileInterestsSetup({ isOpen, onComplete, initialInter
 
           {/* Success State */}
           {pinCreated && (
-            <div className="text-center space-y-4">
-              <div className="w-16 h-16 mx-auto bg-green-100 rounded-full flex items-center justify-center">
+            <div className="text-center space-y-6">
+              <div className="w-16 h-16 mx-auto bg-green-100 rounded-full flex items-center justify-center animate-bounce">
                 <Check className="w-8 h-8 text-green-600" />
               </div>
               <div>
                 <h3 className="text-lg font-bold text-gray-900">Pin Created!</h3>
                 <p className="text-gray-600 text-sm mt-1">You're now visible on the map</p>
+              </div>
+              
+              {/* Ghost Mode Button with Arrow */}
+              <div className="relative pt-4">
+                {!ghostModeEnabled ? (
+                  <>
+                    {/* Arrow pointing to button */}
+                    <div className="flex justify-center mb-2">
+                      <div className="text-2xl animate-bounce" style={{ animationDelay: '0.1s' }}>↓</div>
+                    </div>
+                    
+                    <button
+                      onClick={handleEnableGhostMode}
+                      disabled={enablingGhost}
+                      className="w-full px-6 py-3 bg-gradient-to-r from-gray-700 to-gray-900 text-white rounded-xl font-semibold
+                                 hover:shadow-lg hover:from-gray-800 hover:to-black transition-all disabled:opacity-50
+                                 flex items-center justify-center gap-2 relative group"
+                    >
+                      {enablingGhost ? (
+                        <>
+                          <Loader className="w-5 h-5 animate-spin" />
+                          Enabling...
+                        </>
+                      ) : (
+                        <>
+                          <span className="text-xl">👻</span>
+                          Go Ghost (Invisible Mode)
+                        </>
+                      )}
+                    </button>
+                    
+                    <p className="text-xs text-gray-500 mt-2">
+                      Hide your pin and browse secretly
+                    </p>
+                  </>
+                ) : (
+                  <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 space-y-2">
+                    <div className="flex items-center justify-center gap-2">
+                      <span className="text-2xl">👻</span>
+                      <div>
+                        <p className="text-sm font-bold text-gray-900">Ghost Mode Active</p>
+                        <p className="text-xs text-gray-600">You're invisible to other users</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}
