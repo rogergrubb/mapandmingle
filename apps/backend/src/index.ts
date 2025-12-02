@@ -19,7 +19,6 @@ import { rateLimitMiddleware } from './middleware/auth';
 import { authRoutes } from './routes/auth';
 import { profileRoutes } from './routes/profile';
 import { pinRoutes } from './routes/pins';
-import { conversationRoutes } from './routes/conversations';
 import { eventRoutes } from './routes/events';
 import { forumRoutes } from './routes/forums';
 import { mingleRoutes } from './routes/mingles';
