@@ -1,7 +1,7 @@
-import { useNavigate } from 'react-router-dom';
-import { Settings, Crown, Award, Flame, MapPin, Calendar, Heart, MessageCircle, LogOut } from 'lucide-react';
-import { useAuthStore } from '../stores/authStore';
-import MyPinsManager from '../components/profile/MyPinsManager';
+import { useNavigate } from "react-router-dom";
+import { Settings, Crown, Award, Flame, MapPin, Calendar, Heart, MessageCircle, LogOut } from "lucide-react";
+import { useAuthStore } from "../stores/authStore";
+import MyPinsManager from "../components/profile/MyPinsManager";
 
 export default function ProfilePage() {
   const navigate = useNavigate();
@@ -15,42 +15,38 @@ export default function ProfilePage() {
     );
   }
 
-  // Provide graceful defaults for missing profile data
-  const displayName = user.displayName || user.name || user.email?.split('@')[0] || 'User';
-  const username = user.username || user.email?.split('@')[0] || 'user';
-  const bio = user.bio || '';
-  const avatar = user.avatar || '';
+  const displayName = user.displayName || user.name || user.email?.split("@")[0] || "User";
+  const username = user.username || user.email?.split("@")[0] || "user";
+  const bio = user.bio || "";
+  const avatar = user.avatar || "";
   const trustScore = user.trustScore || 0;
   const streak = user.streak || 0;
   const isPremium = user.isPremium || false;
   const isVerified = user.isVerified || false;
 
   const stats = [
-    { label: 'Pins', value: '24', icon: MapPin },
-    { label: 'Events', value: '8', icon: Calendar },
-    { label: 'Likes', value: '156', icon: Heart },
-    { label: 'Chats', value: '12', icon: MessageCircle },
+    { label: "Pins", value: "24", icon: MapPin },
+    { label: "Events", value: "8", icon: Calendar },
+    { label: "Likes", value: "156", icon: Heart },
+    { label: "Chats", value: "12", icon: MessageCircle },
   ];
 
   const menuItems = [
-    { label: 'Edit Profile', path: '/settings/edit-profile', icon: Settings },
-    { label: 'Saved Pins', path: '/settings/saved-pins', icon: MapPin },
-    { label: 'Privacy & Safety', path: '/settings/privacy', icon: Settings },
-    { label: 'Notifications', path: '/settings/notifications', icon: Settings },
-    { label: 'Subscription', path: '/settings/subscription', icon: Crown },
-    { label: 'Account', path: '/settings/account', icon: Settings },
-    { label: 'Help & Support', path: '/settings/help', icon: Settings },
+    { label: "Edit Profile", path: "/settings/edit-profile", icon: Settings },
+    { label: "Saved Pins", path: "/settings/saved-pins", icon: MapPin },
+    { label: "Privacy & Safety", path: "/settings/privacy", icon: Settings },
+    { label: "Notifications", path: "/settings/notifications", icon: Settings },
+    { label: "Subscription", path: "/settings/subscription", icon: Crown },
+    { label: "Account", path: "/settings/account", icon: Settings },
+    { label: "Help & Support", path: "/settings/help", icon: Settings },
   ];
 
   return (
     <div className="h-full overflow-y-auto bg-gray-50">
-      {/* Header with Cover */}
       <div className="bg-gradient-to-br from-primary-500 to-purple-600 h-32"></div>
 
-      {/* Profile Info */}
       <div className="bg-white -mt-16 mx-4 rounded-2xl shadow-lg p-6 mb-4">
         <div className="flex flex-col items-center -mt-16 mb-4">
-          {/* Avatar */}
           <div className="relative">
             {user.avatar ? (
               <img
@@ -77,16 +73,13 @@ export default function ProfilePage() {
             )}
           </div>
 
-          {/* Name and Username */}
           <h1 className="text-2xl font-bold text-gray-900 mt-4">{displayName}</h1>
           <p className="text-gray-600">@{username}</p>
 
-          {/* Bio */}
           {bio && (
             <p className="text-gray-700 text-center mt-2 max-w-md">{bio}</p>
           )}
 
-          {/* Trust Score & Streak */}
           <div className="flex items-center space-x-4 mt-4">
             <div className="flex items-center space-x-1">
               <Award size={16} className="text-yellow-500" />
@@ -99,7 +92,6 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        {/* Stats */}
         <div className="grid grid-cols-4 gap-4 pt-4 border-t border-gray-100">
           {stats.map(({ label, value, icon: Icon }) => (
             <div key={label} className="text-center">
@@ -111,12 +103,10 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      {/* My Pins Section */}
       <div className="bg-white mx-4 rounded-2xl shadow-lg p-6 mb-4">
         <MyPinsManager />
       </div>
 
-      {/* Interests */}
       {user.interests && user.interests.length > 0 && (
         <div className="bg-white mx-4 rounded-2xl shadow-sm p-4 mb-4">
           <h2 className="font-semibold text-gray-900 mb-3">Interests</h2>
@@ -130,26 +120,26 @@ export default function ProfilePage() {
         </div>
       )}
 
-      {/* Menu Items */}
       <div className="bg-white mx-4 rounded-2xl shadow-sm mb-4 overflow-hidden">
-        {menuItems.map((item, index) => (
-          <button
-            key={item.path}
-            onClick={() => navigate(item.path)}
-            className={\`w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors \${
-              index !== menuItems.length - 1 ? 'border-b border-gray-100' : ''
-            }\`}
-          >
-            <div className="flex items-center space-x-3">
-              <item.icon size={20} className="text-gray-600" />
-              <span className="text-gray-900 font-medium">{item.label}</span>
-            </div>
-            <span className="text-gray-400">›</span>
-          </button>
-        ))}
+        {menuItems.map((item, index) => {
+          const isLast = index === menuItems.length - 1;
+          const borderClass = isLast ? "" : "border-b border-gray-100";
+          return (
+            <button
+              key={item.path}
+              onClick={() => navigate(item.path)}
+              className={`w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors ${borderClass}`}
+            >
+              <div className="flex items-center space-x-3">
+                <item.icon size={20} className="text-gray-600" />
+                <span className="text-gray-900 font-medium">{item.label}</span>
+              </div>
+              <span className="text-gray-400">›</span>
+            </button>
+          );
+        })}
       </div>
 
-      {/* Logout Button */}
       <button
         onClick={logout}
         className="w-full bg-white mx-4 rounded-2xl shadow-sm p-4 mb-8 flex items-center justify-center space-x-2 text-red-600 hover:bg-red-50 transition-colors"
