@@ -44,7 +44,6 @@ import notificationsRoutes from './routes/notifications';
 import callsRoutes from './routes/calls';
 import { userRoutes } from './routes/users';
 import { uploadRoutes } from './routes/upload';
-import { notificationsRoutes } from './routes/notifications';
 import { paymentRoutes } from './routes/payments';
 import { aiRoutes } from './routes/ai';
 import { waveRoutes } from './routes/waves';
@@ -256,7 +255,7 @@ app.get('/privacy', async (c) => {
 app.route('/api/auth', authRoutes);
 app.route('/api/profile', profileRoutes);
 app.route('/api/pins', pinRoutes);
-app.route('/api/conversations', conversationRoutes);
+// app.route('/api/conversations', conversationRoutes); // Disabled - using new messages API
 app.route('/api/events', eventRoutes);
 app.route('/api/forums', forumRoutes);
 app.route('/api/mingles', mingleRoutes);
