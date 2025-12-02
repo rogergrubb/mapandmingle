@@ -28,11 +28,13 @@ interface Message {
     id: string;
     name: string | null;
     email: string;
+    avatar: string | null;
   };
   receiver: {
     id: string;
     name: string | null;
     email: string;
+    avatar: string | null;
   };
 }
 
@@ -72,6 +74,7 @@ export default function ChatScreen() {
         setOtherUser({
           id: other.id,
           name: other.name,
+          avatar: other.avatar,
         });
       } else {
         // No messages yet - fetch user profile
