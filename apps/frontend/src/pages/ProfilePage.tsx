@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { Settings, Crown, Award, Flame, MapPin, Calendar, Heart, MessageCircle, LogOut } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
+import MyPinsManager from '../components/profile/MyPinsManager';
 
 export default function ProfilePage() {
   const navigate = useNavigate();
@@ -110,6 +111,11 @@ export default function ProfilePage() {
         </div>
       </div>
 
+      {/* My Pins Section */}
+      <div className="bg-white mx-4 rounded-2xl shadow-lg p-6 mb-4">
+        <MyPinsManager />
+      </div>
+
       {/* Interests */}
       {user.interests && user.interests.length > 0 && (
         <div className="bg-white mx-4 rounded-2xl shadow-sm p-4 mb-4">
@@ -130,9 +136,9 @@ export default function ProfilePage() {
           <button
             key={item.path}
             onClick={() => navigate(item.path)}
-            className={`w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors ${
+            className={\`w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors \${
               index !== menuItems.length - 1 ? 'border-b border-gray-100' : ''
-            }`}
+            }\`}
           >
             <div className="flex items-center space-x-3">
               <item.icon size={20} className="text-gray-600" />
