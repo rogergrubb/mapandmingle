@@ -5,16 +5,16 @@ import { z } from 'zod';
 
 // Helper to extract userId from JWT token
 function extractUserIdFromToken(authHeader: string | undefined): string | undefined {
-  if (!authHeader) return null;
+  if (!authHeader) return undefined;
   
   const token = authHeader.replace('Bearer ', '');
-  if (!token) return null;
+  if (!token) return undefined;
   
   try {
     const JWT = require('jsonwebtoken');
     const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
     const decoded = JWT.verify(token, JWT_SECRET) as any;
-    return decoded.userId || null;
+    return decoded.userId || undefined;
   } catch (error) {
     console.error('JWT verification failed:', error);
     return undefined;
