@@ -6,7 +6,8 @@ import AuthLayout from './components/layout/AuthLayout';
 import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
 import AuthCallback from './pages/auth/AuthCallback';
-import { ForgotPassword } from './pages/ForgotPassword';
+import ForgotPassword from './pages/auth/ForgotPassword';
+import ResetPassword from './pages/auth/ResetPassword';
 import { Onboarding } from './pages/Onboarding';
 import MapPage from './pages/MapPage';
 import EventsPage from './pages/EventsPage';
@@ -57,6 +58,7 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
         </Route>
         <Route path="/auth/callback" element={<AuthCallback />} />
         <Route path="/privacy" element={<Privacy />} />
