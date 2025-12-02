@@ -28,21 +28,25 @@ interface Message {
   };
 }
 
-interface OtherUser {
+interface UserProfile {
   id: string;
   name: string;
   email: string;
-  avatar?: string | null;
+  avatar?: string;
+  profile?: {
+    avatar?: string;
+    displayName?: string;
+  };
 }
 
 export function Chat() {
-  // Route param is now the other user's ID
-  const params = useParams<{ id: string }>();
-  const otherUserId = params.id;
+  // Route now uses otherUserId instead of conversationId
+  const params = useParams<{ conversationId: string }>();
+  const otherUserId = params.conversationId; // This is actually the other user's ID now
   const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
   const { socket, isConnected } = useWebSocket();
-  const [otherUser, setOtherUser] = useState<OtherUser | null>(null);
+  const [otherUser, setOtherUser] = useState<UserProfile | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -68,8 +72,9 @@ export function Chat() {
     // Listen for new messages
     const handleNewMessage = (data: any) => {
       const message = data.message || data;
-      // Check if message is from/to the other user
-      if (message?.senderId === otherUserId || message?.receiverId === otherUserId) {
+      // Check if message is from/to the current chat partner
+      if ((message?.senderId === otherUserId && message?.receiverId === user.id) ||
+          (message?.senderId === user.id && message?.receiverId === otherUserId)) {
         setMessages((prev) => {
           if (prev.some(m => m.id === message.id)) return prev;
           return [...prev, message];
@@ -78,7 +83,7 @@ export function Chat() {
         
         // Mark as read if from other user
         if (message.senderId === otherUserId) {
-          api.put(\`/api/messages/\${message.id}/read\`).catch(() => {});
+          api.put(`/api/messages/${message.id}/read`).catch(() => {});
         }
       }
     };
@@ -105,34 +110,36 @@ export function Chat() {
   const fetchMessages = async () => {
     try {
       setIsLoading(true);
-      // Use new API endpoint - gets messages with a specific user
-      const data: Message[] = await api.get(\`/api/messages/conversation/\${otherUserId}\`);
-      setMessages(data || []);
+      // Use new API endpoint: GET /api/messages/conversation/:userId
+      const data: Message[] = await api.get(`/api/messages/conversation/${otherUserId}`);
+      setMessages(data);
       
-      // Extract other user info from messages
-      if (data && data.length > 0) {
-        const firstMsg = data[0];
-        const other = firstMsg.senderId === user?.id ? firstMsg.receiver : firstMsg.sender;
-        if (other) {
+      // Extract other user info from messages or fetch profile
+      if (data.length > 0) {
+        const firstMessage = data[0];
+        const otherUserData = firstMessage.senderId === user?.id 
+          ? firstMessage.receiver 
+          : firstMessage.sender;
+        if (otherUserData) {
           setOtherUser({
-            id: other.id,
-            name: other.name || 'User',
+            id: otherUserData.id,
+            name: otherUserData.name || 'User',
             email: '',
-            avatar: other.avatar
+            avatar: otherUserData.avatar,
           });
         }
       } else {
         // No messages yet, fetch user profile
         try {
-          const userData = await api.get(\`/api/users/\${otherUserId}\`);
+          const userData: UserProfile = await api.get(`/api/users/${otherUserId}`);
           setOtherUser({
             id: userData.id,
-            name: userData.name || 'User',
-            email: userData.email || '',
-            avatar: userData.profile?.avatar || userData.avatar
+            name: userData.profile?.displayName || userData.name || 'User',
+            email: userData.email,
+            avatar: userData.profile?.avatar,
           });
         } catch (e) {
-          setOtherUser({ id: otherUserId || '', name: 'User', email: '' });
+          console.error('Failed to fetch user profile:', e);
         }
       }
       
@@ -154,7 +161,7 @@ export function Chat() {
     e.preventDefault();
     if (!newMessage.trim() || !otherUserId || isSending) return;
 
-    const tempId = \`temp-\${Date.now()}\`;
+    const tempId = `temp-${Date.now()}`;
     const tempMessage: Message = {
       id: tempId,
       senderId: user?.id || '',
@@ -169,7 +176,7 @@ export function Chat() {
     scrollToBottom();
 
     try {
-      // Use new API endpoint
+      // Use new API endpoint: POST /api/messages
       const response: Message = await api.post('/api/messages', {
         receiverId: otherUserId,
         content: newMessage,
@@ -190,7 +197,7 @@ export function Chat() {
   const handleTypingInput = () => {
     if (socket && isConnected && otherUserId) {
       socket.send('typing', {
-        toUserId: otherUserId,
+        receiverId: otherUserId,
         isTyping: true,
       });
 
@@ -200,7 +207,7 @@ export function Chat() {
 
       typingTimeoutRef.current = window.setTimeout(() => {
         socket.send('typing', {
-          toUserId: otherUserId,
+          receiverId: otherUserId,
           isTyping: false,
         });
       }, 1000);
@@ -221,15 +228,25 @@ export function Chat() {
     const yesterday = new Date(today);
     yesterday.setDate(yesterday.getDate() - 1);
 
-    if (date.toDateString() === today.toDateString()) return 'Today';
-    if (date.toDateString() === yesterday.toDateString()) return 'Yesterday';
-    return date.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+    if (date.toDateString() === today.toDateString()) {
+      return 'Today';
+    } else if (date.toDateString() === yesterday.toDateString()) {
+      return 'Yesterday';
+    } else {
+      return date.toLocaleDateString('en-US', {
+        weekday: 'long',
+        month: 'short',
+        day: 'numeric',
+      });
+    }
   };
 
   // Group messages by date
   const groupedMessages = messages.reduce((groups: { [key: string]: Message[] }, message) => {
     const date = new Date(message.createdAt).toDateString();
-    if (!groups[date]) groups[date] = [];
+    if (!groups[date]) {
+      groups[date] = [];
+    }
     groups[date].push(message);
     return groups;
   }, {});
@@ -251,16 +268,13 @@ export function Chat() {
       <div className="bg-white border-b px-4 py-3 flex items-center justify-between shadow-sm">
         <div className="flex items-center gap-3">
           <button 
-            onClick={() => navigate('/messages')}
+            onClick={() => navigate('/messages')} 
             className="p-2 -ml-2 hover:bg-gray-100 rounded-full transition-colors"
           >
             <ArrowLeft className="w-5 h-5 text-gray-600" />
           </button>
           
-          <Link 
-            to={\`/user/\${otherUserId}\`}
-            className="flex items-center gap-3 hover:opacity-80 transition-opacity"
-          >
+          <Link to={`/user/${otherUserId}`} className="flex items-center gap-3 hover:opacity-80 transition-opacity">
             <div className="relative">
               {avatarUrl ? (
                 <img
@@ -294,7 +308,7 @@ export function Chat() {
             <Phone className="w-5 h-5 text-gray-600" />
           </button>
           <button 
-            onClick={() => navigate(\`/video-call/\${otherUserId}\`)}
+            onClick={() => navigate(`/video-call/${otherUserId}`)}
             className="p-2 hover:bg-gray-100 rounded-full transition-colors"
           >
             <Video className="w-5 h-5 text-gray-600" />
@@ -314,7 +328,9 @@ export function Chat() {
                 />
                 <div className="absolute right-0 top-full mt-2 bg-white rounded-lg shadow-lg border py-2 w-48 z-20">
                   <button
-                    onClick={() => {/* TODO: Block user */}}
+                    onClick={() => {
+                      setShowMenu(false);
+                    }}
                     className="w-full px-4 py-2 text-left hover:bg-gray-50 flex items-center gap-2 text-red-600"
                   >
                     <Trash2 className="w-4 h-4" />
@@ -354,7 +370,7 @@ export function Chat() {
                 return (
                   <div 
                     key={message.id} 
-                    className={\`flex mb-2 \${isMine ? 'justify-end' : 'justify-start'}\`}
+                    className={`flex mb-2 ${isMine ? 'justify-end' : 'justify-start'}`}
                   >
                     {/* Avatar for other user */}
                     {!isMine && (
@@ -378,16 +394,16 @@ export function Chat() {
                     )}
 
                     <div 
-                      className={\`max-w-[70%] \${
+                      className={`max-w-[70%] ${
                         isMine 
                           ? 'bg-gradient-to-r from-pink-500 to-purple-600 text-white' 
                           : 'bg-white text-gray-900 border border-gray-200'
-                      } rounded-2xl px-4 py-2 shadow-sm\`}
+                      } rounded-2xl px-4 py-2 shadow-sm`}
                     >
                       <p className="whitespace-pre-wrap break-words">{message.content}</p>
-                      <div className={\`text-xs mt-1 flex items-center justify-end gap-1 \${
+                      <div className={`text-xs mt-1 flex items-center justify-end gap-1 ${
                         isMine ? 'text-pink-100' : 'text-gray-400'
-                      }\`}>
+                      }`}>
                         <span>{formatTime(message.createdAt)}</span>
                         {isMine && (
                           message.readAt ? (
@@ -473,11 +489,11 @@ export function Chat() {
           <button 
             type="submit" 
             disabled={!newMessage.trim() || isSending}
-            className={\`p-3 rounded-full transition-all \${
+            className={`p-3 rounded-full transition-all ${
               newMessage.trim() && !isSending
                 ? 'bg-gradient-to-r from-pink-500 to-purple-600 text-white shadow-md hover:shadow-lg'
                 : 'bg-gray-200 text-gray-400'
-            }\`}
+            }`}
           >
             <Send className="w-5 h-5" />
           </button>
