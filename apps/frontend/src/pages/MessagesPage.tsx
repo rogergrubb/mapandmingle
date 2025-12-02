@@ -50,7 +50,7 @@ export default function MessagesPage() {
     const hours = Math.floor(diff / (1000 * 60 * 60));
     
     if (hours < 1) return 'Just now';
-    if (hours < 24) return \`\${hours}h ago\`;
+    if (hours < 24) return `${hours}h ago`;
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   };
 
@@ -97,7 +97,7 @@ export default function MessagesPage() {
             return (
               <div
                 key={conversation.partnerId}
-                onClick={() => navigate(\`/chat/\${conversation.partnerId}\`)}
+                onClick={() => navigate(`/chat/${conversation.partnerId}`)}
                 className="bg-white border-b border-gray-100 p-4 hover:bg-gray-50 cursor-pointer transition-colors"
               >
                 <div className="flex items-start space-x-3">
