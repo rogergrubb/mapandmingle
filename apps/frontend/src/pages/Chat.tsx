@@ -40,9 +40,8 @@ interface UserProfile {
 }
 
 export function Chat() {
-  // Route now uses otherUserId instead of conversationId
-  const params = useParams<{ conversationId: string }>();
-  const otherUserId = params.conversationId; // This is actually the other user's ID now
+  // Route uses :id which is the other user's ID
+  const { id: otherUserId } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
   const { socket, isConnected } = useWebSocket();
