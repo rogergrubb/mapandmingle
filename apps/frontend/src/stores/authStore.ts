@@ -95,6 +95,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     
     try {
       const user: any = await api.get('/api/users/me');
+      // Save userId to localStorage for API requests
+      if (user && user.id) {
+        localStorage.setItem('userId', user.id);
+      }
       set({ user, isAuthenticated: true });
       
       // Connect WebSocket if not connected
