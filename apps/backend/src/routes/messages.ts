@@ -85,15 +85,46 @@ messagesRoutes.get('/conversation/:userId', async (c: any) => {
         ],
       },
       include: {
-        sender: { select: { id: true, name: true, email: true } },
-        receiver: { select: { id: true, name: true, email: true } },
+        sender: { 
+          select: { 
+            id: true, 
+            name: true, 
+            email: true,
+            profile: { select: { avatar: true, displayName: true } }
+          } 
+        },
+        receiver: { 
+          select: { 
+            id: true, 
+            name: true, 
+            email: true,
+            profile: { select: { avatar: true, displayName: true } }
+          } 
+        },
       },
       orderBy: { createdAt: 'desc' },
       take: limit,
       skip: offset,
     });
 
-    return c.json(messages.reverse());
+    // Transform to include avatar and displayName
+    const transformedMessages = messages.map(msg => ({
+      ...msg,
+      sender: {
+        id: msg.sender.id,
+        name: msg.sender.profile?.displayName || msg.sender.name,
+        email: msg.sender.email,
+        avatar: msg.sender.profile?.avatar || null,
+      },
+      receiver: {
+        id: msg.receiver.id,
+        name: msg.receiver.profile?.displayName || msg.receiver.name,
+        email: msg.receiver.email,
+        avatar: msg.receiver.profile?.avatar || null,
+      },
+    }));
+
+    return c.json(transformedMessages.reverse());
   } catch (error: any) {
     console.error('Error fetching conversation:', error);
     return c.json({ error: 'Failed to fetch conversation' }, 500);
@@ -112,8 +143,22 @@ messagesRoutes.get('/conversations', async (c: any) => {
         OR: [{ senderId: userId }, { receiverId: userId }],
       },
       include: {
-        sender: { select: { id: true, name: true, email: true } },
-        receiver: { select: { id: true, name: true, email: true } },
+        sender: { 
+          select: { 
+            id: true, 
+            name: true, 
+            email: true,
+            profile: { select: { avatar: true, displayName: true } }
+          } 
+        },
+        receiver: { 
+          select: { 
+            id: true, 
+            name: true, 
+            email: true,
+            profile: { select: { avatar: true, displayName: true } }
+          } 
+        },
       },
       orderBy: { createdAt: 'desc' },
     });
@@ -123,9 +168,15 @@ messagesRoutes.get('/conversations', async (c: any) => {
     for (const msg of messages) {
       const partnerId = msg.senderId === userId ? msg.receiverId : msg.senderId;
       if (!conversations[partnerId]) {
+        const partnerData = msg.senderId === userId ? msg.receiver : msg.sender;
         conversations[partnerId] = {
           partnerId,
-          partner: msg.senderId === userId ? msg.receiver : msg.sender,
+          partner: {
+            id: partnerData.id,
+            name: partnerData.profile?.displayName || partnerData.name,
+            email: partnerData.email,
+            avatar: partnerData.profile?.avatar || null,
+          },
           lastMessage: msg.content,
           lastMessageAt: msg.createdAt,
           unreadCount: msg.senderId !== userId && !msg.isRead ? 1 : 0,
