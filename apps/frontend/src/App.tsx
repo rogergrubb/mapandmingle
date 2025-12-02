@@ -78,7 +78,7 @@ function App() {
           <Route path="/my-events" element={<MyEvents />} />
           <Route path="/messages" element={<MessagesPage />} />
                       <Route path="/activity" element={<ActivityPage />} />
-          <Route path="/chat/:conversationId" element={<Chat />} />
+          <Route path="/chat/:id" element={<Chat />} />
           <Route path="/mingles" element={<Mingles />} />
           <Route path="/mingles/create" element={<CreateMinglePage />} />
           <Route path="/find-mingler" element={<FindMinglerPage />} />
@@ -101,3 +101,4 @@ function App() {
 }
 
 export default App;
+
