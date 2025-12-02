@@ -171,7 +171,7 @@ export default function MapPage() {
             eventHandlers={{
               click: () => {
                 // Only navigate to other users' pins, not your own
-                if (pin.createdBy?.id !== user?.id) {
+                if (pin.userId !== user?.id) {
                   navigate(`/mingles/${pin.id}`);
                 }
               },
