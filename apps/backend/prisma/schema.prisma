@@ -102,6 +102,7 @@ model User {
   rateLimitLogs         RateLimitLog[]
   wavesSent             Wave[]               @relation("WaveSender")
   wavesReceived         Wave[]               @relation("WaveReceiver")
+  phoneNumber        String?
 }
 
 model Session {
@@ -874,4 +875,92 @@ model RateLimitLog {
 
   @@index([userId])
   @@index([timestamp])
+}
+
+
+// ===== MESSAGING SYSTEM =====
+
+// Direct Messages
+model Message {
+  id        String   @id @default(cuid())
+  senderId  String
+  sender    User     @relation("MessageSender", fields: [senderId], references: [id], onDelete: Cascade)
+  
+  receiverId String
+  receiver  User     @relation("MessageReceiver", fields: [receiverId], references: [id], onDelete: Cascade)
+  
+  content   String
+  isRead    Boolean  @default(false)
+  readAt    DateTime?
+  
+  editedAt  DateTime?
+  createdAt DateTime @default(now())
+  
+  @@index([senderId])
+  @@index([receiverId])
+  @@index([createdAt])
+}
+
+// Video Call History
+model Call {
+  id            String   @id @default(cuid())
+  initiatorId   String
+  initiator     User     @relation("CallInitiator", fields: [initiatorId], references: [id], onDelete: Cascade)
+  
+  recipientId   String
+  recipient     User     @relation("CallRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
+  
+  startTime     DateTime @default(now())
+  endTime       DateTime?
+  duration      Int?     // in seconds
+  
+  status        String   @default("pending") // pending, active, completed, missed, declined
+  
+  createdAt     DateTime @default(now())
+  
+  @@index([initiatorId])
+  @@index([recipientId])
+  @@index([createdAt])
+}
+
+// In-App Notifications
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation("Notifications", fields: [userId], references: [id], onDelete: Cascade)
+  
+  type      String   // "message", "call", "call_missed", "blocked"
+  title     String
+  body      String
+  
+  fromUserId String?
+  fromUser   User?    @relation("NotificationsFrom", fields: [fromUserId], references: [id], onDelete: SetNull)
+  
+  isRead    Boolean  @default(false)
+  readAt    DateTime?
+  
+  data      String?  // JSON: messageId, callId, etc.
+  
+  createdAt DateTime @default(now())
+  
+  @@index([userId])
+  @@index([isRead])
+  @@index([createdAt])
+}
+
+// User Blocking
+model BlockedUser {
+  id        String   @id @default(cuid())
+  blockerId String
+  blocker   User     @relation("BlockedBy", fields: [blockerId], references: [id], onDelete: Cascade)
+  
+  blockedId String
+  blocked   User     @relation("Blocks", fields: [blockedId], references: [id], onDelete: Cascade)
+  
+  reason    String?
+  createdAt DateTime @default(now())
+  
+  @@unique([blockerId, blockedId])
+  @@index([blockerId])
+  @@index([blockedId])
 }
