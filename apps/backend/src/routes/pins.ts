@@ -278,6 +278,53 @@ pinRoutes.post('/auto-create', async (c) => {
   }
 });
 
+// GET /api/pins/user/mine - Get current user's pins
+pinRoutes.get('/user/mine', async (c) => {
+  try {
+    let userId = c.req.header('X-User-Id');
+    if (!userId) {
+      const authHeader = c.req.header('Authorization');
+      userId = extractUserIdFromToken(authHeader);
+    }
+    if (!userId) {
+      return c.json({ error: 'Unauthorized' }, 401);
+    }
+
+    const userPins = await prisma.pin.findMany({
+      where: { userId },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            image: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return c.json(userPins.map(pin => ({
+      id: pin.id,
+      latitude: pin.latitude,
+      longitude: pin.longitude,
+      description: pin.description,
+      image: pin.image,
+      likesCount: pin.likesCount,
+      createdAt: pin.createdAt.toISOString(),
+      updatedAt: pin.updatedAt.toISOString(),
+      createdBy: {
+        id: pin.user.id,
+        name: pin.user.name,
+        image: pin.user.image,
+      },
+    })));
+  } catch (error) {
+    console.error('Error fetching user pins:', error);
+    return c.json({ error: 'Failed to fetch pins' }, 500);
+  }
+});
+
 // GET /api/pins/:id - Get single pin
 pinRoutes.get('/:id', async (c) => {
   try {
@@ -492,52 +539,6 @@ pinRoutes.post('/:id/like', async (c) => {
 });
 
 
-// GET /api/pins/user/mine - Get current user's pins
-pinRoutes.get('/user/mine', async (c) => {
-  try {
-    let userId = c.req.header('X-User-Id');
-    if (!userId) {
-      const authHeader = c.req.header('Authorization');
-      userId = extractUserIdFromToken(authHeader);
-    }
-    if (!userId) {
-      return c.json({ error: 'Unauthorized' }, 401);
-    }
-
-    const userPins = await prisma.pin.findMany({
-      where: { userId },
-      include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
-            image: true,
-          },
-        },
-      },
-      orderBy: { createdAt: 'desc' },
-    });
-
-    return c.json(userPins.map(pin => ({
-      id: pin.id,
-      latitude: pin.latitude,
-      longitude: pin.longitude,
-      description: pin.description,
-      image: pin.image,
-      likesCount: pin.likesCount,
-      createdAt: pin.createdAt.toISOString(),
-      updatedAt: pin.updatedAt.toISOString(),
-      createdBy: {
-        id: pin.user.id,
-        name: pin.user.name,
-        image: pin.user.image,
-      },
-    })));
-  } catch (error) {
-    console.error('Error fetching user pins:', error);
-    return c.json({ error: 'Failed to fetch pins' }, 500);
-  }
-});
 
 // DELETE /api/pins/:id - Delete a pin
 pinRoutes.delete('/:id', async (c) => {
