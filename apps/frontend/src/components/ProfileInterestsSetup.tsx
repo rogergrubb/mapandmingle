@@ -44,7 +44,6 @@ export default function ProfileInterestsSetup({ isOpen, onComplete, initialInter
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   
-  // Geolocation hook
   const { coordinates, loading: geoLoading, error: geoError, requestPermission } = useGeolocation();
   const [pinCreated, setPinCreated] = useState(false);
   const [ghostModeEnabled, setGhostModeEnabled] = useState(false);
@@ -95,7 +94,6 @@ export default function ProfileInterestsSetup({ isOpen, onComplete, initialInter
       });
       
       setPinCreated(true);
-      // Complete onboarding after 2 seconds to show success
       setTimeout(() => {
         onComplete();
       }, 2000);
@@ -104,10 +102,6 @@ export default function ProfileInterestsSetup({ isOpen, onComplete, initialInter
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const handleRequestLocation = async () => {
-    await requestPermission();
   };
 
   const handleEnableGhostMode = async () => {
@@ -124,12 +118,14 @@ export default function ProfileInterestsSetup({ isOpen, onComplete, initialInter
     }
   };
 
-  // Step 1: Interests
+  const handleRequestLocation = async () => {
+    await requestPermission();
+  };
+
   if (step === 'interests') {
     return (
       <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
         <div className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-          {/* Header */}
           <div className="sticky top-0 bg-gradient-to-r from-pink-500 to-purple-600 p-6 border-b border-pink-200">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -142,31 +138,27 @@ export default function ProfileInterestsSetup({ isOpen, onComplete, initialInter
             </div>
           </div>
 
-          {/* Content */}
           <div className="p-8">
-            {/* Error Message */}
             {error && (
               <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6 flex items-center gap-2">
                 <span className="text-red-600 font-medium text-sm">{error}</span>
               </div>
             )}
 
-            {/* Instructions */}
             <p className="text-gray-600 mb-6 text-center">
               Pick at least 1 interest to help us match you with like-minded people
             </p>
 
-            {/* Interest Grid */}
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 mb-8">
               {INTEREST_OPTIONS.map(interest => (
                 <button
                   key={interest.id}
                   onClick={() => toggleInterest(interest.id)}
-                  className={\`p-4 rounded-2xl border-2 transition-all duration-200 flex flex-col items-center gap-2 \${
+                  className={`p-4 rounded-2xl border-2 transition-all duration-200 flex flex-col items-center gap-2 ${
                     selectedInterests.includes(interest.id)
                       ? 'border-pink-500 bg-pink-50 shadow-md scale-105'
                       : 'border-gray-200 bg-white hover:border-pink-300'
-                  }\`}
+                  }`}
                 >
                   <span className="text-3xl">{interest.emoji}</span>
                   <span className="text-xs font-medium text-gray-700 text-center line-clamp-2">
@@ -179,29 +171,24 @@ export default function ProfileInterestsSetup({ isOpen, onComplete, initialInter
               ))}
             </div>
 
-            {/* Selected Count */}
             <div className="text-center mb-6">
               <p className="text-sm text-gray-600">
                 Selected: <span className="font-bold text-pink-600">{selectedInterests.length}</span> interest{selectedInterests.length !== 1 ? 's' : ''}
               </p>
             </div>
 
-            {/* Buttons */}
             <div className="flex gap-3">
               <button
                 onClick={onComplete}
                 disabled={isLoading}
-                className="flex-1 px-6 py-3 bg-gray-200 text-gray-700 rounded-xl font-semibold
-                           hover:bg-gray-300 transition-colors disabled:opacity-50"
+                className="flex-1 px-6 py-3 bg-gray-200 text-gray-700 rounded-xl font-semibold hover:bg-gray-300 transition-colors disabled:opacity-50"
               >
                 Skip for now
               </button>
               <button
                 onClick={handleCompleteInterests}
                 disabled={isLoading || selectedInterests.length === 0}
-                className="flex-1 px-6 py-3 bg-gradient-to-r from-pink-500 to-purple-600 text-white rounded-xl font-semibold
-                           hover:shadow-lg hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed
-                           flex items-center justify-center gap-2"
+                className="flex-1 px-6 py-3 bg-gradient-to-r from-pink-500 to-purple-600 text-white rounded-xl font-semibold hover:shadow-lg hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {isLoading ? (
                   <>
@@ -222,11 +209,9 @@ export default function ProfileInterestsSetup({ isOpen, onComplete, initialInter
     );
   }
 
-  // Step 2: Create Pin
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full">
-        {/* Header */}
         <div className="bg-gradient-to-r from-pink-500 to-purple-600 p-6 border-b border-pink-200">
           <div className="flex items-center gap-3">
             <MapPin className="w-6 h-6 text-white fill-white" />
@@ -237,16 +222,13 @@ export default function ProfileInterestsSetup({ isOpen, onComplete, initialInter
           </div>
         </div>
 
-        {/* Content */}
         <div className="p-8 space-y-6">
-          {/* Error Message */}
           {error && (
             <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-center gap-2">
               <span className="text-red-600 font-medium text-sm">{error}</span>
             </div>
           )}
 
-          {/* Success State */}
           {pinCreated && (
             <div className="text-center space-y-6">
               <div className="w-16 h-16 mx-auto bg-green-100 rounded-full flex items-center justify-center animate-bounce">
@@ -257,11 +239,9 @@ export default function ProfileInterestsSetup({ isOpen, onComplete, initialInter
                 <p className="text-gray-600 text-sm mt-1">You're now visible on the map</p>
               </div>
               
-              {/* Ghost Mode Button with Arrow */}
               <div className="relative pt-4">
                 {!ghostModeEnabled ? (
                   <>
-                    {/* Arrow pointing to button */}
                     <div className="flex justify-center mb-2">
                       <div className="text-2xl animate-bounce" style={{ animationDelay: '0.1s' }}>↓</div>
                     </div>
@@ -269,9 +249,7 @@ export default function ProfileInterestsSetup({ isOpen, onComplete, initialInter
                     <button
                       onClick={handleEnableGhostMode}
                       disabled={enablingGhost}
-                      className="w-full px-6 py-3 bg-gradient-to-r from-gray-700 to-gray-900 text-white rounded-xl font-semibold
-                                 hover:shadow-lg hover:from-gray-800 hover:to-black transition-all disabled:opacity-50
-                                 flex items-center justify-center gap-2 relative group"
+                      className="w-full px-6 py-3 bg-gradient-to-r from-gray-700 to-gray-900 text-white rounded-xl font-semibold hover:shadow-lg hover:from-gray-800 hover:to-black transition-all disabled:opacity-50 flex items-center justify-center gap-2"
                     >
                       {enablingGhost ? (
                         <>
@@ -305,7 +283,6 @@ export default function ProfileInterestsSetup({ isOpen, onComplete, initialInter
             </div>
           )}
 
-          {/* Location Status */}
           {!pinCreated && (
             <>
               <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
@@ -314,7 +291,6 @@ export default function ProfileInterestsSetup({ isOpen, onComplete, initialInter
                 </p>
               </div>
 
-              {/* Current Location Display */}
               {coordinates && (
                 <div className="bg-gray-50 rounded-xl p-4 space-y-2">
                   <p className="text-xs text-gray-500 font-semibold">LOCATION DETECTED</p>
@@ -324,15 +300,12 @@ export default function ProfileInterestsSetup({ isOpen, onComplete, initialInter
                 </div>
               )}
 
-              {/* Buttons */}
               <div className="space-y-3">
                 {!coordinates ? (
                   <button
                     onClick={handleRequestLocation}
                     disabled={geoLoading || isLoading}
-                    className="w-full px-6 py-3 bg-gradient-to-r from-pink-500 to-purple-600 text-white rounded-xl font-semibold
-                               hover:shadow-lg hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed
-                               flex items-center justify-center gap-2"
+                    className="w-full px-6 py-3 bg-gradient-to-r from-pink-500 to-purple-600 text-white rounded-xl font-semibold hover:shadow-lg hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                   >
                     {geoLoading ? (
                       <>
@@ -350,9 +323,7 @@ export default function ProfileInterestsSetup({ isOpen, onComplete, initialInter
                   <button
                     onClick={handleCreatePin}
                     disabled={isLoading}
-                    className="w-full px-6 py-3 bg-gradient-to-r from-pink-500 to-purple-600 text-white rounded-xl font-semibold
-                               hover:shadow-lg hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed
-                               flex items-center justify-center gap-2"
+                    className="w-full px-6 py-3 bg-gradient-to-r from-pink-500 to-purple-600 text-white rounded-xl font-semibold hover:shadow-lg hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                   >
                     {isLoading ? (
                       <>
@@ -376,8 +347,7 @@ export default function ProfileInterestsSetup({ isOpen, onComplete, initialInter
               <button
                 onClick={onComplete}
                 disabled={isLoading}
-                className="w-full px-6 py-3 bg-gray-200 text-gray-700 rounded-xl font-semibold
-                           hover:bg-gray-300 transition-colors disabled:opacity-50"
+                className="w-full px-6 py-3 bg-gray-200 text-gray-700 rounded-xl font-semibold hover:bg-gray-300 transition-colors disabled:opacity-50"
               >
                 Skip & Finish
               </button>
