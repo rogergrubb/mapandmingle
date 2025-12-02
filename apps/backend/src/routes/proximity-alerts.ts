@@ -361,6 +361,7 @@ proximityAlertRoutes.get('/:id/matches', async (c) => {
 
 // POST /api/proximity-alerts/reset-daily - Reset daily alert counts (call via cron)
 proximityAlertRoutes.post('/reset-daily', async (c) => {
+    // TODO: implement
   try {
     // This should be called by a cron job at midnight
     await prisma.proximityAlert.updateMany({
