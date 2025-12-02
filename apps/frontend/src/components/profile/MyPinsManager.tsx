@@ -16,8 +16,9 @@ export default function MyPinsManager() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editDescription, setEditDescription] = useState("");
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [creatingNew, setCreatingNew] = useState(false);
+  const [creatingPin, setCreatingPin] = useState(false);
   const [error, setError] = useState("");
+  const [pinCreationSuccess, setPinCreationSuccess] = useState(false);
 
   useEffect(() => {
     loadUserPins();
@@ -35,6 +36,46 @@ export default function MyPinsManager() {
       setPins([]);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleCreatePin = async () => {
+    setCreatingPin(true);
+    setError("");
+
+    try {
+      // Request geolocation
+      const position = await new Promise<GeolocationCoordinates>((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(
+          (pos) => resolve(pos.coords),
+          (err) => reject(err),
+          { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+        );
+      });
+
+      // Create pin
+      await api.post("/api/pins/auto-create", {
+        latitude: position.latitude,
+        longitude: position.longitude,
+      });
+
+      setPinCreationSuccess(true);
+      setTimeout(() => setPinCreationSuccess(false), 3000);
+
+      // Reload pins
+      await loadUserPins();
+    } catch (err: any) {
+      console.error("Failed to create pin:", err);
+      const errorMsg = err.response?.data?.error || err.message;
+      if (errorMsg?.includes("already has a pin")) {
+        setError("You already have a pin. Delete it first to create a new one.");
+      } else if (errorMsg?.includes("permission")) {
+        setError("Please enable location permission in your browser settings.");
+      } else {
+        setError(errorMsg || "Failed to create pin. Please try again.");
+      }
+    } finally {
+      setCreatingPin(false);
     }
   };
 
@@ -96,14 +137,34 @@ export default function MyPinsManager() {
         </div>
       )}
 
+      {pinCreationSuccess && (
+        <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-green-700 text-sm flex items-center gap-2">
+          <span className="text-lg">✓</span>
+          Pin created successfully!
+        </div>
+      )}
+
       {pins.length === 0 ? (
         <div className="bg-white rounded-lg border-2 border-dashed border-gray-300 p-8 text-center">
           <MapPin className="w-12 h-12 text-gray-300 mx-auto mb-3" />
           <h3 className="text-lg font-semibold text-gray-900 mb-1">No pins yet</h3>
           <p className="text-gray-600 text-sm mb-4">Create your first pin to show up on the map</p>
-          <button className="bg-gradient-to-r from-pink-500 to-purple-600 text-white px-6 py-2 rounded-lg font-semibold inline-flex items-center gap-2 hover:shadow-lg transition-all">
-            <Plus size={20} />
-            Create Pin
+          <button
+            onClick={handleCreatePin}
+            disabled={creatingPin}
+            className="bg-gradient-to-r from-pink-500 to-purple-600 text-white px-6 py-2 rounded-lg font-semibold inline-flex items-center gap-2 hover:shadow-lg transition-all disabled:opacity-50"
+          >
+            {creatingPin ? (
+              <>
+                <Loader size={20} className="animate-spin" />
+                Creating...
+              </>
+            ) : (
+              <>
+                <Plus size={20} />
+                Create Pin
+              </>
+            )}
           </button>
         </div>
       ) : (
