@@ -22,7 +22,7 @@ import MessagesPage from './pages/MessagesPage';
 import ActivityPage from './pages/ActivityPage';
 import { Chat } from './pages/Chat';
 import { Mingles } from './pages/Mingles';
-import { MingleDetail } from './pages/MingleDetail';
+import MingleDetail from './pages/MingleDetail';
 import ProfilePage from './pages/ProfilePage';
 import { UserProfile } from './pages/UserProfile';
 import EditProfile from './pages/settings/EditProfile';

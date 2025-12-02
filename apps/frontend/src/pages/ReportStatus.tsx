@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Loader2, CheckCircle, Clock, XCircle } from 'lucide-react';
-import api from '../../lib/api';
+import api from '../lib/api';
 
 export default function ReportStatus() {
   const navigate = useNavigate();
