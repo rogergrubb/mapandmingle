@@ -1,10 +1,11 @@
 import { useEffect, useState, useRef } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Circle, useMap } from 'react-leaflet';
 import { useNavigate } from 'react-router-dom';
-import { Flame, Locate, Menu, MapPin, MessageCircle, Search } from 'lucide-react';
+import { Flame, Locate, Menu, MapPin, MessageCircle, Search, Loader } from 'lucide-react';
 import { useMapStore } from '../stores/mapStore';
 import { useAuthStore } from '../stores/authStore';
 import { MapStatusBar } from '../components/map/MapStatusBar';
+import api from '../lib/api';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 
@@ -49,6 +50,8 @@ export default function MapPage() {
   const [userPosition, setUserPosition] = useState<[number, number] | null>(null);
   const [isLocating, setIsLocating] = useState(true);
   const [showHotZoneMenu, setShowHotZoneMenu] = useState(false);
+  const [creatingPin, setCreatingPin] = useState(false);
+  const [pinCreationSuccess, setPinCreationSuccess] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map>(null);
 
@@ -81,6 +84,50 @@ export default function MapPage() {
   const handleCenterOnUser = () => {
     if (userPosition && mapRef.current) {
       mapRef.current.setView(userPosition, mapRef.current.getZoom());
+    }
+  };
+
+  const handleCreatePinAtLocation = async () => {
+    if (!userPosition) {
+      alert('Location not available');
+      return;
+    }
+
+    if (!isAuthenticated) {
+      navigate('/(auth)/login');
+      return;
+    }
+
+    setCreatingPin(true);
+    try {
+      await api.post('/api/pins/auto-create', {
+        latitude: userPosition[0],
+        longitude: userPosition[1],
+      });
+      
+      setPinCreationSuccess(true);
+      setTimeout(() => {
+        setPinCreationSuccess(false);
+      }, 3000);
+      
+      // Refresh pins on map
+      const bounds = mapRef.current?.getBounds();
+      if (bounds) {
+        useMapStore.setState((state) => ({
+          fetchPins: state.fetchPins,
+        }));
+        useMapStore.getState().fetchPins({
+          north: bounds.getNorth(),
+          south: bounds.getSouth(),
+          east: bounds.getEast(),
+          west: bounds.getWest(),
+        });
+      }
+    } catch (err: any) {
+      console.error('Failed to create pin:', err);
+      alert(err.response?.data?.error || 'Failed to create pin. You may already have a pin.');
+    } finally {
+      setCreatingPin(false);
     }
   };
 
@@ -153,7 +200,7 @@ export default function MapPage() {
           ))}
       </MapContainer>
 
-            {/* Map Status Bar - Consolidated UI */}
+      {/* Map Status Bar - Consolidated UI */}
       <MapStatusBar
         peopleCount={pins.length}
         timeFilter={filter as "24h" | "week"}
@@ -241,13 +288,43 @@ export default function MapPage() {
         )}
       </div>
 
-      {/* Center on User Button */}
-      <button
-        onClick={handleCenterOnUser}
-        className="absolute bottom-36 right-4 z-[1000] bg-white text-primary-500 p-3 rounded-full shadow-lg hover:bg-gray-50 transition-all"
-      >
-        <Locate size={24} />
-      </button>
+      {/* Pin Creation Floating Actions */}
+      <div className="absolute bottom-36 right-4 z-[1000] flex flex-col gap-3">
+        {/* Success Message */}
+        {pinCreationSuccess && (
+          <div className="animate-in fade-in slide-in-from-bottom-2 bg-green-500 text-white px-4 py-3 rounded-full shadow-lg flex items-center gap-2 whitespace-nowrap">
+            <span className="text-lg">✓</span>
+            <span className="font-semibold">Pin created!</span>
+          </div>
+        )}
+
+        {/* Center on User Button + Create Pin Button */}
+        <button
+          onClick={handleCenterOnUser}
+          className="bg-white text-primary-500 p-3 rounded-full shadow-lg hover:bg-gray-50 transition-all flex items-center justify-center"
+          title="Center map on your location"
+        >
+          <Locate size={24} />
+        </button>
+
+        {/* Create Pin Button - Drop pin at current location */}
+        <button
+          onClick={handleCreatePinAtLocation}
+          disabled={creatingPin}
+          className={`p-3 rounded-full shadow-lg transition-all flex items-center justify-center font-bold text-lg ${
+            creatingPin
+              ? 'bg-purple-400 text-white opacity-75'
+              : 'bg-gradient-to-r from-pink-500 to-purple-600 text-white hover:shadow-xl hover:scale-110'
+          }`}
+          title={isAuthenticated ? 'Drop a pin at your location' : 'Login to create pin'}
+        >
+          {creatingPin ? (
+            <Loader size={24} className="animate-spin" />
+          ) : (
+            <MapPin size={24} className="fill-current" />
+          )}
+        </button>
+      </div>
 
       {/* Close Menu on Map Click */}
       {showHotZoneMenu && (
