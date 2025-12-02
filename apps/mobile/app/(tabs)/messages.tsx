@@ -7,26 +7,17 @@ import { api } from '../../src/lib/api';
 import { useAuthStore } from '../../src/stores/auth';
 import { useNotificationStore } from '../../src/stores/notifications';
 
+// Backend returns this format from /api/messages/conversations
 interface Conversation {
-  id: string;
-  participants: Array<{
-    userId: string;
-    user: {
-      id: string;
-      name: string | null;
-      image: string | null;
-    };
-    lastReadAt: string | null;
-  }>;
-  lastMessage: {
+  partnerId: string;
+  partner: {
     id: string;
-    content: string;
-    senderId: string;
-    createdAt: string;
-    readAt: string | null;
-  } | null;
+    name: string | null;
+    email: string;
+  };
+  lastMessage: string;
+  lastMessageAt: string;
   unreadCount: number;
-  updatedAt: string;
 }
 
 export default function MessagesScreen() {
@@ -44,7 +35,7 @@ export default function MessagesScreen() {
     }
 
     try {
-      const data = await api.get<Conversation[]>('/api/conversations');
+      const data = await api.get<Conversation[]>('/api/messages/conversations');
       setConversations(data);
       
       // Update global unread count
@@ -67,9 +58,9 @@ export default function MessagesScreen() {
     fetchConversations();
   };
 
-  const handleConversationPress = (conversationId: string) => {
+  const handleConversationPress = (partnerId: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    router.push(`/chat/${conversationId}`);
+    router.push(`/chat/${partnerId}`);
   };
 
   const formatTimeAgo = (dateString: string) => {
@@ -85,11 +76,6 @@ export default function MessagesScreen() {
     if (diffHours < 24) return `${diffHours}h`;
     if (diffDays < 7) return `${diffDays}d`;
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-  };
-
-  const getOtherParticipant = (conversation: Conversation) => {
-    const other = conversation.participants.find(p => p.userId !== user?.id);
-    return other?.user || { id: '', name: 'Unknown', image: null };
   };
 
   if (!isAuthenticated) {
@@ -157,14 +143,12 @@ export default function MessagesScreen() {
         ) : (
           <View className="bg-white">
             {conversations.map((conversation, index) => {
-              const other = getOtherParticipant(conversation);
               const isUnread = conversation.unreadCount > 0;
-              const lastMessage = conversation.lastMessage;
 
               return (
                 <TouchableOpacity
-                  key={conversation.id}
-                  onPress={() => handleConversationPress(conversation.id)}
+                  key={conversation.partnerId}
+                  onPress={() => handleConversationPress(conversation.partnerId)}
                   className={`flex-row items-center px-4 py-3 ${
                     index < conversations.length - 1 ? 'border-b border-gray-100' : ''
                   }`}
@@ -173,14 +157,7 @@ export default function MessagesScreen() {
                   {/* Avatar */}
                   <View className="relative">
                     <View className="w-14 h-14 rounded-full bg-gray-200 items-center justify-center">
-                      {other.image ? (
-                        <Image
-                          source={{ uri: other.image }}
-                          className="w-14 h-14 rounded-full"
-                        />
-                      ) : (
-                        <Ionicons name="person" size={28} color="#9CA3AF" />
-                      )}
+                      <Ionicons name="person" size={28} color="#9CA3AF" />
                     </View>
                     {/* Online indicator would go here */}
                   </View>
@@ -193,29 +170,21 @@ export default function MessagesScreen() {
                           isUnread ? 'font-bold text-gray-900' : 'font-medium text-gray-900'
                         }`}
                       >
-                        {other.name || 'Anonymous'}
+                        {conversation.partner.name || 'Anonymous'}
                       </Text>
                       <Text className={`text-sm ${isUnread ? 'text-primary-500' : 'text-gray-400'}`}>
-                        {lastMessage ? formatTimeAgo(lastMessage.createdAt) : ''}
+                        {conversation.lastMessageAt ? formatTimeAgo(conversation.lastMessageAt) : ''}
                       </Text>
                     </View>
                     
                     <View className="flex-row items-center mt-0.5">
-                      {lastMessage && lastMessage.senderId === user?.id && (
-                        <Ionicons
-                          name={lastMessage.readAt ? 'checkmark-done' : 'checkmark'}
-                          size={16}
-                          color={lastMessage.readAt ? '#10B981' : '#9CA3AF'}
-                          style={{ marginRight: 4 }}
-                        />
-                      )}
                       <Text
                         className={`flex-1 text-sm ${
                           isUnread ? 'text-gray-900 font-medium' : 'text-gray-500'
                         }`}
                         numberOfLines={1}
                       >
-                        {lastMessage?.content || 'No messages yet'}
+                        {conversation.lastMessage || 'No messages yet'}
                       </Text>
                     </View>
                   </View>
