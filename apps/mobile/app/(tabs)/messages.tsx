@@ -14,6 +14,7 @@ interface Conversation {
     id: string;
     name: string | null;
     email: string;
+    avatar: string | null;
   };
   lastMessage: string;
   lastMessageAt: string;
@@ -157,7 +158,14 @@ export default function MessagesScreen() {
                   {/* Avatar */}
                   <View className="relative">
                     <View className="w-14 h-14 rounded-full bg-gray-200 items-center justify-center">
-                      <Ionicons name="person" size={28} color="#9CA3AF" />
+                      {conversation.partner.avatar ? (
+                        <Image
+                          source={{ uri: conversation.partner.avatar }}
+                          className="w-14 h-14 rounded-full"
+                        />
+                      ) : (
+                        <Ionicons name="person" size={28} color="#9CA3AF" />
+                      )}
                     </View>
                     {/* Online indicator would go here */}
                   </View>
