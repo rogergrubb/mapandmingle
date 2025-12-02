@@ -13,60 +13,81 @@ import {
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import { api } from '../src/lib/api';
-import { useAuthStore } from '../src/stores/auth';
+import { api } from '../../src/lib/api';
+import { useAuthStore } from '../../src/stores/auth';
 
 interface Message {
   id: string;
   content: string;
   senderId: string;
-  createdAt: string;
+  receiverId: string;
+  isRead: boolean;
   readAt: string | null;
-}
-
-interface Participant {
-  userId: string;
-  user: {
+  createdAt: string;
+  sender: {
     id: string;
     name: string | null;
-    image: string | null;
+    email: string;
+  };
+  receiver: {
+    id: string;
+    name: string | null;
+    email: string;
   };
 }
 
+interface OtherUser {
+  id: string;
+  name: string | null;
+  avatar?: string | null;
+}
+
 export default function ChatScreen() {
-  const { id: conversationId } = useLocalSearchParams<{ id: string }>();
+  // The id param is now the OTHER USER's ID (not conversation ID)
+  const { id: otherUserId } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { user } = useAuthStore();
   const flatListRef = useRef<FlatList>(null);
   
   const [messages, setMessages] = useState<Message[]>([]);
-  const [participants, setParticipants] = useState<Participant[]>([]);
   const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isSending, setIsSending] = useState(false);
-  const [otherUser, setOtherUser] = useState<Participant['user'] | null>(null);
+  const [otherUser, setOtherUser] = useState<OtherUser | null>(null);
 
   const fetchMessages = useCallback(async () => {
+    if (!otherUserId) return;
+    
     try {
-      const data = await api.get<{
-        messages: Message[];
-        participants: Participant[];
-      }>(`/api/conversations/${conversationId}/messages`);
+      // Backend returns messages in chronological order
+      const data = await api.get<Message[]>(`/api/messages/conversation/${otherUserId}`);
       
-      setMessages(data.messages.reverse()); // Reverse for inverted FlatList
-      setParticipants(data.participants);
+      // Reverse for inverted FlatList (newest at bottom)
+      setMessages([...data].reverse());
       
-      // Find the other user
-      const other = data.participants.find(p => p.userId !== user?.id);
-      if (other) {
-        setOtherUser(other.user);
+      // Extract other user info from the first message
+      if (data.length > 0) {
+        const firstMsg = data[0];
+        const other = firstMsg.senderId === user?.id ? firstMsg.receiver : firstMsg.sender;
+        setOtherUser({
+          id: other.id,
+          name: other.name,
+        });
+      } else {
+        // No messages yet - fetch user profile
+        try {
+          const userProfile = await api.get<{ user: OtherUser }>(`/api/users/${otherUserId}`);
+          setOtherUser(userProfile.user);
+        } catch {
+          setOtherUser({ id: otherUserId, name: 'User' });
+        }
       }
     } catch (error) {
       console.error('Error fetching messages:', error);
     } finally {
       setIsLoading(false);
     }
-  }, [conversationId, user?.id]);
+  }, [otherUserId, user?.id]);
 
   useEffect(() => {
     fetchMessages();
@@ -77,7 +98,7 @@ export default function ChatScreen() {
   }, [fetchMessages]);
 
   const sendMessage = async () => {
-    if (!inputText.trim() || isSending) return;
+    if (!inputText.trim() || isSending || !otherUserId) return;
     
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setIsSending(true);
@@ -90,15 +111,19 @@ export default function ChatScreen() {
       id: `temp-${Date.now()}`,
       content: messageText,
       senderId: user?.id || '',
-      createdAt: new Date().toISOString(),
+      receiverId: otherUserId,
+      isRead: false,
       readAt: null,
+      createdAt: new Date().toISOString(),
+      sender: { id: user?.id || '', name: user?.name || null, email: '' },
+      receiver: { id: otherUserId, name: otherUser?.name || null, email: '' },
     };
     setMessages(prev => [tempMessage, ...prev]);
     
     try {
-      const response = await api.post<{ message: Message }>(
-        `/api/conversations/${conversationId}/messages`,
-        { content: messageText }
+      const response = await api.post<{ success: boolean; message: Message }>(
+        '/api/messages',
+        { receiverId: otherUserId, content: messageText }
       );
       
       // Replace temp message with real one
@@ -118,8 +143,7 @@ export default function ChatScreen() {
 
   const handleVideoCall = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    // TODO: Initiate video call
-    router.push(`/video-call/${otherUser?.id}`);
+    router.push(`/video-call/${otherUserId}`);
   };
 
   const handleIcebreaker = async () => {
@@ -128,7 +152,7 @@ export default function ChatScreen() {
     try {
       const response = await api.post<{ icebreaker: string }>(
         '/api/icebreaker/generate',
-        { recipientId: otherUser?.id }
+        { recipientId: otherUserId }
       );
       setInputText(response.icebreaker);
     } catch (error) {
@@ -190,9 +214,9 @@ export default function ChatScreen() {
         <View className={`flex-row mb-2 ${isMe ? 'justify-end' : 'justify-start'}`}>
           {!isMe && (
             <View className="w-8 h-8 rounded-full bg-gray-200 items-center justify-center mr-2 self-end">
-              {otherUser?.image ? (
+              {otherUser?.avatar ? (
                 <Image
-                  source={{ uri: otherUser.image }}
+                  source={{ uri: otherUser.avatar }}
                   className="w-8 h-8 rounded-full"
                 />
               ) : (
@@ -217,9 +241,9 @@ export default function ChatScreen() {
               </Text>
               {isMe && (
                 <Ionicons
-                  name={item.readAt ? 'checkmark-done' : 'checkmark'}
+                  name={item.isRead ? 'checkmark-done' : 'checkmark'}
                   size={14}
-                  color={item.readAt ? '#A7F3D0' : 'rgba(255,255,255,0.7)'}
+                  color={item.isRead ? '#A7F3D0' : 'rgba(255,255,255,0.7)'}
                   style={{ marginLeft: 4 }}
                 />
               )}
@@ -246,14 +270,14 @@ export default function ChatScreen() {
             <TouchableOpacity
               onPress={() => {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                router.push(`/profile/${otherUser?.id}`);
+                router.push(`/profile/${otherUserId}`);
               }}
               className="flex-row items-center"
             >
               <View className="w-9 h-9 rounded-full bg-gray-200 items-center justify-center mr-2">
-                {otherUser?.image ? (
+                {otherUser?.avatar ? (
                   <Image
-                    source={{ uri: otherUser.image }}
+                    source={{ uri: otherUser.avatar }}
                     className="w-9 h-9 rounded-full"
                   />
                 ) : (
@@ -261,7 +285,7 @@ export default function ChatScreen() {
                 )}
               </View>
               <Text className="font-semibold text-gray-900">
-                {otherUser?.name || 'Anonymous'}
+                {otherUser?.name || 'User'}
               </Text>
             </TouchableOpacity>
           ),
