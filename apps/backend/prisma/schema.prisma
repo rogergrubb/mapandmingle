@@ -103,14 +103,6 @@ model User {
   wavesSent             Wave[]               @relation("WaveSender")
   wavesReceived         Wave[]               @relation("WaveReceiver")
   phoneNumber        String?
-  sentMessages      Message[]    @relation("MessageSender")
-  receivedMessages  Message[]    @relation("MessageReceiver")
-  callsInitiated    Call[]       @relation("CallInitiator")
-  callsReceived     Call[]       @relation("CallRecipient")
-  sentNotifications Notification[] @relation("Notifications")
-  notificationsFrom Notification[] @relation("NotificationsFrom")
-  blockedUsers      BlockedUser[] @relation("BlockedBy")
-  blockingUsers     BlockedUser[] @relation("Blocks")
 }
 
 model Session {
