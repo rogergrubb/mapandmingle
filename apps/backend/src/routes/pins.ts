@@ -20,19 +20,6 @@ const getPinsSchema = z.object({
   filter: z.enum(['all', '24h', 'week']).optional(),
 });
 
-// Helper: Calculate distance between two points (Haversine formula)
-function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
-  const R = 6371; // Earth's radius in km
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLon = (lon2 - lon1) * Math.PI / 180;
-  const a = 
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-    Math.sin(dLon / 2) * Math.sin(dLon / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c;
-}
-
 // Helper: Check if viewer can see a pin based on selective visibility
 async function canViewPin(pin: any, viewerId: string | null): Promise<boolean> {
   // If no viewer (anonymous), they can see public pins only
@@ -87,15 +74,6 @@ async function canViewPin(pin: any, viewerId: string | null): Promise<boolean> {
     if (sharedCount < creatorProfile.visibilityMinSharedInterests) return false;
   }
   
-  // Check distance
-  if (creatorProfile.visibilityMaxDistance && viewerProfile.currentLocationLat && viewerProfile.currentLocationLng) {
-    const distance = calculateDistance(
-      pin.latitude, pin.longitude,
-      viewerProfile.currentLocationLat, viewerProfile.currentLocationLng
-    );
-    if (distance > creatorProfile.visibilityMaxDistance) return false;
-  }
-  
   // Check reputation
   if (creatorProfile.visibilityMinReputation && viewerProfile.trustScore < creatorProfile.visibilityMinReputation) {
     return false;
@@ -111,7 +89,7 @@ async function canViewPin(pin: any, viewerId: string | null): Promise<boolean> {
   return true;
 }
 
-// GET /api/pins - Get pins in a bounding box
+// GET /api/pins - Get pins in viewport bounds (shows all pins visible in current map view)
 pinRoutes.get('/', async (c) => {
   try {
     const query = c.req.query();
@@ -131,6 +109,7 @@ pinRoutes.get('/', async (c) => {
       dateFilter = { createdAt: { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) } };
     }
     
+    // Get pins within viewport bounds only (limit to 1000 most recent)
     const pins = await prisma.pin.findMany({
       where: {
         latitude: { gte: south, lte: north },
@@ -150,17 +129,11 @@ pinRoutes.get('/', async (c) => {
         },
       },
       orderBy: { createdAt: 'desc' },
-      take: 100,
+      take: 1000, // Limit to 1000 most recent pins
     });
     
-    // Get viewer ID from auth header (if present)
-    const authHeader = c.req.header('Authorization');
-    let viewerId: string | null = null;
-    if (authHeader?.startsWith('Bearer ')) {
-      // In a real app, verify the token and get user ID
-      // For now, we'll pass user ID directly in header for simplicity
-      viewerId = c.req.header('X-User-Id') || null;
-    }
+    // Get viewer ID from header
+    const viewerId = c.req.header('X-User-Id') || null;
     
     // Filter based on visibility rules
     const visiblePins = [];
@@ -189,6 +162,96 @@ pinRoutes.get('/', async (c) => {
   } catch (error) {
     console.error('Error fetching pins:', error);
     return c.json({ error: 'Failed to fetch pins' }, 500);
+  }
+});
+
+// POST /api/pins/auto-create - Auto-create a pin at user's current location
+pinRoutes.post('/auto-create', async (c) => {
+  try {
+    const userId = c.req.header('X-User-Id');
+    if (!userId) {
+      return c.json({ error: 'Unauthorized' }, 401);
+    }
+    
+    const { latitude, longitude } = await c.req.json();
+    
+    if (latitude === undefined || longitude === undefined) {
+      return c.json({ error: 'latitude and longitude required' }, 400);
+    }
+    
+    // Check if user already has a pin
+    const existingPin = await prisma.pin.findFirst({
+      where: { userId },
+    });
+    
+    if (existingPin) {
+      return c.json({ error: 'User already has a pin. Delete it first to create a new one.' }, 400);
+    }
+    
+    // Create default pin with generic description
+    const pin = await prisma.pin.create({
+      data: {
+        userId,
+        latitude,
+        longitude,
+        description: 'Mingling here!',
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            image: true,
+            profile: {
+              select: { avatar: true },
+            },
+          },
+        },
+      },
+    });
+    
+    // Update user's pin count
+    await prisma.profile.update({
+      where: { userId },
+      data: { pinsCreated: { increment: 1 } },
+    });
+    
+    // Broadcast new pin to all connected users
+    broadcastToAll({
+      type: 'new_pin',
+      pin: {
+        id: pin.id,
+        latitude: pin.latitude,
+        longitude: pin.longitude,
+        description: pin.description,
+        likesCount: 0,
+        createdAt: pin.createdAt.toISOString(),
+        createdBy: {
+          id: pin.user.id,
+          name: pin.user.name,
+          image: pin.user.image,
+          avatar: pin.user.profile?.avatar,
+        },
+      },
+    });
+    
+    return c.json({
+      id: pin.id,
+      latitude: pin.latitude,
+      longitude: pin.longitude,
+      description: pin.description,
+      likesCount: 0,
+      createdAt: pin.createdAt.toISOString(),
+      createdBy: {
+        id: pin.user.id,
+        name: pin.user.name,
+        image: pin.user.image,
+        avatar: pin.user.profile?.avatar,
+      },
+    }, 201);
+  } catch (error) {
+    console.error('Error auto-creating pin:', error);
+    return c.json({ error: 'Failed to create pin' }, 500);
   }
 });
 
@@ -229,7 +292,7 @@ pinRoutes.get('/:id', async (c) => {
       description: pin.description,
       image: pin.image,
       likesCount: pin.likesCount,
-      likedByUser: false, // Would check against authenticated user
+      likedByUser: false,
       createdAt: pin.createdAt.toISOString(),
       createdBy: {
         id: pin.user.id,
@@ -254,7 +317,14 @@ pinRoutes.post('/', async (c) => {
     }
     
     const body = await c.req.json();
-    const parsed = createPinSchema.safeParse(body);
+    const createSchema = z.object({
+      latitude: z.number(),
+      longitude: z.number(),
+      description: z.string().min(1).max(500),
+      image: z.string().optional(),
+    });
+    
+    const parsed = createSchema.safeParse(body);
     
     if (!parsed.success) {
       return c.json({ error: 'Invalid data', details: parsed.error.errors }, 400);
