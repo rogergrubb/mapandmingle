@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Circle, useMap } from 'react-leaflet';
 import { useNavigate } from 'react-router-dom';
-import { Flame, Locate, Menu, MapPin, MessageCircle, Search, Loader } from 'lucide-react';
+import { Locate, MapPin, Loader } from 'lucide-react';
 import { useMapStore } from '../stores/mapStore';
 import { useAuthStore } from '../stores/authStore';
 import { MapStatusBar } from '../components/map/MapStatusBar';
@@ -52,33 +52,19 @@ export default function MapPage() {
   const [creatingPin, setCreatingPin] = useState(false);
   const [pinCreationSuccess, setPinCreationSuccess] = useState(false);
   const [userPin, setUserPin] = useState<any>(null);
-  const [loadingUserPin, setLoadingUserPin] = useState(true);
   const mapRef = useRef<L.Map>(null);
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        setShowHotZoneMenu(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
 
   // Load user's pin and geolocation
   useEffect(() => {
     const loadUserData = async () => {
       try {
         // Get user's pins
-        const response = await api.get('/api/users/me/pins');
+        const response = await api.get('/api/pins/user/mine');
         if (response.data && response.data.length > 0) {
           setUserPin(response.data[0]); // Get first pin
         }
       } catch (err) {
         console.log('No pins found');
-      } finally {
-        setLoadingUserPin(false);
       }
     };
     
@@ -131,9 +117,6 @@ export default function MapPage() {
       // Refresh pins on map
       const bounds = mapRef.current?.getBounds();
       if (bounds) {
-        useMapStore.setState((state) => ({
-          fetchPins: state.fetchPins,
-        }));
         useMapStore.getState().fetchPins({
           north: bounds.getNorth(),
           south: bounds.getSouth(),
@@ -223,7 +206,7 @@ export default function MapPage() {
           ))}
       </MapContainer>
 
-      {/* Map Status Bar - Consolidated UI */}
+      {/* Map Status Bar */}
       <MapStatusBar
         peopleCount={pins.length}
         timeFilter={filter as "24h" | "week"}
@@ -231,85 +214,6 @@ export default function MapPage() {
         onTimeFilterChange={(newFilter) => setFilter(newFilter)}
         onToggleHotspots={() => setShowHotspots(!showHotspots)}
       />
-
-      {/* Hot Zone Menu */}
-      <div className="absolute top-4 left-4 z-[1000]" ref={menuRef}>
-        <button
-          onClick={() => setShowHotZoneMenu(!showHotZoneMenu)}
-          className="flex items-center gap-2 px-4 py-3 bg-red-500 hover:bg-red-600 text-white rounded-full shadow-lg font-bold transition-all"
-        >
-          <Flame size={20} />
-          <span>Hot Zone</span>
-          <Menu size={20} />
-        </button>
-
-        {/* Dropdown Menu */}
-        {showHotZoneMenu && (
-          <div className="absolute top-full mt-2 left-0 bg-white rounded-xl shadow-xl overflow-hidden min-w-[280px] border border-gray-200">
-            {/* Mingle Hot Zone */}
-            <button
-              onClick={() => {
-                setShowHotspots(!showHotspots);
-                setShowHotZoneMenu(false);
-              }}
-              className="w-full flex items-center gap-3 px-4 py-3 hover:bg-orange-50 transition border-b border-gray-100"
-            >
-              <div className="bg-orange-100 rounded-full p-2">
-                <Flame size={20} className="text-orange-500" />
-              </div>
-              <div className="text-left flex-1">
-                <p className="font-bold text-gray-800">Mingle Hot Zone</p>
-                <p className="text-xs text-gray-500">Browse active mingles</p>
-              </div>
-              <span className="text-gray-400">→</span>
-            </button>
-
-            {/* Create a Mingle Now */}
-            <button
-              onClick={() => {
-                if (!isAuthenticated) {
-                  navigate('/(auth)/login');
-                } else {
-                  navigate('/mingles/create');
-                }
-                setShowHotZoneMenu(false);
-              }}
-              className="w-full flex items-center gap-3 px-4 py-3 hover:bg-green-50 transition border-b border-gray-100"
-            >
-              <div className="bg-green-100 rounded-full p-2">
-                <MapPin size={20} className="text-green-600" />
-              </div>
-              <div className="text-left flex-1">
-                <p className="font-bold text-gray-800">Create a Mingle</p>
-                <p className="text-xs text-gray-500">Start your own meetup</p>
-              </div>
-              <span className="text-gray-400">→</span>
-            </button>
-
-            {/* Find a Mingler Now */}
-            <button
-              onClick={() => {
-                if (!isAuthenticated) {
-                  navigate('/(auth)/login');
-                } else {
-                  navigate('/find-mingler');
-                }
-                setShowHotZoneMenu(false);
-              }}
-              className="w-full flex items-center gap-3 px-4 py-3 hover:bg-purple-50 transition"
-            >
-              <div className="bg-purple-100 rounded-full p-2">
-                <Search size={20} className="text-purple-600" />
-              </div>
-              <div className="text-left flex-1">
-                <p className="font-bold text-gray-800">Find a Mingler</p>
-                <p className="text-xs text-gray-500">Search & message users</p>
-              </div>
-              <span className="text-gray-400">→</span>
-            </button>
-          </div>
-        )}
-      </div>
 
       {/* Pin Creation Floating Actions */}
       <div className="absolute bottom-36 right-4 z-[1000] flex flex-col gap-3">
@@ -321,7 +225,7 @@ export default function MapPage() {
           </div>
         )}
 
-        {/* Center on User Button + Create Pin Button */}
+        {/* Center on User Button */}
         <button
           onClick={handleCenterOnUser}
           className="bg-white text-primary-500 p-3 rounded-full shadow-lg hover:bg-gray-50 transition-all flex items-center justify-center"
@@ -330,7 +234,7 @@ export default function MapPage() {
           <Locate size={24} />
         </button>
 
-        {/* Create Pin Button - Drop pin at current location */}
+        {/* Create Pin Button */}
         <button
           onClick={handleCreatePinAtLocation}
           disabled={creatingPin}
@@ -348,7 +252,6 @@ export default function MapPage() {
           )}
         </button>
       </div>
-
     </div>
   );
 }
