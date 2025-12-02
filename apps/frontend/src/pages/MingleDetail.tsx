@@ -110,7 +110,7 @@ export function MingleDetail() {
 
   const fetchMingle = async () => {
     try {
-      const response = await api.get(`/api/mingles/${params.id}`);
+      const response = await api.get(`/api/pins/${params.id}`);
       setMingle(response.data);
     } catch (error) {
       console.error('Failed to fetch mingle:', error);
@@ -121,7 +121,7 @@ export function MingleDetail() {
 
   const fetchMessages = async () => {
     try {
-      const response = await api.get(`/api/mingles/${params.id}/messages`);
+      const response = await api.get(`/api/pins/${params.id}/messages`);
       setMessages(response.data);
       scrollToBottom();
     } catch (error) {
@@ -137,7 +137,7 @@ export function MingleDetail() {
     if (!mingle) return;
 
     try {
-      await api.post(`/api/mingles/${mingle.id}/join`);
+      await api.post(`/api/pins/${mingle.id}/join`);
       setMingle({ ...mingle, isParticipating: true });
       fetchMingle(); // Refresh to get updated participant list
     } catch (error) {
@@ -149,7 +149,7 @@ export function MingleDetail() {
     if (!mingle) return;
 
     try {
-      await api.post(`/api/mingles/${mingle.id}/leave`);
+      await api.post(`/api/pins/${mingle.id}/leave`);
       setMingle({ ...mingle, isParticipating: false });
       fetchMingle();
     } catch (error) {
@@ -175,7 +175,7 @@ export function MingleDetail() {
     scrollToBottom();
 
     try {
-      const response = await api.post(`/api/mingles/${mingle.id}/messages`, {
+      const response = await api.post(`/api/pins/${mingle.id}/messages`, {
         text: newMessage,
       });
 
