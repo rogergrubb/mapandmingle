@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { prisma } from '../index';
 import Stripe from 'stripe';
 
-export const stripeWebhookRoutes = new Hono();
+export const webhookRoutes = new Hono();
 
 const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY;
 const stripe = STRIPE_SECRET_KEY && STRIPE_SECRET_KEY !== 'sk_test_placeholder'
@@ -10,7 +10,7 @@ const stripe = STRIPE_SECRET_KEY && STRIPE_SECRET_KEY !== 'sk_test_placeholder'
   : null;
 
 // POST /webhook/stripe - Stripe webhook handler
-stripeWebhookRoutes.post('/stripe', async (c) => {
+webhookRoutes.post('/stripe', async (c) => {
   try {
     const body = await c.req.text();
     const signature = c.req.header('stripe-signature');
