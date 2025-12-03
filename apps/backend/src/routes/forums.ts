@@ -589,7 +589,7 @@ forumRoutes.get('/categories', async (c) => {
       _count: { id: true },
     });
 
-    const categoryList = [
+    const categoryList: { id: string; name: string; description: string; icon: string }[] = [
     ];
 
     return c.json({
