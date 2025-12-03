@@ -700,6 +700,7 @@ authRoutes.get('/google/callback', async (c) => {
     return c.redirect(`${FRONTEND_URL}/auth/callback?${params.toString()}`);
   } catch (error) {
     console.error('Google OAuth callback error:', error);
-    return c.redirect(`${FRONTEND_URL}/login?error=callback_failed`);
+    const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+    return c.redirect(`${FRONTEND_URL}/login?error=callback_failed&detail=${encodeURIComponent(errorMsg)}`);
   }
 });
