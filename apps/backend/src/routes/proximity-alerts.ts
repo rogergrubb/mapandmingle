@@ -200,6 +200,7 @@ proximityAlertRoutes.post('/check', async (c) => {
         longitude,
         alert.latitude,
         alert.longitude
+      );
       
       if (distance > alert.radiusMeters) {
         continue;
@@ -278,11 +279,12 @@ proximityAlertRoutes.post('/check', async (c) => {
       }
       const sharedInterests = userInterests.filter(i => alertOwnerInterests.includes(i));
       
-      // Send notification to alert owner
-        id: userId,
-        displayName: currentUserProfile.displayName || 'Someone',
-        sharedInterests,
-      });
+      // TODO: Send push notification to alert owner when implemented
+      // sendProximityNotification(alert.userId, {
+      //   id: userId,
+      //   displayName: currentUserProfile.displayName || 'Someone',
+      //   sharedInterests,
+      // });
       
       // Send WebSocket notification
       broadcastToUser(alert.userId, {
@@ -389,3 +391,4 @@ function calculateDistance(lat1: number, lng1: number, lat2: number, lng2: numbe
 function toRad(deg: number): number {
   return deg * (Math.PI / 180);
 }
+
