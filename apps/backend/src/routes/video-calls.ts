@@ -28,9 +28,11 @@ videoCallRoutes.post('/', async (c) => {
     }
     
     // Check if blocked
-    const block = await prisma.block.findFirst({
+    const block = await prisma.blockedUser.findFirst({
       where: {
         OR: [
+          { blockerId: userId, blockedId: receiverId },
+          { blockerId: receiverId, blockedId: userId },
         ],
       },
     });
@@ -59,14 +61,14 @@ videoCallRoutes.post('/', async (c) => {
     
     const callerName = caller?.profile?.displayName || caller?.name || 'Someone';
     
-    // Send push notification
-      receiverId,
-        type: 'video_call',
-        callId: call.id,
-        callerId: userId,
-        callerName,
-        callerAvatar: caller?.profile?.avatar,
-      }
+    // TODO: Send push notification when implemented
+    // sendPushNotification(receiverId, {
+    //   type: 'video_call',
+    //   callId: call.id,
+    //   callerId: userId,
+    //   callerName,
+    //   callerAvatar: caller?.profile?.avatar,
+    // });
     
     // Send WebSocket notification
     broadcastToUser(receiverId, {
@@ -360,3 +362,4 @@ videoCallRoutes.get('/history', async (c) => {
     return c.json({ error: 'Failed to get history' }, 500);
   }
 });
+
