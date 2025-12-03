@@ -53,16 +53,16 @@ locationRoutes.post('/share', async (c) => {
       // One-time location share - create a message
       const message = await prisma.message.create({
         data: {
-          conversationId,
           senderId: userId,
+          receiverId: otherParticipant.userId,
           content: JSON.stringify({
             type: 'location',
             shareType: type,
-          latitude,
-          longitude,
-          address,
-        }),
-      },
+            latitude,
+            longitude,
+            address,
+          }),
+        },
       });
 
       // Notify recipient via WebSocket
@@ -104,8 +104,8 @@ locationRoutes.post('/share', async (c) => {
       // Create initial message
       const message = await prisma.message.create({
         data: {
-          conversationId,
           senderId: userId,
+          receiverId: otherParticipant.userId,
           content: JSON.stringify({
             type: 'location',
             shareType: 'live',
@@ -331,3 +331,4 @@ setInterval(() => {
     }
   }
 }, 60 * 1000); // Check every minute
+
