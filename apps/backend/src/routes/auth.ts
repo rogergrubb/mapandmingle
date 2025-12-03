@@ -560,7 +560,8 @@ authRoutes.get('/google/callback', async (c) => {
     
     if (!tokenResponse.ok) {
       console.error('Google token error:', tokenData);
-      return c.redirect(`${FRONTEND_URL}/login?error=token_exchange_failed`);
+      const errorDetail = encodeURIComponent(JSON.stringify(tokenData));
+      return c.redirect(`${FRONTEND_URL}/login?error=token_exchange_failed&detail=${errorDetail}`);
     }
     
     // Get user info from Google
