@@ -380,8 +380,8 @@ forumRoutes.post('/posts/:id/like', async (c) => {
         
         const displayName = user?.profile?.displayName || user?.name || 'Someone';
         
-          post.authorId,
-          post.title.slice(0, 50),
+        // TODO: Send notification when implemented
+        // notifyUser(post.authorId, displayName + ' liked your post: ' + post.title.slice(0, 50));
       }
 
       return c.json({ liked: true });
@@ -455,8 +455,8 @@ forumRoutes.post('/posts/:id/comments', async (c) => {
       
       const displayName = user?.profile?.displayName || user?.name || 'Someone';
       
-        post.authorId,
-        content.slice(0, 50),
+      // TODO: Send notification when implemented
+      // notifyUser(post.authorId, displayName + ' commented: ' + content.slice(0, 50));
     }
 
     // If replying to a comment, notify that author too
@@ -474,8 +474,8 @@ forumRoutes.post('/posts/:id/comments', async (c) => {
         
         const displayName = user?.profile?.displayName || user?.name || 'Someone';
         
-          parentComment.authorId,
-          content.slice(0, 50),
+        // TODO: Send notification when implemented  
+        // notifyUser(parentComment.authorId, displayName + ' replied: ' + content.slice(0, 50));
       }
     }
 
@@ -622,3 +622,4 @@ function getDistance(lat1: number, lng1: number, lat2: number, lng2: number): nu
 function toRad(deg: number): number {
   return deg * (Math.PI / 180);
 }
+
