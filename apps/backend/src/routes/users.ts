@@ -61,6 +61,63 @@ userRoutes.get('/me', authMiddleware, async (c) => {
   }
 });
 
+// GET /api/users/me/stats - Get current user's stats
+userRoutes.get('/me/stats', authMiddleware, async (c) => {
+  try {
+    const userId = c.get('userId');
+
+    if (!userId) {
+      return c.json({ error: 'Unauthorized' }, 401);
+    }
+
+    // Count pins
+    const pinsCount = await prisma.pin.count({
+      where: { userId }
+    });
+
+    // Count events hosted
+    const eventsCount = await prisma.event.count({
+      where: { hostId: userId }
+    });
+
+    // Count likes received on user's pins
+    const likesCount = await prisma.pinLike.count({
+      where: {
+        pin: {
+          userId: userId
+        }
+      }
+    });
+
+    // Count unique conversations
+    const sentMessages = await prisma.message.findMany({
+      where: { senderId: userId },
+      select: { receiverId: true },
+      distinct: ['receiverId']
+    });
+    const receivedMessages = await prisma.message.findMany({
+      where: { receiverId: userId },
+      select: { senderId: true },
+      distinct: ['senderId']
+    });
+    const uniquePartners = new Set([
+      ...sentMessages.map(m => m.receiverId),
+      ...receivedMessages.map(m => m.senderId)
+    ]);
+    const chatsCount = uniquePartners.size;
+
+    return c.json({
+      pinsCount,
+      eventsCount,
+      likesCount,
+      chatsCount
+    });
+  } catch (error) {
+    console.error('Error fetching user stats:', error);
+    return c.json({ error: 'Failed to fetch stats' }, 500);
+  }
+});
+
 // PATCH /api/users/me - Update current user's profile
 userRoutes.patch('/me', authMiddleware, async (c) => {
   try {
@@ -667,3 +724,4 @@ function calculateDistance(lat1: number, lng1: number, lat2: number, lng2: numbe
 function toRad(deg: number): number {
   return deg * (Math.PI / 180);
 }
+
