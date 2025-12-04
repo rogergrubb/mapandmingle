@@ -1,11 +1,46 @@
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Settings, Crown, Award, Flame, MapPin, Calendar, Heart, MessageCircle, LogOut } from "lucide-react";
 import { useAuthStore } from "../stores/authStore";
 import MyPinsManager from "../components/profile/MyPinsManager";
+import api from "../lib/api";
+
+interface UserStats {
+  pinsCount: number;
+  eventsCount: number;
+  likesCount: number;
+  chatsCount: number;
+}
 
 export default function ProfilePage() {
   const navigate = useNavigate();
   const { user, logout } = useAuthStore();
+  const [stats, setStats] = useState<UserStats>({
+    pinsCount: 0,
+    eventsCount: 0,
+    likesCount: 0,
+    chatsCount: 0
+  });
+
+  useEffect(() => {
+    loadStats();
+  }, []);
+
+  const loadStats = async () => {
+    try {
+      const response = await api.get("/api/users/me/stats");
+      if (response) {
+        setStats({
+          pinsCount: response.pinsCount || 0,
+          eventsCount: response.eventsCount || 0,
+          likesCount: response.likesCount || 0,
+          chatsCount: response.chatsCount || 0
+        });
+      }
+    } catch (err) {
+      console.error("Failed to load stats:", err);
+    }
+  };
 
   if (!user) {
     return (
@@ -19,16 +54,16 @@ export default function ProfilePage() {
   const username = user.username || user.email?.split("@")[0] || "user";
   const bio = user.bio || "";
   const avatar = user.avatar || "";
-  const trustScore = user.trustScore || 0;
+  const trustScore = user.trustScore || 50;
   const streak = user.streak || 0;
   const isPremium = user.isPremium || false;
   const isVerified = user.isVerified || false;
 
-  const stats = [
-    { label: "Pins", value: "24", icon: MapPin },
-    { label: "Events", value: "8", icon: Calendar },
-    { label: "Likes", value: "156", icon: Heart },
-    { label: "Chats", value: "12", icon: MessageCircle },
+  const statItems = [
+    { label: "Pins", value: stats.pinsCount, icon: MapPin },
+    { label: "Events", value: stats.eventsCount, icon: Calendar },
+    { label: "Likes", value: stats.likesCount, icon: Heart },
+    { label: "Chats", value: stats.chatsCount, icon: MessageCircle },
   ];
 
   const menuItems = [
@@ -93,7 +128,7 @@ export default function ProfilePage() {
         </div>
 
         <div className="grid grid-cols-4 gap-4 pt-4 border-t border-gray-100">
-          {stats.map(({ label, value, icon: Icon }) => (
+          {statItems.map(({ label, value, icon: Icon }) => (
             <div key={label} className="text-center">
               <Icon size={20} className="mx-auto text-gray-400 mb-1" />
               <p className="text-lg font-bold text-gray-900">{value}</p>
