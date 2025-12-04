@@ -105,6 +105,25 @@ initializeUsageMetricsForExistingUsers().catch(err =>
 
 // Health check (no rate limiting)
 app.get('/', (c) => c.json({ status: 'ok', message: 'Map Mingle API v1.0' }));
+
+// Debug endpoint to check database connection
+app.get('/debug/db', async (c) => {
+  try {
+    const dbUrl = process.env.DATABASE_URL || 'NOT SET';
+    const host = dbUrl.split('@')[1]?.split('/')[0] || 'unknown';
+    const count = await prisma.user.count();
+    return c.json({ 
+      host,
+      isSupabase: host.includes('supabase'),
+      isRailway: host.includes('railway') || host.includes('rlwy'),
+      userCount: count
+    });
+  } catch (err: any) {
+    const dbUrl = process.env.DATABASE_URL || 'NOT SET';
+    const host = dbUrl.split('@')[1]?.split('/')[0] || 'unknown';
+    return c.json({ error: err.message, host });
+  }
+});
 app.get('/health', (c) => c.json({ status: 'healthy', timestamp: new Date().toISOString() }));
 
 // Static legal pages
