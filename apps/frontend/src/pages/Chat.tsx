@@ -176,13 +176,15 @@ export function Chat() {
 
     try {
       // Use new API endpoint: POST /api/messages
-      const response: Message = await api.post('/api/messages', {
+      const response: any = await api.post('/api/messages', {
         receiverId: otherUserId,
         content: newMessage,
       });
 
+      // Backend returns { success: true, message }
+      const sentMessage = response.message || response;
       setMessages((prev) =>
-        prev.map((msg) => (msg.id === tempId ? response : msg))
+        prev.map((msg) => (msg.id === tempId ? sentMessage : msg))
       );
     } catch (error) {
       console.error('Failed to send message:', error);
@@ -503,3 +505,4 @@ export function Chat() {
 }
 
 export default Chat;
+
