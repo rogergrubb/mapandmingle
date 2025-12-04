@@ -28,7 +28,8 @@ export default function MyPinsManager() {
     setLoading(true);
     try {
       const response = await api.get("/api/pins/user/mine");
-      setPins(response.data || []);
+      const pinData = response.data || response || [];
+      setPins(Array.isArray(pinData) ? pinData : []);
       setError("");
     } catch (err: any) {
       console.error("Failed to load pins:", err);
@@ -240,3 +241,4 @@ export default function MyPinsManager() {
     </div>
   );
 }
+
