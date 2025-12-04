@@ -17,9 +17,11 @@ steps:
       - 'push'
       - 'gcr.io/$PROJECT_ID/mapandmingle-api:$COMMIT_SHA'
 
-  # Deploy to Cloud Run
-  - name: 'gcr.io/cloud-builders/run'
+  # Deploy to Cloud Run (preserve existing env vars)
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
     args:
+      - 'run'
       - 'deploy'
       - 'mapandmingle-api'
       - '--image'
@@ -29,6 +31,8 @@ steps:
       - '--platform'
       - 'managed'
       - '--allow-unauthenticated'
+      - '--set-env-vars'
+      - 'DATABASE_URL=postgresql://postgres.oebwitesfxypypqzrunz:xm4q40xkb1uT1WCt@aws-0-us-west-1.pooler.supabase.com:6543/postgres'
 
 images:
   - 'gcr.io/$PROJECT_ID/mapandmingle-api:$COMMIT_SHA'
