@@ -129,6 +129,7 @@ export default function MingleDetail() {
               </button>
 
               <button
+                onClick={() => navigate(`/chat/${mingle.userId}`)}
                 className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg font-semibold hover:bg-blue-600"
               >
                 <MessageCircle size={20} />
@@ -160,3 +161,4 @@ export default function MingleDetail() {
     </div>
   );
 }
+
