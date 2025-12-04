@@ -28,7 +28,7 @@ export default function ProfilePage() {
 
   const loadStats = async () => {
     try {
-      const response = await api.get("/api/users/me/stats");
+      const response: any = await api.get("/api/users/me/stats");
       if (response) {
         setStats({
           pinsCount: response.pinsCount || 0,
