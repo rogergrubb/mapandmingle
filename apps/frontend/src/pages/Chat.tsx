@@ -130,12 +130,14 @@ export function Chat() {
       } else {
         // No messages yet, fetch user profile
         try {
-          const userData: UserProfile = await api.get(`/api/users/${otherUserId}`);
+          const response: any = await api.get(`/api/users/${otherUserId}`);
+          // Backend returns { user: { ... } }
+          const userData = response.user || response;
           setOtherUser({
             id: userData.id,
-            name: userData.profile?.displayName || userData.name || 'User',
-            email: userData.email,
-            avatar: userData.profile?.avatar,
+            name: userData.displayName || userData.name || 'User',
+            email: userData.email || '',
+            avatar: userData.avatar,
           });
         } catch (e) {
           console.error('Failed to fetch user profile:', e);
