@@ -33,7 +33,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({ isLoading: true });
     try {
       const response: any = await api.post('/api/auth/login', { email, password });
-      // Backend returns accessToken, not token
       const { accessToken, refreshToken, user } = response;
       const token = accessToken;
       
@@ -43,7 +42,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       
       set({ user, token, isAuthenticated: true, isLoading: false });
       
-      // Connect WebSocket
       wsClient.connect(token);
     } catch (error) {
       set({ isLoading: false });
@@ -55,7 +53,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({ isLoading: true });
     try {
       const response: any = await api.post('/api/auth/register', data);
-      // Backend returns accessToken, not token
       const { accessToken, refreshToken, user } = response;
       const token = accessToken;
       
@@ -65,7 +62,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       
       set({ user, token, isAuthenticated: true, isLoading: false });
       
-      // Connect WebSocket
       wsClient.connect(token);
     } catch (error) {
       set({ isLoading: false });
@@ -91,26 +87,33 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   fetchUser: async () => {
-    if (!get().token) return;
+    const token = get().token;
+    if (!token) return;
     
     try {
       const user: any = await api.get('/api/users/me');
-      // Save userId to localStorage for API requests
       if (user && user.id) {
         localStorage.setItem('userId', user.id);
       }
       set({ user, isAuthenticated: true });
       
-      // Connect WebSocket if not connected
-      if (get().token) {
-        wsClient.connect(get().token!);
+      if (token) {
+        wsClient.connect(token);
       }
-    } catch (error) {
-      get().logout();
+    } catch (error: any) {
+      // Only logout on definitive auth failures (401/403)
+      // Don't logout on network errors or server errors (5xx)
+      const status = error?.response?.status;
+      if (status === 401 || status === 403) {
+        console.log('Auth failed, logging out');
+        get().logout();
+      } else {
+        // Keep user logged in but log the error
+        console.error('Failed to fetch user (keeping session):', error);
+      }
     }
   },
 
-  // Set tokens from OAuth callback
   setTokens: (accessToken: string, refreshToken: string, userId?: string) => {
     localStorage.setItem('token', accessToken);
     localStorage.setItem('refreshToken', refreshToken);
@@ -119,7 +122,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
     set({ token: accessToken, isAuthenticated: true });
     
-    // Connect WebSocket
     wsClient.connect(accessToken);
   },
 }));
