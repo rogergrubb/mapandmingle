@@ -52,6 +52,7 @@ export function Chat() {
   const [showMenu, setShowMenu] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSending, setIsSending] = useState(false);
+  const [viewingImage, setViewingImage] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<number | undefined>(undefined);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -159,6 +160,27 @@ export function Chat() {
     setTimeout(() => {
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, 100);
+  };
+
+  // Helper to detect if message contains an image
+  const extractImageUrl = (text: string): string | null => {
+    // Check for [Image] prefix format
+    if (text.startsWith('[Image] ')) {
+      return text.replace('[Image] ', '').trim();
+    }
+    // Check for S3 URL pattern
+    const s3Pattern = /(https:\/\/[\w.-]+\.s3[\w.-]*\.amazonaws\.com\/[^\s]+)/;
+    const match = text.match(s3Pattern);
+    return match ? match[1] : null;
+  };
+
+  // Helper to detect location messages
+  const extractLocationUrl = (text: string): string | null => {
+    if (text.includes('Shared location:') || text.includes('[Location]')) {
+      const urlMatch = text.match(/(https:\/\/[\w./\-?=&]+)/);
+      return urlMatch ? urlMatch[1] : null;
+    }
+    return null;
   };
 
   // Common emojis for quick selection
@@ -500,7 +522,46 @@ export function Chat() {
                           : 'bg-white text-gray-900 border border-gray-200'
                       } rounded-2xl px-4 py-2 shadow-sm`}
                     >
-                      <p className="whitespace-pre-wrap break-words">{message.content}</p>
+                      {(() => {
+                        const imageUrl = extractImageUrl(message.content);
+                        const locationUrl = extractLocationUrl(message.content);
+                        
+                        if (imageUrl) {
+                          return (
+                            <div 
+                              className="cursor-pointer"
+                              onClick={() => setViewingImage(imageUrl)}
+                            >
+                              <img 
+                                src={imageUrl} 
+                                alt="Shared image"
+                                className="max-w-[200px] max-h-[200px] rounded-lg object-cover hover:opacity-90 transition-opacity"
+                                onError={(e) => {
+                                  (e.target as HTMLImageElement).style.display = 'none';
+                                  (e.target as HTMLImageElement).parentElement!.innerHTML = '<p class="text-sm opacity-75">Image failed to load</p>';
+                                }}
+                              />
+                              <p className="text-xs mt-1 opacity-75">Tap to view full size</p>
+                            </div>
+                          );
+                        }
+                        
+                        if (locationUrl) {
+                          return (
+                            <a 
+                              href={locationUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-2 underline hover:no-underline"
+                            >
+                              <span>📍</span>
+                              <span>View shared location</span>
+                            </a>
+                          );
+                        }
+                        
+                        return <p className="whitespace-pre-wrap break-words">{message.content}</p>;
+                      })()}
                       <div className={`text-xs mt-1 flex items-center justify-end gap-1 ${
                         isMine ? 'text-pink-100' : 'text-gray-400'
                       }`}>
@@ -637,6 +698,26 @@ export function Chat() {
           </button>
         </div>
       </form>
+      {/* Full-size Image Viewer Modal */}
+      {viewingImage && (
+        <div 
+          className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4"
+          onClick={() => setViewingImage(null)}
+        >
+          <button
+            onClick={() => setViewingImage(null)}
+            className="absolute top-4 right-4 text-white text-4xl hover:text-gray-300 z-50"
+          >
+            &times;
+          </button>
+          <img 
+            src={viewingImage}
+            alt="Full size"
+            className="max-w-full max-h-full object-contain rounded-lg"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
     </div>
   );
 }
