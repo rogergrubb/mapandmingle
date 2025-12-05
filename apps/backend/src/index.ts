@@ -364,6 +364,13 @@ wss.on('connection', (ws, req) => {
         wsConnections.set(message.userId, ws);
         ws.send(JSON.stringify({ type: 'auth_success' }));
         console.log(`✅ WebSocket authenticated: ${message.userId}`);
+        
+        // Broadcast that this user is now online
+        broadcastToAll({
+          type: 'online-status',
+          userId: message.userId,
+          isOnline: true,
+        });
       }
       
       // Handle typing indicators
@@ -393,6 +400,17 @@ wss.on('connection', (ws, req) => {
         ws.send(JSON.stringify({ type: 'pong' }));
       }
       
+      // Handle online status check
+      if (message.type === 'check-online' && message.userId) {
+        const targetUserId = message.userId;
+        const isOnline = wsConnections.has(targetUserId);
+        ws.send(JSON.stringify({ 
+          type: 'online-status', 
+          userId: targetUserId, 
+          isOnline 
+        }));
+      }
+      
       // Handle location updates
       if (message.type === 'location_update' && userId) {
         const { latitude, longitude } = message;
@@ -408,6 +426,13 @@ wss.on('connection', (ws, req) => {
     if (userId) {
       wsConnections.delete(userId);
       console.log(`❌ WebSocket disconnected: ${userId}`);
+      
+      // Broadcast that this user is now offline
+      broadcastToAll({
+        type: 'online-status',
+        userId,
+        isOnline: false,
+      });
     }
   });
   
