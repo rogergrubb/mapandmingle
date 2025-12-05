@@ -193,6 +193,26 @@ messagesRoutes.get('/conversations', async (c: any) => {
   }
 });
 
+// GET /api/messages/unread-count - Get total unread message count
+messagesRoutes.get('/unread-count', async (c: any) => {
+  try {
+    const userId = c.req.header('X-User-Id');
+    if (!userId) return c.json({ error: 'Unauthorized' }, 401);
+
+    const unreadCount = await prisma.message.count({
+      where: {
+        receiverId: userId,
+        isRead: false,
+      },
+    });
+
+    return c.json({ unreadCount });
+  } catch (error) {
+    console.error('Failed to get unread count:', error);
+    return c.json({ error: 'Failed to get unread count' }, 500);
+  }
+});
+
 // PUT /api/messages/:id/read - Mark message as read
 messagesRoutes.put('/:id/read', async (c: any) => {
   try {
