@@ -258,18 +258,28 @@ export default function HelpSupport() {
         <div className="bg-gradient-to-r from-pink-500 to-purple-500 rounded-3xl p-6 text-white">
           <h2 className="text-lg font-semibold mb-4">Additional Resources</h2>
           <div className="space-y-3">
-            <a href="#" className="block p-3 bg-white/20 rounded-2xl hover:bg-white/30 transition-colors duration-200">
+            <button 
+              onClick={() => navigate('/community-guidelines')} 
+              className="block w-full text-left p-3 bg-white/20 rounded-2xl hover:bg-white/30 transition-colors duration-200"
+            >
               Community Guidelines
-            </a>
-            <a href="#" className="block p-3 bg-white/20 rounded-2xl hover:bg-white/30 transition-colors duration-200">
+            </button>
+            <button 
+              onClick={() => navigate('/terms-of-service')} 
+              className="block w-full text-left p-3 bg-white/20 rounded-2xl hover:bg-white/30 transition-colors duration-200"
+            >
               Terms of Service
-            </a>
-            <a href="#" className="block p-3 bg-white/20 rounded-2xl hover:bg-white/30 transition-colors duration-200">
+            </button>
+            <button 
+              onClick={() => navigate('/privacy-policy')} 
+              className="block w-full text-left p-3 bg-white/20 rounded-2xl hover:bg-white/30 transition-colors duration-200"
+            >
               Privacy Policy
-            </a>
+            </button>
           </div>
         </div>
       </div>
     </div>
   );
 }
+
