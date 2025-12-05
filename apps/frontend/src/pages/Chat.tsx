@@ -123,12 +123,24 @@ export function Chat() {
     };
   }, [socket, isConnected, otherUserId, user?.id]);
 
+  // Mark all messages in this conversation as read
+  const markConversationAsRead = async () => {
+    try {
+      await api.put(`/api/messages/conversation/${otherUserId}/read`);
+    } catch (error) {
+      console.error('Failed to mark conversation as read:', error);
+    }
+  };
+
   const fetchMessages = async () => {
     try {
       setIsLoading(true);
       // Use new API endpoint: GET /api/messages/conversation/:userId
       const data: Message[] = await api.get(`/api/messages/conversation/${otherUserId}`);
       setMessages(data);
+      
+      // Mark messages as read after fetching
+      markConversationAsRead();
       
       // Extract other user info from messages or fetch profile
       if (data.length > 0) {
