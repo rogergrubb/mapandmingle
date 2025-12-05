@@ -60,6 +60,7 @@ export function Chat() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [isOtherUserOnline, setIsOtherUserOnline] = useState(false);
 
   useEffect(() => {
     if (otherUserId) {
@@ -72,6 +73,17 @@ export function Chat() {
 
     // Authenticate WebSocket
     socket.send('auth', { userId: user.id });
+    
+    // Check if other user is online
+    socket.send('check-online', { userId: otherUserId });
+    
+    // Listen for online status updates
+    const handleOnlineStatus = (data: { userId: string; isOnline: boolean }) => {
+      if (data.userId === otherUserId) {
+        setIsOtherUserOnline(data.isOnline);
+      }
+    };
+    socket.on('online-status', handleOnlineStatus);
 
     // Listen for new messages
     const handleNewMessage = (data: any) => {
@@ -408,14 +420,25 @@ export function Chat() {
                   </span>
                 </div>
               )}
+              {/* Online indicator on avatar */}
+              <span className={`absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full border-2 border-white ${isOtherUserOnline ? 'bg-green-500' : 'bg-gray-400'}`}>
+                {isOtherUserOnline && (
+                  <span className="absolute inset-0 rounded-full bg-green-400 animate-ping opacity-75"></span>
+                )}
+              </span>
             </div>
             <div>
               <div className="font-semibold text-gray-900">{displayName}</div>
-              <div className="text-xs text-gray-500">
+              <div className="text-xs">
                 {isTyping ? (
-                  <span className="text-pink-500">typing...</span>
+                  <span className="text-pink-500 font-medium">typing...</span>
+                ) : isOtherUserOnline ? (
+                  <span className="text-green-500 font-medium flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 bg-green-500 rounded-full"></span>
+                    Online now
+                  </span>
                 ) : (
-                  'Tap to view profile'
+                  <span className="text-gray-500">Tap to view profile</span>
                 )}
               </div>
             </div>
