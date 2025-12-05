@@ -357,14 +357,23 @@ pinRoutes.get('/:id', async (c) => {
     
     return c.json({
       id: pin.id,
+      userId: pin.userId, // Add userId at top level for frontend compatibility
       latitude: pin.latitude,
       longitude: pin.longitude,
       description: pin.description,
       image: pin.image,
+      photoUrl: pin.image, // Alias for frontend
       likesCount: pin.likesCount,
       likedByUser: false,
       createdAt: pin.createdAt.toISOString(),
-      createdBy: {
+      user: { // Use 'user' instead of 'createdBy' for frontend compatibility
+        id: pin.user.id,
+        name: pin.user.name,
+        image: pin.user.image,
+        avatar: pin.user.profile?.avatar,
+        bio: pin.user.profile?.bio,
+      },
+      createdBy: { // Keep for backwards compatibility
         id: pin.user.id,
         name: pin.user.name,
         image: pin.user.image,
