@@ -177,7 +177,7 @@ export function Chat() {
   // Helper to detect location messages
   const extractLocationUrl = (text: string): string | null => {
     if (text.includes('Shared location:') || text.includes('[Location]')) {
-      const urlMatch = text.match(/(https:\/\/[\w./\-?=&]+)/);
+      const urlMatch = text.match(/(https:\/\/[\w./\-?=&,]+)/);
       return urlMatch ? urlMatch[1] : null;
     }
     return null;
