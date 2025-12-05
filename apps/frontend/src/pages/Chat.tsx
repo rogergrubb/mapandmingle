@@ -5,6 +5,7 @@ import {
   Trash2, ArrowLeft, Check, CheckCheck, Phone, Video
 } from 'lucide-react';
 import { Button } from '../components/common/Button';
+import EmojiPicker from '../components/EmojiPicker';
 import { useWebSocket } from '../lib/websocket';
 import { useAuthStore } from '../stores/authStore';
 import api from '../lib/api';
@@ -183,9 +184,6 @@ export function Chat() {
     return null;
   };
 
-  // Common emojis for quick selection
-  const quickEmojis = ['😊', '😂', '❤️', '👍', '🎉', '🔥', '😍', '🙌', '👋', '✨', '😎', '🤗'];
-
   const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !otherUserId) return;
@@ -273,7 +271,6 @@ export function Chat() {
 
   const handleEmojiSelect = (emoji: string) => {
     setNewMessage(prev => prev + emoji);
-    setShowEmojiPicker(false);
     inputRef.current?.focus();
   };
 
@@ -646,32 +643,14 @@ export function Chat() {
           >
             <MapPin className="w-5 h-5" />
           </button>
-          <div className="relative">
-            <button 
-              type="button"
-              onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-              className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors"
-              title="Add emoji"
-            >
-              <Smile className="w-5 h-5" />
-            </button>
-            {showEmojiPicker && (
-              <div className="absolute bottom-12 left-0 bg-white rounded-lg shadow-xl border p-2 z-50">
-                <div className="grid grid-cols-6 gap-1">
-                  {quickEmojis.map((emoji) => (
-                    <button
-                      key={emoji}
-                      type="button"
-                      onClick={() => handleEmojiSelect(emoji)}
-                      className="text-xl p-1.5 hover:bg-gray-100 rounded transition-colors"
-                    >
-                      {emoji}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
+          <button 
+            type="button"
+            onClick={() => setShowEmojiPicker(true)}
+            className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors"
+            title="Add emoji"
+          >
+            <Smile className="w-5 h-5" />
+          </button>
           
           <input
             ref={inputRef}
@@ -698,6 +677,13 @@ export function Chat() {
           </button>
         </div>
       </form>
+      {/* Emoji Picker Modal */}
+      <EmojiPicker
+        isOpen={showEmojiPicker}
+        onClose={() => setShowEmojiPicker(false)}
+        onSelect={handleEmojiSelect}
+      />
+
       {/* Full-size Image Viewer Modal */}
       {viewingImage && (
         <div 
