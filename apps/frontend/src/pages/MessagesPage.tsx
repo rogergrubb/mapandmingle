@@ -134,12 +134,16 @@ export default function MessagesPage() {
                     </p>
                   </div>
 
-                  {/* Unread Badge */}
+                  {/* Unread Badge - Enhanced */}
                   {conversation.unreadCount > 0 && (
-                    <div className="flex-shrink-0">
-                      <div className="bg-primary-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
-                        {conversation.unreadCount}
+                    <div className="flex-shrink-0 flex flex-col items-end gap-1">
+                      <div className="relative">
+                        <div className="bg-gradient-to-r from-red-500 to-pink-500 text-white text-xs font-bold rounded-full min-w-[24px] h-6 px-2 flex items-center justify-center shadow-lg">
+                          {conversation.unreadCount > 99 ? '99+' : conversation.unreadCount}
+                        </div>
+                        <span className="absolute inset-0 rounded-full bg-red-400 animate-ping opacity-50"></span>
                       </div>
+                      <span className="text-[10px] text-red-500 font-semibold">NEW</span>
                     </div>
                   )}
                 </div>
