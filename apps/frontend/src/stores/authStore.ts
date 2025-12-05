@@ -23,10 +23,18 @@ interface RegisterData {
   displayName: string;
 }
 
+// Helper to check if a token is valid
+const isValidToken = (token: string | null): boolean => {
+  if (!token) return false;
+  if (token === 'undefined' || token === 'null') return false;
+  if (token.length < 10) return false;
+  return true;
+};
+
 export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
-  token: localStorage.getItem('token'),
-  isAuthenticated: !!localStorage.getItem('token'),
+  token: isValidToken(localStorage.getItem('token')) ? localStorage.getItem('token') : null,
+  isAuthenticated: isValidToken(localStorage.getItem('token')),
   isLoading: false,
 
   login: async (email: string, password: string) => {
@@ -70,6 +78,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   logout: () => {
+    console.log('Logout called');
     localStorage.removeItem('token');
     localStorage.removeItem('refreshToken');
     localStorage.removeItem('userId');
@@ -87,37 +96,73 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   fetchUser: async () => {
-    // Read token directly from localStorage to avoid stale state
+    // Read token directly from localStorage
     const token = localStorage.getItem('token');
-    if (!token) {
-      set({ isAuthenticated: false });
+    
+    // Validate token before proceeding
+    if (!isValidToken(token)) {
+      console.log('No valid token found, clearing auth state');
+      localStorage.removeItem('token');
+      localStorage.removeItem('refreshToken');
+      localStorage.removeItem('userId');
+      set({ isAuthenticated: false, user: null, token: null });
       return;
     }
     
-    // Update state with token from localStorage
-    set({ token, isAuthenticated: true });
+    // Don't set isAuthenticated: true until we verify the user exists
+    set({ token });
     
     try {
+      console.log('Fetching user with token...');
       const user: any = await api.get('/api/users/me');
-      if (user && user.id) {
-        localStorage.setItem('userId', user.id);
-      }
-      set({ user, isAuthenticated: true });
       
-      // Connect WebSocket
-      wsClient.connect(token);
-    } catch (error: any) {
-      const status = error?.response?.status;
-      if (status === 401 || status === 403) {
-        console.log('Auth failed, logging out');
-        get().logout();
+      if (user && user.id) {
+        console.log('User fetched successfully:', user.id);
+        localStorage.setItem('userId', user.id);
+        set({ user, isAuthenticated: true });
+        
+        // Connect WebSocket only after successful auth
+        wsClient.connect(token!);
       } else {
-        console.error('Failed to fetch user (keeping session):', error);
+        console.log('No user data returned, clearing auth');
+        get().logout();
+      }
+    } catch (error: any) {
+      console.error('fetchUser error:', error);
+      
+      // Check for specific error types
+      const status = error?.response?.status;
+      const isNetworkError = !error.response && error.message?.includes('Network');
+      
+      if (status === 401 || status === 403) {
+        // Token is definitely invalid - the api.ts would have tried refresh already
+        console.log('Auth failed with', status, '- logging out');
+        get().logout();
+      } else if (status === 404) {
+        // User doesn't exist in database
+        console.log('User not found - logging out');
+        get().logout();
+      } else if (isNetworkError) {
+        // Network error - keep user logged in but show offline state
+        console.log('Network error - keeping session');
+        set({ isAuthenticated: true }); // Optimistically keep logged in
+      } else {
+        // Other errors (500, etc) - keep user logged in
+        console.log('Server error - keeping session');
+        set({ isAuthenticated: true });
       }
     }
   },
 
   setTokens: (accessToken: string, refreshToken: string, userId?: string) => {
+    console.log('setTokens called');
+    
+    // Validate tokens before storing
+    if (!isValidToken(accessToken)) {
+      console.error('Invalid access token, not storing');
+      return;
+    }
+    
     // Store in localStorage first
     localStorage.setItem('token', accessToken);
     localStorage.setItem('refreshToken', refreshToken);
