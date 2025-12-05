@@ -21,6 +21,18 @@ const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
  * Global rate limiting middleware
  */
 export async function rateLimitMiddleware(c: Context, next: Next) {
+  const path = c.req.path;
+  
+  // Skip rate limiting for auth routes (login, register, OAuth callbacks)
+  if (path.startsWith('/api/auth/') || path === '/api/auth') {
+    return next();
+  }
+  
+  // Skip rate limiting for health checks and debug
+  if (path === '/' || path === '/health' || path.startsWith('/debug')) {
+    return next();
+  }
+  
   const userId = c.req.header('X-User-Id');
   
   // Skip rate limiting for unauthenticated requests to public endpoints
