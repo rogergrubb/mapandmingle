@@ -90,22 +90,23 @@ export default function WelcomeCard({ onDismiss, onAddInterests }: WelcomeCardPr
           {/* CTA Button */}
           <button
             onClick={handleAddInterests}
+            type="button"
             className="
               group relative w-full py-3.5 px-6 
               bg-white rounded-2xl 
-              font-bold text-transparent bg-clip-text 
-              bg-gradient-to-r from-pink-500 to-purple-600
+              font-bold
               shadow-lg hover:shadow-xl
               transition-all duration-300 ease-out
               hover:scale-[1.02] active:scale-[0.98]
               flex items-center justify-center gap-2
+              cursor-pointer
             "
           >
-            <Heart className="w-5 h-5 text-pink-500 fill-pink-500 group-hover:animate-pulse" />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-purple-600">
+            <Heart className="w-5 h-5 text-pink-500 fill-pink-500 group-hover:animate-pulse pointer-events-none" />
+            <span className="text-pink-500 font-bold pointer-events-none">
               Add Your Interests
             </span>
-            <ArrowRight className="w-5 h-5 text-purple-500 group-hover:translate-x-1 transition-transform" />
+            <ArrowRight className="w-5 h-5 text-purple-500 group-hover:translate-x-1 transition-transform pointer-events-none" />
           </button>
           
           {/* Skip text */}
