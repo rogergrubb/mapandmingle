@@ -1,5 +1,5 @@
 import { Outlet, Link, useLocation } from 'react-router-dom';
-import { MapPin, Calendar, Activity, MessageCircle, User } from 'lucide-react';
+import { MapPin, Calendar, Activity, MessageCircle, User, Bell } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import api from '../../lib/api';
 
@@ -8,6 +8,7 @@ export default function MainLayout() {
   const [ghostMode, setGhostMode] = useState(false);
   const [loadingGhost, setLoadingGhost] = useState(false);
   const [subscriptionTier, setSubscriptionTier] = useState('free');
+  const [unreadCount, setUnreadCount] = useState(0);
 
   // Load user data on mount
   useEffect(() => {
@@ -21,6 +22,24 @@ export default function MainLayout() {
       }
     };
     loadUserData();
+  }, []);
+
+  // Fetch unread message count
+  useEffect(() => {
+    const fetchUnreadCount = async () => {
+      try {
+        const response: any = await api.get('/api/messages/unread-count');
+        setUnreadCount(response.unreadCount || 0);
+      } catch (err) {
+        console.error('Failed to fetch unread count:', err);
+      }
+    };
+    
+    fetchUnreadCount();
+    
+    // Poll every 30 seconds for new messages
+    const interval = setInterval(fetchUnreadCount, 30000);
+    return () => clearInterval(interval);
   }, []);
 
   const handleGhostModeToggle = async () => {
@@ -112,23 +131,40 @@ export default function MainLayout() {
             </div>
           </div>
 
-          {/* Right: Ghost Toggle Button */}
-          <button
-            onClick={handleGhostModeToggle}
-            disabled={loadingGhost}
-            className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200 font-semibold text-lg ring-1 ring-transparent hover:ring-gray-300 ${
-              ghostMode
-                ? 'bg-gray-900 text-white shadow-md'
-                : 'bg-white text-gray-700 shadow-sm hover:shadow-md'
-            } disabled:opacity-50 disabled:cursor-not-allowed`}
-            title={ghostMode ? 'Become visible' : 'Go invisible'}
-          >
-            {loadingGhost ? (
-              <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-            ) : (
-              '👻'
-            )}
-          </button>
+          {/* Right: Notifications & Ghost Toggle */}
+          <div className="flex items-center gap-2">
+            {/* Notification Bell with Badge */}
+            <Link
+              to="/messages"
+              className="relative flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center bg-white shadow-sm hover:shadow-md transition-all duration-200 ring-1 ring-transparent hover:ring-gray-300"
+              title="Messages"
+            >
+              <Bell size={20} className="text-gray-700" />
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 min-w-[20px] h-[20px] flex items-center justify-center bg-red-500 text-white text-[11px] font-bold rounded-full px-1 shadow-lg">
+                  {unreadCount > 99 ? '99+' : unreadCount}
+                </span>
+              )}
+            </Link>
+            
+            {/* Ghost Toggle Button */}
+            <button
+              onClick={handleGhostModeToggle}
+              disabled={loadingGhost}
+              className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200 font-semibold text-lg ring-1 ring-transparent hover:ring-gray-300 ${
+                ghostMode
+                  ? 'bg-gray-900 text-white shadow-md'
+                  : 'bg-white text-gray-700 shadow-sm hover:shadow-md'
+              } disabled:opacity-50 disabled:cursor-not-allowed`}
+              title={ghostMode ? 'Become visible' : 'Go invisible'}
+            >
+              {loadingGhost ? (
+                <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+              ) : (
+                '👻'
+              )}
+            </button>
+          </div>
         </div>
       </header>
 
@@ -148,6 +184,7 @@ export default function MainLayout() {
         <div className="flex justify-around items-stretch px-2 sm:px-4">
           {navItems.map(({ path, icon: Icon, label }) => {
             const isActive = location.pathname === path;
+            const showBadge = label === 'Messages' && unreadCount > 0;
             return (
               <Link
                 key={path}
@@ -158,11 +195,19 @@ export default function MainLayout() {
                     : 'text-gray-500 hover:text-gray-700'
                 }`}
               >
-                <Icon
-                  size={24}
-                  strokeWidth={isActive ? 2 : 1.5}
-                  className={`transition-transform ${isActive ? 'scale-110' : 'group-hover:scale-105'}`}
-                />
+                <div className="relative">
+                  <Icon
+                    size={24}
+                    strokeWidth={isActive ? 2 : 1.5}
+                    className={`transition-transform ${isActive ? 'scale-110' : 'group-hover:scale-105'}`}
+                  />
+                  {/* Unread Message Badge */}
+                  {showBadge && (
+                    <span className="absolute -top-2 -right-2 min-w-[18px] h-[18px] flex items-center justify-center bg-red-500 text-white text-[10px] font-bold rounded-full px-1 shadow-md animate-pulse">
+                      {unreadCount > 99 ? '99+' : unreadCount}
+                    </span>
+                  )}
+                </div>
                 <span className={`text-xs mt-1 font-medium transition-all ${
                   isActive ? 'font-semibold' : ''
                 }`}>
