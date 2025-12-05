@@ -202,52 +202,75 @@ pinRoutes.post('/auto-create', async (c) => {
       return c.json({ error: 'latitude and longitude required' }, 400);
     }
     
-    // Check if user already has a pin
+    // Check if user already has a pin - if so, update it
     const existingPin = await prisma.pin.findFirst({
       where: { userId },
     });
     
-    if (existingPin) {
-      return c.json({ error: 'User already has a pin. Delete it first to create a new one.' }, 400);
-    }
+    let pin;
+    let isUpdate = false;
     
-    // Create default pin with generic description
-    const pin = await prisma.pin.create({
-      data: {
-        userId,
-        latitude,
-        longitude,
-        description: 'Mingling here!',
-      },
-      include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
-            image: true,
-            profile: {
-              select: { avatar: true },
+    if (existingPin) {
+      // Update existing pin's location
+      pin = await prisma.pin.update({
+        where: { id: existingPin.id },
+        data: {
+          latitude,
+          longitude,
+        },
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              image: true,
+              profile: {
+                select: { avatar: true },
+              },
             },
           },
         },
-      },
-    });
+      });
+      isUpdate = true;
+    } else {
+      // Create new pin with generic description
+      pin = await prisma.pin.create({
+        data: {
+          userId,
+          latitude,
+          longitude,
+          description: 'Mingling here!',
+        },
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              image: true,
+              profile: {
+                select: { avatar: true },
+              },
+            },
+          },
+        },
+      });
+      
+      // Update user's pin count only for new pins
+      await prisma.profile.update({
+        where: { userId },
+        data: { pinsCreated: { increment: 1 } },
+      });
+    }
     
-    // Update user's pin count
-    await prisma.profile.update({
-      where: { userId },
-      data: { pinsCreated: { increment: 1 } },
-    });
-    
-    // Broadcast new pin to all connected users
+    // Broadcast new/updated pin to all connected users
     broadcastToAll({
-      type: 'new_pin',
+      type: isUpdate ? 'pin_updated' : 'new_pin',
       pin: {
         id: pin.id,
         latitude: pin.latitude,
         longitude: pin.longitude,
         description: pin.description,
-        likesCount: 0,
+        likesCount: pin.likesCount,
         createdAt: pin.createdAt.toISOString(),
         createdBy: {
           id: pin.user.id,
@@ -263,7 +286,7 @@ pinRoutes.post('/auto-create', async (c) => {
       latitude: pin.latitude,
       longitude: pin.longitude,
       description: pin.description,
-      likesCount: 0,
+      likesCount: pin.likesCount,
       createdAt: pin.createdAt.toISOString(),
       createdBy: {
         id: pin.user.id,
@@ -271,7 +294,8 @@ pinRoutes.post('/auto-create', async (c) => {
         image: pin.user.image,
         avatar: pin.user.profile?.avatar,
       },
-    }, 201);
+      updated: isUpdate,
+    }, isUpdate ? 200 : 201);
   } catch (error) {
     console.error('Error auto-creating pin:', error);
     return c.json({ error: 'Failed to create pin' }, 500);
