@@ -33,10 +33,72 @@ const isValidToken = (token: string | null): boolean => {
   return true;
 };
 
+// Helper to decode JWT and check expiration
+const isTokenExpiringSoon = (token: string): boolean => {
+  try {
+    // Decode the JWT payload (middle part)
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    const exp = payload.exp;
+    if (!exp) return false;
+    
+    // Check if token expires in the next 30 minutes (1800 seconds)
+    const now = Math.floor(Date.now() / 1000);
+    const timeUntilExpiry = exp - now;
+    
+    console.log(`Token expires in ${Math.floor(timeUntilExpiry / 60)} minutes`);
+    
+    return timeUntilExpiry < 1800; // Less than 30 minutes
+  } catch (e) {
+    console.error('Failed to decode token:', e);
+    return false;
+  }
+};
+
+// Proactive token refresh
+const refreshTokenIfNeeded = async (): Promise<string | null> => {
+  const token = localStorage.getItem('token');
+  const refreshToken = localStorage.getItem('refreshToken');
+  
+  if (!isValidToken(token) || !isValidToken(refreshToken)) {
+    return null;
+  }
+  
+  if (isTokenExpiringSoon(token!)) {
+    console.log('Token expiring soon, refreshing proactively...');
+    try {
+      const response = await axios.post(`${API_URL}/api/auth/refresh`, {
+        refreshToken,
+      });
+      
+      const newToken = response.data.accessToken || response.data.token;
+      const newRefreshToken = response.data.refreshToken;
+      
+      if (newToken) {
+        localStorage.setItem('token', newToken);
+        if (newRefreshToken) {
+          localStorage.setItem('refreshToken', newRefreshToken);
+        }
+        console.log('Token refreshed proactively!');
+        return newToken;
+      }
+    } catch (error) {
+      console.error('Proactive token refresh failed:', error);
+    }
+  }
+  
+  return token;
+};
+
 // Request interceptor
 api.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem('token');
+  async (config) => {
+    // Proactively refresh token if expiring soon
+    let token = await refreshTokenIfNeeded();
+    
+    if (!token) {
+      token = localStorage.getItem('token');
+    }
+    
     if (isValidToken(token)) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -93,11 +155,16 @@ api.interceptors.response.use(
       
       if (!isValidToken(refreshToken)) {
         isRefreshing = false;
-        // Don't redirect - just reject and let the caller handle it
+        // Clear invalid tokens
+        localStorage.removeItem('token');
+        localStorage.removeItem('refreshToken');
+        localStorage.removeItem('userId');
+        window.location.href = '/login';
         return Promise.reject(error);
       }
       
       try {
+        console.log('Attempting token refresh after 401...');
         const response = await axios.post(`${API_URL}/api/auth/refresh`, {
           refreshToken,
         });
@@ -106,6 +173,7 @@ api.interceptors.response.use(
         const newRefreshToken = response.data.refreshToken;
         
         if (newToken) {
+          console.log('Token refreshed successfully!');
           localStorage.setItem('token', newToken);
           if (newRefreshToken) {
             localStorage.setItem('refreshToken', newRefreshToken);
@@ -122,11 +190,16 @@ api.interceptors.response.use(
           throw new Error('No token in refresh response');
         }
       } catch (refreshError) {
+        console.error('Token refresh failed:', refreshError);
         processQueue(refreshError, null);
         isRefreshing = false;
         
-        // Don't force redirect - just reject and let authStore handle it
-        // The authStore.fetchUser will call logout() if appropriate
+        // Clear tokens and redirect to login
+        localStorage.removeItem('token');
+        localStorage.removeItem('refreshToken');
+        localStorage.removeItem('userId');
+        window.location.href = '/login';
+        
         return Promise.reject(error);
       }
     }
@@ -134,5 +207,13 @@ api.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
+// Also set up a background refresh check every 10 minutes
+setInterval(async () => {
+  const token = localStorage.getItem('token');
+  if (isValidToken(token)) {
+    await refreshTokenIfNeeded();
+  }
+}, 10 * 60 * 1000); // Every 10 minutes
 
 export default api;
