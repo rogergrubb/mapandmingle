@@ -10,6 +10,7 @@ import ForgotPassword from './pages/auth/ForgotPassword';
 import ResetPassword from './pages/auth/ResetPassword';
 import ReportStatus from './pages/ReportStatus';
 import { Onboarding } from './pages/Onboarding';
+import LandingPage from './pages/LandingPage';
 import MapPage from './pages/MapPage';
 import EventsPage from './pages/EventsPage';
 import CreateEvent from './pages/CreateEvent';
@@ -46,6 +47,11 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
   return isAuthenticated ? <>{children}</> : <Navigate to="/login" />;
 }
 
+function HomeRoute() {
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  return isAuthenticated ? <Navigate to="/map" /> : <LandingPage />;
+}
+
 function App() {
   const fetchUser = useAuthStore((state) => state.fetchUser);
   const { showInterestsSetup, closeInterestsSetup } = useProfileSetup();
@@ -70,9 +76,15 @@ function App() {
         <Route path="/auth/callback" element={<AuthCallback />} />
         <Route path="/privacy" element={<Privacy />} />
         <Route path="/terms" element={<Terms />} />
+        <Route path="/legal/privacy" element={<PrivacyPolicyPage />} />
+        <Route path="/legal/terms" element={<TermsOfService />} />
+        <Route path="/legal/community-guidelines" element={<CommunityGuidelines />} />
         <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
+        
+        {/* Landing Page for non-authenticated users */}
+        <Route path="/" element={<HomeRoute />} />
+        
         <Route element={<ProtectedRoute><MainLayout /></ProtectedRoute>}>
-          <Route path="/" element={<MapPage />} />
           <Route path="/map" element={<MapPage />} />
           <Route path="/events" element={<EventsPage />} />
           <Route path="/events/create" element={<CreateEvent />} />
