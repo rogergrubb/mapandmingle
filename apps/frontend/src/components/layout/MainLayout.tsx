@@ -90,14 +90,25 @@ export default function MainLayout() {
               </div>
             )}
 
-            {/* Ghost Mode Indicator */}
-            <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${
+            {/* Online Status Indicator - More Prominent */}
+            <div className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold transition-all shadow-md ${
               ghostMode
-                ? 'bg-gray-900 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                ? 'bg-gray-800 text-gray-300 border-2 border-gray-600'
+                : 'bg-gradient-to-r from-green-400 to-emerald-500 text-white border-2 border-green-300'
             }`}>
-              <span className="text-sm">{ghostMode ? '👻' : '👁️'}</span>
-              <span className="hidden sm:inline">{ghostMode ? 'Invisible' : 'Visible'}</span>
+              {/* Pulsing dot indicator */}
+              <span className="relative flex h-3 w-3">
+                {!ghostMode && (
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
+                )}
+                <span className={`relative inline-flex rounded-full h-3 w-3 ${
+                  ghostMode ? 'bg-gray-500' : 'bg-white'
+                }`}></span>
+              </span>
+              <span>{ghostMode ? 'Invisible' : 'Visible'}</span>
+              {!ghostMode && (
+                <span className="text-xs opacity-80 hidden sm:inline">• Online</span>
+              )}
             </div>
           </div>
 
@@ -168,3 +179,4 @@ export default function MainLayout() {
     </div>
   );
 }
+
