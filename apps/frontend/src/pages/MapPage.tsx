@@ -5,6 +5,8 @@ import { Locate, MapPin, Loader } from 'lucide-react';
 import { useMapStore } from '../stores/mapStore';
 import { useAuthStore } from '../stores/authStore';
 import { MapStatusBar } from '../components/map/MapStatusBar';
+import WelcomeCard from '../components/WelcomeCard';
+import ProfileInterestsSetup from '../components/ProfileInterestsSetup';
 import api from '../lib/api';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
@@ -53,6 +55,37 @@ export default function MapPage() {
   const [pinCreationSuccess, setPinCreationSuccess] = useState(false);
   const [userPin, setUserPin] = useState<any>(null);
   const mapRef = useRef<L.Map>(null);
+  
+  // Welcome card and interests setup states
+  const [showWelcomeCard, setShowWelcomeCard] = useState(false);
+  const [showInterestsSetup, setShowInterestsSetup] = useState(false);
+
+  // Check if user should see welcome card (new user without interests)
+  useEffect(() => {
+    const checkNewUser = async () => {
+      // Check localStorage first for dismissed state
+      const welcomed = localStorage.getItem('mapandmingle_welcomed');
+      if (welcomed) return;
+
+      if (isAuthenticated && user) {
+        try {
+          const response = await api.get('/api/users/me');
+          const profile = response.data?.profile;
+          const interests = profile?.interests || [];
+          
+          // Show welcome card if user has no interests set
+          if (interests.length === 0) {
+            // Small delay to let the map load first
+            setTimeout(() => setShowWelcomeCard(true), 1500);
+          }
+        } catch (err) {
+          console.log('Could not check user profile');
+        }
+      }
+    };
+    
+    checkNewUser();
+  }, [isAuthenticated, user]);
 
   // Load user's pin and geolocation
   useEffect(() => {
@@ -257,6 +290,27 @@ export default function MapPage() {
           )}
         </button>
       </div>
+
+      {/* Welcome Card for New Users */}
+      {showWelcomeCard && (
+        <WelcomeCard
+          onDismiss={() => {
+            setShowWelcomeCard(false);
+            localStorage.setItem('mapandmingle_welcomed', 'true');
+          }}
+          onAddInterests={() => {
+            setShowWelcomeCard(false);
+            localStorage.setItem('mapandmingle_welcomed', 'true');
+            setShowInterestsSetup(true);
+          }}
+        />
+      )}
+
+      {/* Interests Setup Modal */}
+      <ProfileInterestsSetup
+        isOpen={showInterestsSetup}
+        onComplete={() => setShowInterestsSetup(false)}
+      />
     </div>
   );
 }
