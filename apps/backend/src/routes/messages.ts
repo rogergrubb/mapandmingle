@@ -213,6 +213,34 @@ messagesRoutes.get('/unread-count', async (c: any) => {
   }
 });
 
+// PUT /api/messages/conversation/:userId/read - Mark all messages from user as read
+messagesRoutes.put('/conversation/:userId/read', async (c: any) => {
+  try {
+    const currentUserId = c.req.header('X-User-Id');
+    if (!currentUserId) return c.json({ error: 'Unauthorized' }, 401);
+
+    const otherUserId = c.req.param('userId');
+    
+    // Mark all unread messages from the other user as read
+    const result = await prisma.message.updateMany({
+      where: {
+        senderId: otherUserId,
+        receiverId: currentUserId,
+        isRead: false,
+      },
+      data: {
+        isRead: true,
+        readAt: new Date(),
+      },
+    });
+
+    return c.json({ marked: result.count });
+  } catch (error) {
+    console.error('Failed to mark conversation as read:', error);
+    return c.json({ error: 'Failed to mark conversation as read' }, 500);
+  }
+});
+
 // PUT /api/messages/:id/read - Mark message as read
 messagesRoutes.put('/:id/read', async (c: any) => {
   try {
