@@ -87,8 +87,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   fetchUser: async () => {
-    const token = get().token;
-    if (!token) return;
+    // Read token directly from localStorage to avoid stale state
+    const token = localStorage.getItem('token');
+    if (!token) {
+      set({ isAuthenticated: false });
+      return;
+    }
+    
+    // Update state with token from localStorage
+    set({ token, isAuthenticated: true });
     
     try {
       const user: any = await api.get('/api/users/me');
@@ -97,31 +104,31 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       }
       set({ user, isAuthenticated: true });
       
-      if (token) {
-        wsClient.connect(token);
-      }
+      // Connect WebSocket
+      wsClient.connect(token);
     } catch (error: any) {
-      // Only logout on definitive auth failures (401/403)
-      // Don't logout on network errors or server errors (5xx)
       const status = error?.response?.status;
       if (status === 401 || status === 403) {
         console.log('Auth failed, logging out');
         get().logout();
       } else {
-        // Keep user logged in but log the error
         console.error('Failed to fetch user (keeping session):', error);
       }
     }
   },
 
   setTokens: (accessToken: string, refreshToken: string, userId?: string) => {
+    // Store in localStorage first
     localStorage.setItem('token', accessToken);
     localStorage.setItem('refreshToken', refreshToken);
     if (userId) {
       localStorage.setItem('userId', userId);
     }
+    
+    // Then update zustand state
     set({ token: accessToken, isAuthenticated: true });
     
+    // Connect WebSocket
     wsClient.connect(accessToken);
   },
 }));
