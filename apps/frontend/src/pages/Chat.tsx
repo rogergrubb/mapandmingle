@@ -55,6 +55,9 @@ export function Chat() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<number | undefined>(undefined);
   const inputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
 
   useEffect(() => {
     if (otherUserId) {
@@ -156,6 +159,100 @@ export function Chat() {
     setTimeout(() => {
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, 100);
+  };
+
+  // Common emojis for quick selection
+  const quickEmojis = ['😊', '😂', '❤️', '👍', '🎉', '🔥', '😍', '🙌', '👋', '✨', '😎', '🤗'];
+
+  const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !otherUserId) return;
+
+    // Validate file
+    if (!file.type.startsWith('image/')) {
+      alert('Please select an image file');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Image must be less than 5MB');
+      return;
+    }
+
+    setIsUploadingImage(true);
+    try {
+      // Upload to S3
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('type', 'message');
+      
+      const uploadResponse: any = await api.post('/api/upload', formData);
+      const imageUrl = uploadResponse.url || uploadResponse.fileUrl;
+
+      if (imageUrl) {
+        // Send as a message with image
+        await api.post('/api/messages', {
+          receiverId: otherUserId,
+          content: ,
+        });
+        
+        // Refresh messages
+        const data: Message[] = await api.get(`/api/messages/conversation/${otherUserId}`);
+        setMessages(data);
+        scrollToBottom();
+      }
+    } catch (error) {
+      console.error('Failed to upload image:', error);
+      alert('Failed to send image. Please try again.');
+    } finally {
+      setIsUploadingImage(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  const handleShareLocation = async () => {
+    if (!otherUserId) return;
+    
+    if (!navigator.geolocation) {
+      alert('Geolocation is not supported by your browser');
+      return;
+    }
+
+    try {
+      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+          enableHighAccuracy: true,
+          timeout: 10000,
+        });
+      });
+
+      const { latitude, longitude } = position.coords;
+      const mapsUrl = `https://www.google.com/maps?q=${latitude},${longitude}`;
+      
+      // Send location as a message
+      await api.post('/api/messages', {
+        receiverId: otherUserId,
+        content: `📍 Shared location: ${mapsUrl}`,
+      });
+      
+      // Refresh messages
+      const data: Message[] = await api.get(`/api/messages/conversation/${otherUserId}`);
+      setMessages(data);
+      scrollToBottom();
+    } catch (error: any) {
+      if (error.code === 1) {
+        alert('Location access denied. Please enable location permissions.');
+      } else {
+        alert('Failed to get location. Please try again.');
+      }
+    }
+  };
+
+  const handleEmojiSelect = (emoji: string) => {
+    setNewMessage(prev => prev + emoji);
+    setShowEmojiPicker(false);
+    inputRef.current?.focus();
   };
 
   const handleSendMessage = async (e: React.FormEvent) => {
@@ -458,24 +555,62 @@ export function Chat() {
       {/* Input */}
       <form onSubmit={handleSendMessage} className="bg-white border-t p-3">
         <div className="flex items-center gap-2">
+          {/* Hidden file input for image upload */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handleImageSelect}
+            className="hidden"
+          />
+          
           <button 
-            type="button" 
-            className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors"
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isUploadingImage}
+            className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors disabled:opacity-50"
+            title="Send image"
           >
-            <Image className="w-5 h-5" />
+            {isUploadingImage ? (
+              <div className="w-5 h-5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <Image className="w-5 h-5" />
+            )}
           </button>
           <button 
-            type="button" 
+            type="button"
+            onClick={handleShareLocation}
             className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors"
+            title="Share location"
           >
             <MapPin className="w-5 h-5" />
           </button>
-          <button 
-            type="button" 
-            className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors"
-          >
-            <Smile className="w-5 h-5" />
-          </button>
+          <div className="relative">
+            <button 
+              type="button"
+              onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+              className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors"
+              title="Add emoji"
+            >
+              <Smile className="w-5 h-5" />
+            </button>
+            {showEmojiPicker && (
+              <div className="absolute bottom-12 left-0 bg-white rounded-lg shadow-xl border p-2 z-50">
+                <div className="grid grid-cols-6 gap-1">
+                  {quickEmojis.map((emoji) => (
+                    <button
+                      key={emoji}
+                      type="button"
+                      onClick={() => handleEmojiSelect(emoji)}
+                      className="text-xl p-1.5 hover:bg-gray-100 rounded transition-colors"
+                    >
+                      {emoji}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
           
           <input
             ref={inputRef}
@@ -507,4 +642,5 @@ export function Chat() {
 }
 
 export default Chat;
+
 
