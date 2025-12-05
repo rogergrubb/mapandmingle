@@ -1,6 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, Circle, useMap } from 'react-leaflet';
-import MarkerClusterGroup from 'react-leaflet-cluster';
+import { MapContainer, TileLayer, Circle, useMap } from 'react-leaflet';
 import { useNavigate } from 'react-router-dom';
 import { Locate, MapPin, Loader } from 'lucide-react';
 import { useMapStore } from '../stores/mapStore';
@@ -13,6 +12,7 @@ import 'leaflet/dist/leaflet.css';
 import 'leaflet.markercluster/dist/MarkerCluster.css';
 import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
 import L from 'leaflet';
+import 'leaflet.markercluster';
 
 // Fix Leaflet default marker icon issue
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -22,28 +22,107 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
 });
 
-// Custom cluster icon with pink/purple gradient styling
-const createClusterCustomIcon = (cluster: any) => {
-  const count = cluster.getChildCount();
-  let size = 'small';
-  let dimensions = 40;
-  
-  if (count >= 100) {
-    size = 'large';
-    dimensions = 60;
-  } else if (count >= 50) {
-    size = 'medium';
-    dimensions = 50;
-  }
-  
-  return L.divIcon({
-    html: `<div class="cluster-icon cluster-${size}">
-      <span>${count}</span>
-    </div>`,
-    className: 'custom-cluster-icon',
-    iconSize: L.point(dimensions, dimensions, true),
-  });
-};
+// Clustered markers component
+function ClusteredMarkers({ pins, onPinClick }: { pins: any[]; onPinClick: (pin: any) => void }) {
+  const map = useMap();
+  const clusterGroupRef = useRef<L.MarkerClusterGroup | null>(null);
+
+  useEffect(() => {
+    // Create cluster group with custom options
+    if (!clusterGroupRef.current) {
+      clusterGroupRef.current = (L as any).markerClusterGroup({
+        chunkedLoading: true,
+        maxClusterRadius: 80,
+        spiderfyOnMaxZoom: true,
+        showCoverageOnHover: false,
+        zoomToBoundsOnClick: true,
+        disableClusteringAtZoom: 18,
+        spiderfyDistanceMultiplier: 1.5,
+        // Custom cluster icon
+        iconCreateFunction: (cluster: any) => {
+          const count = cluster.getChildCount();
+          let size = 'small';
+          let dimensions = 40;
+          
+          if (count >= 100) {
+            size = 'large';
+            dimensions = 60;
+          } else if (count >= 50) {
+            size = 'medium';
+            dimensions = 50;
+          }
+          
+          return L.divIcon({
+            html: `<div style="
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              width: ${dimensions}px;
+              height: ${dimensions}px;
+              border-radius: 50%;
+              background: linear-gradient(135deg, #ec4899 0%, #8b5cf6 100%);
+              color: white;
+              font-weight: bold;
+              font-size: ${size === 'large' ? '18px' : size === 'medium' ? '16px' : '14px'};
+              box-shadow: 0 4px 14px rgba(139, 92, 246, 0.4);
+              border: 3px solid white;
+            ">
+              <span>${count}</span>
+            </div>`,
+            className: 'custom-cluster-icon',
+            iconSize: L.point(dimensions, dimensions, true),
+          });
+        },
+      });
+      map.addLayer(clusterGroupRef.current);
+    }
+
+    // Clear existing markers
+    clusterGroupRef.current.clearLayers();
+
+    // Add markers for each pin
+    pins.forEach((pin) => {
+      const marker = L.marker([pin.latitude, pin.longitude]);
+      
+      // Create popup content
+      const popupContent = document.createElement('div');
+      popupContent.className = 'w-64';
+      popupContent.innerHTML = `
+        <h3 class="font-bold mb-1">${pin.title || 'Mingler'}</h3>
+        <p class="text-sm text-gray-600 mb-2">${pin.description || 'Click to view profile'}</p>
+      `;
+      
+      const button = document.createElement('button');
+      button.className = 'w-full bg-purple-500 hover:bg-purple-600 text-white px-3 py-2 rounded text-sm font-semibold';
+      button.textContent = 'View Details';
+      button.onclick = () => onPinClick(pin);
+      popupContent.appendChild(button);
+      
+      marker.bindPopup(popupContent);
+      marker.on('click', () => {
+        // Open popup on click
+      });
+      
+      clusterGroupRef.current!.addLayer(marker);
+    });
+
+    return () => {
+      // Cleanup on unmount
+    };
+  }, [pins, map, onPinClick]);
+
+  // Cleanup on component unmount
+  useEffect(() => {
+    return () => {
+      if (clusterGroupRef.current) {
+        map.removeLayer(clusterGroupRef.current);
+        clusterGroupRef.current = null;
+      }
+    };
+  }, [map]);
+
+  return null;
+}
 
 function MapController() {
   const map = useMap();
@@ -133,6 +212,13 @@ export default function MapPage() {
     }
   };
 
+  const handlePinClick = (pin: any) => {
+    // Only navigate to other users' pins, not your own
+    if (pin.userId !== user?.id) {
+      navigate(`/mingles/${pin.id}`);
+    }
+  };
+
   const handleCreatePinAtLocation = async () => {
     if (!userPosition) {
       alert('Location not available');
@@ -192,40 +278,13 @@ export default function MapPage() {
 
   return (
     <div className="relative w-full h-screen">
-      {/* Cluster icon styles */}
+      {/* Custom cluster styles */}
       <style>{`
         .custom-cluster-icon {
           background: transparent !important;
         }
-        .cluster-icon {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          border-radius: 50%;
-          background: linear-gradient(135deg, #ec4899 0%, #8b5cf6 100%);
-          color: white;
-          font-weight: bold;
-          box-shadow: 0 4px 14px rgba(139, 92, 246, 0.4);
-          border: 3px solid white;
-          transition: transform 0.2s ease;
-        }
-        .cluster-icon:hover {
-          transform: scale(1.1);
-        }
-        .cluster-small {
-          width: 40px;
-          height: 40px;
-          font-size: 14px;
-        }
-        .cluster-medium {
-          width: 50px;
-          height: 50px;
-          font-size: 16px;
-        }
-        .cluster-large {
-          width: 60px;
-          height: 60px;
-          font-size: 18px;
+        .leaflet-popup-content {
+          margin: 12px;
         }
       `}</style>
 
@@ -241,46 +300,9 @@ export default function MapPage() {
         />
 
         <MapController />
-
-        {/* Clustered Pins - clusters when 25+ pins in area */}
-        <MarkerClusterGroup
-          chunkedLoading
-          iconCreateFunction={createClusterCustomIcon}
-          maxClusterRadius={80}
-          spiderfyOnMaxZoom={true}
-          showCoverageOnHover={false}
-          zoomToBoundsOnClick={true}
-          disableClusteringAtZoom={18}
-          spiderfyDistanceMultiplier={1.5}
-        >
-          {pins.map((pin) => (
-            <Marker
-              key={pin.id}
-              position={[pin.latitude, pin.longitude]}
-              eventHandlers={{
-                click: () => {
-                  // Only navigate to other users' pins, not your own
-                  if (pin.userId !== user?.id) {
-                    navigate(`/mingles/${pin.id}`);
-                  }
-                },
-              }}
-            >
-              <Popup>
-                <div className="w-64">
-                  <h3 className="font-bold mb-1">{pin.title}</h3>
-                  <p className="text-sm text-gray-600 mb-2">{pin.description}</p>
-                  <button
-                    onClick={() => navigate(`/mingles/${pin.id}`)}
-                    className="w-full bg-purple-500 hover:bg-purple-600 text-white px-3 py-2 rounded text-sm font-semibold"
-                  >
-                    View Details
-                  </button>
-                </div>
-              </Popup>
-            </Marker>
-          ))}
-        </MarkerClusterGroup>
+        
+        {/* Clustered Pins */}
+        <ClusteredMarkers pins={pins} onPinClick={handlePinClick} />
 
         {/* Hotspots */}
         {showHotspots &&
