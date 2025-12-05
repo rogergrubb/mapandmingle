@@ -192,7 +192,7 @@ export function Chat() {
         // Send as a message with image
         await api.post('/api/messages', {
           receiverId: otherUserId,
-          content: ,
+          content: "[Image] " + imageUrl,
         });
         
         // Refresh messages
