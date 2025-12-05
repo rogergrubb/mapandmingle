@@ -688,14 +688,20 @@ authRoutes.get('/google/callback', async (c) => {
     }
     
     // Generate JWT tokens
+    console.log('Generating tokens for user:', user!.id, user!.email);
     const accessToken = generateToken(user!.id, user!.email);
     const refreshToken = generateRefreshToken(user!.id);
+    console.log('Generated accessToken:', accessToken ? 'yes (length: ' + accessToken.length + ')' : 'NO');
+    console.log('Generated refreshToken:', refreshToken ? 'yes' : 'NO');
     
     // Redirect to frontend with tokens
     const params = new URLSearchParams({
       accessToken,
       refreshToken,
     });
+    
+    const redirectUrl = `${FRONTEND_URL}/auth/callback?${params.toString()}`;
+    console.log('Redirecting to:', redirectUrl.substring(0, 100) + '...');
     
     return c.redirect(`${FRONTEND_URL}/auth/callback?${params.toString()}`);
   } catch (error) {
