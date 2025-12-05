@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Circle, useMap } from 'react-leaflet';
+import MarkerClusterGroup from 'react-leaflet-cluster';
 import { useNavigate } from 'react-router-dom';
 import { Locate, MapPin, Loader } from 'lucide-react';
 import { useMapStore } from '../stores/mapStore';
@@ -9,6 +10,8 @@ import WelcomeCard from '../components/WelcomeCard';
 import ProfileInterestsSetup from '../components/ProfileInterestsSetup';
 import api from '../lib/api';
 import 'leaflet/dist/leaflet.css';
+import 'leaflet.markercluster/dist/MarkerCluster.css';
+import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
 import L from 'leaflet';
 
 // Fix Leaflet default marker icon issue
@@ -18,6 +21,29 @@ L.Icon.Default.mergeOptions({
   iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
   shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
 });
+
+// Custom cluster icon with pink/purple gradient styling
+const createClusterCustomIcon = (cluster: any) => {
+  const count = cluster.getChildCount();
+  let size = 'small';
+  let dimensions = 40;
+  
+  if (count >= 100) {
+    size = 'large';
+    dimensions = 60;
+  } else if (count >= 50) {
+    size = 'medium';
+    dimensions = 50;
+  }
+  
+  return L.divIcon({
+    html: `<div class="cluster-icon cluster-${size}">
+      <span>${count}</span>
+    </div>`,
+    className: 'custom-cluster-icon',
+    iconSize: L.point(dimensions, dimensions, true),
+  });
+};
 
 function MapController() {
   const map = useMap();
@@ -60,32 +86,15 @@ export default function MapPage() {
   const [showWelcomeCard, setShowWelcomeCard] = useState(false);
   const [showInterestsSetup, setShowInterestsSetup] = useState(false);
 
-  // Check if user should see welcome card (new user without interests)
+  // Show welcome card to ALL users who haven't dismissed it yet
   useEffect(() => {
-    const checkNewUser = async () => {
-      // Check localStorage first for dismissed state
-      const welcomed = localStorage.getItem('mapandmingle_welcomed');
-      if (welcomed) return;
-
-      if (isAuthenticated && user) {
-        try {
-          const response = await api.get('/api/users/me');
-          const profile = response.data?.profile;
-          const interests = profile?.interests || [];
-          
-          // Show welcome card if user has no interests set
-          if (interests.length === 0) {
-            // Small delay to let the map load first
-            setTimeout(() => setShowWelcomeCard(true), 1500);
-          }
-        } catch (err) {
-          console.log('Could not check user profile');
-        }
-      }
-    };
-    
-    checkNewUser();
-  }, [isAuthenticated, user]);
+    const welcomed = localStorage.getItem('mapandmingle_welcomed');
+    if (!welcomed) {
+      // Small delay to let the map load first
+      const timer = setTimeout(() => setShowWelcomeCard(true), 1500);
+      return () => clearTimeout(timer);
+    }
+  }, []);
 
   // Load user's pin and geolocation
   useEffect(() => {
@@ -183,6 +192,43 @@ export default function MapPage() {
 
   return (
     <div className="relative w-full h-screen">
+      {/* Cluster icon styles */}
+      <style>{`
+        .custom-cluster-icon {
+          background: transparent !important;
+        }
+        .cluster-icon {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border-radius: 50%;
+          background: linear-gradient(135deg, #ec4899 0%, #8b5cf6 100%);
+          color: white;
+          font-weight: bold;
+          box-shadow: 0 4px 14px rgba(139, 92, 246, 0.4);
+          border: 3px solid white;
+          transition: transform 0.2s ease;
+        }
+        .cluster-icon:hover {
+          transform: scale(1.1);
+        }
+        .cluster-small {
+          width: 40px;
+          height: 40px;
+          font-size: 14px;
+        }
+        .cluster-medium {
+          width: 50px;
+          height: 50px;
+          font-size: 16px;
+        }
+        .cluster-large {
+          width: 60px;
+          height: 60px;
+          font-size: 18px;
+        }
+      `}</style>
+
       <MapContainer
         ref={mapRef}
         center={userPosition || [37.7749, -122.4194]}
@@ -196,34 +242,45 @@ export default function MapPage() {
 
         <MapController />
 
-        {/* Pins/Mingles */}
-        {pins.map((pin) => (
-          <Marker
-            key={pin.id}
-            position={[pin.latitude, pin.longitude]}
-            eventHandlers={{
-              click: () => {
-                // Only navigate to other users' pins, not your own
-                if (pin.userId !== user?.id) {
-                  navigate(`/mingles/${pin.id}`);
-                }
-              },
-            }}
-          >
-            <Popup>
-              <div className="w-64">
-                <h3 className="font-bold mb-1">{pin.title}</h3>
-                <p className="text-sm text-gray-600 mb-2">{pin.description}</p>
-                <button
-                  onClick={() => navigate(`/mingles/${pin.id}`)}
-                  className="w-full bg-purple-500 hover:bg-purple-600 text-white px-3 py-2 rounded text-sm font-semibold"
-                >
-                  View Details
-                </button>
-              </div>
-            </Popup>
-          </Marker>
-        ))}
+        {/* Clustered Pins - clusters when 25+ pins in area */}
+        <MarkerClusterGroup
+          chunkedLoading
+          iconCreateFunction={createClusterCustomIcon}
+          maxClusterRadius={80}
+          spiderfyOnMaxZoom={true}
+          showCoverageOnHover={false}
+          zoomToBoundsOnClick={true}
+          disableClusteringAtZoom={18}
+          spiderfyDistanceMultiplier={1.5}
+        >
+          {pins.map((pin) => (
+            <Marker
+              key={pin.id}
+              position={[pin.latitude, pin.longitude]}
+              eventHandlers={{
+                click: () => {
+                  // Only navigate to other users' pins, not your own
+                  if (pin.userId !== user?.id) {
+                    navigate(`/mingles/${pin.id}`);
+                  }
+                },
+              }}
+            >
+              <Popup>
+                <div className="w-64">
+                  <h3 className="font-bold mb-1">{pin.title}</h3>
+                  <p className="text-sm text-gray-600 mb-2">{pin.description}</p>
+                  <button
+                    onClick={() => navigate(`/mingles/${pin.id}`)}
+                    className="w-full bg-purple-500 hover:bg-purple-600 text-white px-3 py-2 rounded text-sm font-semibold"
+                  >
+                    View Details
+                  </button>
+                </div>
+              </Popup>
+            </Marker>
+          ))}
+        </MarkerClusterGroup>
 
         {/* Hotspots */}
         {showHotspots &&
@@ -291,7 +348,7 @@ export default function MapPage() {
         </button>
       </div>
 
-      {/* Welcome Card for New Users */}
+      {/* Welcome Card for ALL Users */}
       {showWelcomeCard && (
         <WelcomeCard
           onDismiss={() => {
@@ -301,7 +358,11 @@ export default function MapPage() {
           onAddInterests={() => {
             setShowWelcomeCard(false);
             localStorage.setItem('mapandmingle_welcomed', 'true');
-            setShowInterestsSetup(true);
+            if (isAuthenticated) {
+              setShowInterestsSetup(true);
+            } else {
+              navigate('/login');
+            }
           }}
         />
       )}
