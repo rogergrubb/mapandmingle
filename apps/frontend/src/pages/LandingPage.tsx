@@ -319,6 +319,137 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* Screenshots & Feature Highlights */}
+      <section className="relative z-10 px-6 py-24 overflow-hidden">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-16">
+            <h2 className="text-4xl md:text-5xl font-black mb-4">
+              See It In Action
+            </h2>
+            <p className="text-xl text-white/60 max-w-2xl mx-auto">
+              Built for speed, simplicity, and real-life connection.
+            </p>
+          </div>
+
+          <div className="grid lg:grid-cols-2 gap-12 items-center">
+            {/* Phone Mockups */}
+            <div className="relative flex justify-center">
+              {/* Background glow */}
+              <div className="absolute inset-0 bg-gradient-to-r from-pink-500/20 to-purple-500/20 blur-[100px]" />
+              
+              {/* Three phones */}
+              <div className="relative flex items-end gap-4">
+                {/* Left phone - smaller */}
+                <div className="hidden md:block w-[180px] bg-gradient-to-b from-slate-800 to-slate-900 rounded-[2rem] p-2 shadow-2xl -rotate-6 translate-y-8">
+                  <div className="bg-slate-950 rounded-[1.5rem] overflow-hidden aspect-[9/19]">
+                    <div className="h-full bg-gradient-to-b from-emerald-900/40 to-slate-900 p-3 flex flex-col">
+                      <div className="text-xs font-bold text-white/80 mb-2">Chat</div>
+                      <div className="space-y-2 flex-1">
+                        <div className="flex gap-2">
+                          <div className="w-6 h-6 bg-pink-500 rounded-full flex-shrink-0" />
+                          <div className="bg-white/10 rounded-xl p-2 text-xs text-white/70">Hey! Saw you're nearby 👋</div>
+                        </div>
+                        <div className="flex gap-2 justify-end">
+                          <div className="bg-pink-500/30 rounded-xl p-2 text-xs text-white/90">Yes! Coffee?</div>
+                        </div>
+                        <div className="flex gap-2">
+                          <div className="w-6 h-6 bg-pink-500 rounded-full flex-shrink-0" />
+                          <div className="bg-white/10 rounded-xl p-2 text-xs text-white/70">Perfect! See you in 10</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Center phone - main */}
+                <div className="w-[240px] md:w-[280px] bg-gradient-to-b from-slate-800 to-slate-900 rounded-[2.5rem] p-3 shadow-2xl z-10">
+                  <div className="bg-slate-950 rounded-[2rem] overflow-hidden aspect-[9/19]">
+                    <div className="h-8 bg-slate-900 flex items-center justify-center">
+                      <div className="w-16 h-4 bg-slate-800 rounded-full" />
+                    </div>
+                    <div className="h-full bg-gradient-to-b from-emerald-900/30 to-slate-900 p-4 relative">
+                      {/* Map pins */}
+                      <div className="absolute top-8 left-6">
+                        <div className="w-8 h-8 bg-pink-500 rounded-full flex items-center justify-center shadow-lg animate-bounce" style={{ animationDuration: '2s' }}>
+                          <Heart className="w-4 h-4 text-white" />
+                        </div>
+                      </div>
+                      <div className="absolute top-16 right-8">
+                        <div className="w-8 h-8 bg-purple-500 rounded-full flex items-center justify-center shadow-lg animate-bounce" style={{ animationDuration: '2.5s', animationDelay: '0.3s' }}>
+                          <Users className="w-4 h-4 text-white" />
+                        </div>
+                      </div>
+                      <div className="absolute top-32 left-12">
+                        <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center shadow-lg animate-bounce" style={{ animationDuration: '2.2s', animationDelay: '0.6s' }}>
+                          <Calendar className="w-4 h-4 text-white" />
+                        </div>
+                      </div>
+                      <div className="absolute top-24 right-16">
+                        <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center shadow-lg animate-bounce" style={{ animationDuration: '2.8s', animationDelay: '0.9s' }}>
+                          <Briefcase className="w-4 h-4 text-white" />
+                        </div>
+                      </div>
+                      
+                      {/* User card overlay */}
+                      <div className="absolute bottom-4 left-3 right-3 bg-white/10 backdrop-blur-xl rounded-xl p-3 border border-white/20">
+                        <div className="flex items-center gap-2">
+                          <div className="w-10 h-10 bg-gradient-to-br from-pink-500 to-purple-500 rounded-full" />
+                          <div className="flex-1 min-w-0">
+                            <div className="font-semibold text-white text-sm">Alex K.</div>
+                            <div className="text-xs text-white/60">0.2 mi • Networking</div>
+                          </div>
+                          <button className="px-3 py-1 bg-pink-500 rounded-full text-xs font-medium">Connect</button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Right phone - smaller */}
+                <div className="hidden md:block w-[180px] bg-gradient-to-b from-slate-800 to-slate-900 rounded-[2rem] p-2 shadow-2xl rotate-6 translate-y-8">
+                  <div className="bg-slate-950 rounded-[1.5rem] overflow-hidden aspect-[9/19]">
+                    <div className="h-full bg-gradient-to-b from-purple-900/40 to-slate-900 p-3 flex flex-col">
+                      <div className="text-xs font-bold text-white/80 mb-2">Profile</div>
+                      <div className="flex flex-col items-center">
+                        <div className="w-16 h-16 bg-gradient-to-br from-pink-500 to-purple-500 rounded-full mb-2" />
+                        <div className="text-sm font-bold text-white">Sarah M.</div>
+                        <div className="text-xs text-white/60 mb-3">Denver, CO</div>
+                        <div className="flex flex-wrap gap-1 justify-center">
+                          <span className="px-2 py-0.5 bg-pink-500/30 rounded-full text-xs">Coffee</span>
+                          <span className="px-2 py-0.5 bg-purple-500/30 rounded-full text-xs">Hiking</span>
+                          <span className="px-2 py-0.5 bg-blue-500/30 rounded-full text-xs">Tech</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Feature List */}
+            <div className="space-y-6">
+              {[
+                { icon: MapPin, title: 'Real-Time Map', desc: 'Your world, visualized. See who\'s around you right now.' },
+                { icon: Zap, title: 'Smart Modes', desc: 'Switch between purposes instantly — dating, friends, networking, events.' },
+                { icon: Eye, title: 'Instant Profiles', desc: 'Simple, signal-rich profiles that help you decide in seconds.' },
+                { icon: MessageCircle, title: 'Built-In Chat', desc: 'Fast conversations, zero friction. Go from map to message instantly.' },
+                { icon: Shield, title: 'Safety & Controls', desc: 'Privacy settings you control. Block, report, and hide with one tap.' },
+              ].map((feature, i) => (
+                <div key={i} className="flex gap-4 items-start group">
+                  <div className="w-12 h-12 bg-gradient-to-br from-pink-500/20 to-purple-500/20 rounded-xl flex items-center justify-center flex-shrink-0 group-hover:from-pink-500/30 group-hover:to-purple-500/30 transition-all">
+                    <feature.icon className="w-6 h-6 text-pink-400" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-lg mb-1">{feature.title}</h3>
+                    <p className="text-white/60">{feature.desc}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Who It's For */}
       <section className="relative z-10 px-6 py-24 bg-gradient-to-b from-transparent to-slate-900/50">
         <div className="max-w-7xl mx-auto">
