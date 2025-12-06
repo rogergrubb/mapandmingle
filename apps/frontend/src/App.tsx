@@ -57,6 +57,10 @@ function App() {
   const { showInterestsSetup, closeInterestsSetup } = useProfileSetup();
 
   useEffect(() => {
+    // Don't run fetchUser on auth callback page - let that page handle auth
+    if (window.location.pathname === '/auth/callback') {
+      return;
+    }
     fetchUser();
   }, [fetchUser]);
 
