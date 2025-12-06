@@ -151,13 +151,18 @@ export default function LandingPage() {
               <h1 className="text-5xl md:text-6xl lg:text-7xl font-black leading-[1.1] tracking-tight">
                 Find the people around you —{' '}
                 <span className="bg-gradient-to-r from-pink-400 via-purple-400 to-indigo-400 bg-clip-text text-transparent">
-                  for anything.
+                  for anything.*
                 </span>
               </h1>
 
               {/* Subheadline */}
               <p className="text-xl text-white/60 leading-relaxed max-w-xl">
                 Friends, dating, meetups, networking, travel companions, and meeting people while traveling — all on one real-time map.
+              </p>
+              
+              {/* Cheeky Disclaimer */}
+              <p className="text-sm text-white/40 italic">
+                *Anything legal, of course. We're cool, but not <span className="italic">that</span> cool.
               </p>
 
               {/* CTAs */}
