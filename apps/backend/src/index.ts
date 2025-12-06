@@ -1,4 +1,4 @@
-// Build: 2025-12-06 07:38:00 - Clear rate limits on startup
+// Build: 2025-12-06 07:48:00 - Resilient OAuth without includes
 // Rebuild trigger - 2025-12-03 12:09:36
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
