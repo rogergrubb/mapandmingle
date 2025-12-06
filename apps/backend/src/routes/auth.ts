@@ -10,11 +10,11 @@ import { config } from '../config';
 
 export const authRoutes = new Hono();
 
-// Apply rate limiting to all auth routes (10 requests per 15 minutes)
-authRoutes.use('*', rateLimitMiddleware(
-  config.rateLimit.auth.maxRequests, 
-  config.rateLimit.auth.windowMs
-));
+// Apply rate limiting only to login/register routes (not OAuth)
+// OAuth routes are exempt because:
+// 1. They don't accept user input directly
+// 2. They redirect to Google which has its own protection
+// 3. Rate limiting them causes login failures
 
 // Validation schemas
 const registerSchema = z.object({
@@ -44,7 +44,7 @@ const resetPasswordSchema = z.object({
 });
 
 // POST /api/auth/register - Register new user
-authRoutes.post('/register', async (c) => {
+authRoutes.post('/register', rateLimitMiddleware(10, 15 * 60 * 1000), async (c) => {
   try {
     const body = await c.req.json();
     const parsed = registerSchema.safeParse(body);
@@ -163,7 +163,7 @@ authRoutes.post('/register', async (c) => {
 });
 
 // POST /api/auth/login - Login user
-authRoutes.post('/login', async (c) => {
+authRoutes.post('/login', rateLimitMiddleware(10, 15 * 60 * 1000), async (c) => {
   try {
     const body = await c.req.json();
     const parsed = loginSchema.safeParse(body);
