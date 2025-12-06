@@ -1,12 +1,40 @@
 import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
 import { 
   MapPin, Users, MessageCircle, Shield, Heart, Briefcase, 
   Plane, Calendar, Star, ChevronRight, Sparkles, Globe,
-  Check, Zap, Eye, Lock, UserCheck
+  Zap, Eye, Lock, UserCheck, Menu, X,
+  Instagram, Twitter, Linkedin, Play, Apple, Flag
 } from 'lucide-react';
 
 export default function LandingPage() {
   const navigate = useNavigate();
+  const [isScrolled, setIsScrolled] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 20);
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  const scrollToSection = (id: string) => {
+    const element = document.getElementById(id);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth' });
+    }
+    setMobileMenuOpen(false);
+  };
+
+  const navLinks = [
+    { label: 'How It Works', id: 'how-it-works' },
+    { label: 'Features', id: 'features' },
+    { label: 'Who It\'s For', id: 'who-its-for' },
+    { label: 'Safety', id: 'safety' },
+    { label: 'Stories', id: 'testimonials' },
+  ];
 
   return (
     <div className="min-h-screen bg-slate-950 text-white overflow-x-hidden">
@@ -17,18 +45,41 @@ export default function LandingPage() {
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-indigo-500/10 rounded-full blur-[150px]" />
       </div>
 
-      {/* Navigation */}
-      <nav className="relative z-50 px-6 py-4">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-2">
+      {/* Navigation - Desktop & Mobile */}
+      <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+        isScrolled 
+          ? 'bg-slate-950/90 backdrop-blur-xl shadow-lg shadow-black/20 py-3' 
+          : 'bg-transparent py-4'
+      }`}>
+        <div className="max-w-7xl mx-auto px-6 flex items-center justify-between">
+          {/* Logo */}
+          <button 
+            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+            className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+          >
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-pink-500 to-purple-600 flex items-center justify-center">
               <MapPin className="w-5 h-5 text-white" />
             </div>
             <span className="text-xl font-bold bg-gradient-to-r from-pink-400 to-purple-400 bg-clip-text text-transparent">
               Map & Mingle
             </span>
+          </button>
+
+          {/* Desktop Center Links */}
+          <div className="hidden lg:flex items-center gap-8">
+            {navLinks.map((link) => (
+              <button
+                key={link.id}
+                onClick={() => scrollToSection(link.id)}
+                className="text-white/70 hover:text-white transition-colors font-medium text-sm"
+              >
+                {link.label}
+              </button>
+            ))}
           </div>
-          <div className="flex items-center gap-4">
+
+          {/* Desktop Right - Auth Buttons */}
+          <div className="hidden lg:flex items-center gap-4">
             <button 
               onClick={() => navigate('/login')}
               className="px-4 py-2 text-white/80 hover:text-white transition-colors font-medium"
@@ -39,14 +90,54 @@ export default function LandingPage() {
               onClick={() => navigate('/register')}
               className="px-5 py-2.5 bg-gradient-to-r from-pink-500 to-purple-600 rounded-full font-semibold hover:shadow-lg hover:shadow-pink-500/25 transition-all hover:scale-105"
             >
-              Get Started
+              Get Started — It's Free
             </button>
           </div>
+
+          {/* Mobile Menu Button */}
+          <button
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="lg:hidden p-2 text-white/80 hover:text-white transition-colors"
+          >
+            {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+          </button>
         </div>
+
+        {/* Mobile Menu */}
+        {mobileMenuOpen && (
+          <div className="lg:hidden absolute top-full left-0 right-0 bg-slate-950/95 backdrop-blur-xl border-t border-white/10">
+            <div className="px-6 py-6 space-y-4">
+              {/* Primary CTA at top */}
+              <button 
+                onClick={() => { navigate('/register'); setMobileMenuOpen(false); }}
+                className="w-full px-6 py-4 bg-gradient-to-r from-pink-500 to-purple-600 rounded-2xl font-bold text-lg hover:shadow-lg hover:shadow-pink-500/25 transition-all"
+              >
+                Get Started — It's Free
+              </button>
+              <button 
+                onClick={() => { navigate('/login'); setMobileMenuOpen(false); }}
+                className="w-full px-6 py-3 bg-white/5 border border-white/10 rounded-xl font-medium text-white/80 hover:bg-white/10 transition-all"
+              >
+                Log In
+              </button>
+              <div className="border-t border-white/10 pt-4 space-y-1">
+                {navLinks.map((link) => (
+                  <button
+                    key={link.id}
+                    onClick={() => scrollToSection(link.id)}
+                    className="w-full px-4 py-3 text-left text-white/70 hover:text-white hover:bg-white/5 rounded-lg transition-colors font-medium"
+                  >
+                    {link.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
       </nav>
 
       {/* Hero Section */}
-      <section className="relative z-10 px-6 pt-16 pb-24">
+      <section className="relative z-10 px-6 pt-28 pb-24">
         <div className="max-w-7xl mx-auto">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             <div className="space-y-8">
@@ -79,7 +170,7 @@ export default function LandingPage() {
                   <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                 </button>
                 <button 
-                  onClick={() => document.getElementById('how-it-works')?.scrollIntoView({ behavior: 'smooth' })}
+                  onClick={() => scrollToSection('how-it-works')}
                   className="px-8 py-4 bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl font-semibold text-lg hover:bg-white/10 transition-all flex items-center justify-center gap-2"
                 >
                   Explore how it works
@@ -207,34 +298,15 @@ export default function LandingPage() {
       <section id="how-it-works" className="relative z-10 px-6 py-24 bg-gradient-to-b from-transparent to-purple-950/30">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-5xl font-black mb-4">
-              How It Works
-            </h2>
-            <p className="text-xl text-white/60 max-w-2xl mx-auto">
-              One app. Every type of connection. Wherever you go.
-            </p>
+            <h2 className="text-4xl md:text-5xl font-black mb-4">How It Works</h2>
+            <p className="text-xl text-white/60 max-w-2xl mx-auto">One app. Every type of connection. Wherever you go.</p>
           </div>
 
           <div className="grid md:grid-cols-3 gap-8">
             {[
-              {
-                step: '01',
-                title: 'Set your mode',
-                desc: 'Choose what you\'re here for — dating, friends, meetups, networking, or travel connections. Switch anytime.',
-                icon: Zap,
-              },
-              {
-                step: '02',
-                title: 'See who\'s around you',
-                desc: 'Explore a real-time map showing people, events, and travelers nearby. Filter by interests, distance, or purpose.',
-                icon: MapPin,
-              },
-              {
-                step: '03',
-                title: 'Connect instantly',
-                desc: 'Open profiles, start chatting, and plan meetups. You decide what you share and when.',
-                icon: MessageCircle,
-              },
+              { step: '01', title: 'Set your mode', desc: 'Choose what you\'re here for — dating, friends, meetups, networking, or travel connections. Switch anytime.', icon: Zap },
+              { step: '02', title: 'See who\'s around you', desc: 'Explore a real-time map showing people, events, and travelers nearby. Filter by interests, distance, or purpose.', icon: MapPin },
+              { step: '03', title: 'Connect instantly', desc: 'Open profiles, start chatting, and plan meetups. You decide what you share and when.', icon: MessageCircle },
             ].map((item, i) => (
               <div key={i} className="relative group">
                 <div className="absolute -inset-1 bg-gradient-to-r from-pink-500 to-purple-600 rounded-3xl blur opacity-0 group-hover:opacity-25 transition-opacity" />
@@ -252,254 +324,124 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Why People Love It */}
-      <section className="relative z-10 px-6 py-24">
+      {/* Features Section */}
+      <section id="features" className="relative z-10 px-6 py-24">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
             <h2 className="text-4xl md:text-5xl font-black mb-4">
-              Why People Love{' '}
-              <span className="bg-gradient-to-r from-pink-400 to-purple-400 bg-clip-text text-transparent">
-                Map & Mingle
-              </span>
+              Built for <span className="bg-gradient-to-r from-pink-400 to-purple-400 bg-clip-text text-transparent">Real Connections</span>
             </h2>
+            <p className="text-xl text-white/60 max-w-2xl mx-auto">Speed, simplicity, and real-life connection — all in one app.</p>
           </div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid md:grid-cols-2 lg:grid-cols-5 gap-4">
             {[
-              {
-                icon: Users,
-                title: 'Real people, real connections',
-                desc: 'See who\'s nearby, not just who\'s online. Verified profiles. Real humans.',
-              },
-              {
-                icon: Globe,
-                title: 'One app for every situation',
-                desc: 'No more switching between five different platforms. Everything lives in one map-driven experience.',
-              },
-              {
-                icon: Shield,
-                title: 'Privacy you control',
-                desc: 'Your exact location is never shared without permission. Safety built-in from the ground up.',
-              },
-              {
-                icon: Sparkles,
-                title: 'Built for spontaneity',
-                desc: 'Meet someone for coffee, join a meetup, or link up with a traveler — all happening right now around you.',
-              },
-            ].map((item, i) => (
-              <div key={i} className="p-6 bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl hover:bg-white/10 transition-all group">
-                <div className="w-12 h-12 bg-gradient-to-br from-pink-500 to-purple-600 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                  <item.icon className="w-6 h-6 text-white" />
+              { icon: MapPin, title: 'Real-Time Map', desc: 'Your world, visualized' },
+              { icon: Zap, title: 'Smart Modes', desc: 'Switch purposes instantly' },
+              { icon: UserCheck, title: 'Signal-Rich Profiles', desc: 'Simple but meaningful' },
+              { icon: MessageCircle, title: 'Built-In Chat', desc: 'Fast, zero friction' },
+              { icon: Shield, title: 'Safety Controls', desc: 'Privacy you control' },
+            ].map((feature, i) => (
+              <div key={i} className="p-5 bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl hover:bg-white/10 transition-all group text-center">
+                <div className="w-12 h-12 bg-gradient-to-br from-pink-500 to-purple-600 rounded-xl flex items-center justify-center mb-3 mx-auto group-hover:scale-110 transition-transform">
+                  <feature.icon className="w-6 h-6 text-white" />
                 </div>
-                <h3 className="font-bold text-lg mb-2">{item.title}</h3>
-                <p className="text-white/60 text-sm leading-relaxed">{item.desc}</p>
+                <h3 className="font-bold mb-1">{feature.title}</h3>
+                <p className="text-white/50 text-sm">{feature.desc}</p>
               </div>
             ))}
-          </div>
-
-          {/* Social Proof Strip */}
-          <div className="flex flex-wrap justify-center gap-8 mt-16 py-8 border-y border-white/10">
-            <div className="flex items-center gap-2">
-              <div className="flex">
-                {[...Array(5)].map((_, i) => (
-                  <Star key={i} className="w-5 h-5 text-yellow-400 fill-yellow-400" />
-                ))}
-              </div>
-              <span className="text-white/80 font-semibold">4.9 average rating</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-2xl">🔥</span>
-              <span className="text-white/80 font-semibold">Thousands of connections weekly</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Globe className="w-5 h-5 text-blue-400" />
-              <span className="text-white/80 font-semibold">Active worldwide</span>
-            </div>
           </div>
         </div>
       </section>
 
-      {/* Screenshots & Feature Highlights */}
-      <section className="relative z-10 px-6 py-24 overflow-hidden">
+      {/* Safety Section */}
+      <section id="safety" className="relative z-10 px-6 py-24 bg-gradient-to-b from-transparent to-slate-900/50">
         <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-5xl font-black mb-4">
-              See It In Action
-            </h2>
-            <p className="text-xl text-white/60 max-w-2xl mx-auto">
-              Built for speed, simplicity, and real-life connection.
-            </p>
-          </div>
-
           <div className="grid lg:grid-cols-2 gap-12 items-center">
-            {/* Phone Mockups */}
-            <div className="relative flex justify-center">
-              {/* Background glow */}
-              <div className="absolute inset-0 bg-gradient-to-r from-pink-500/20 to-purple-500/20 blur-[100px]" />
-              
-              {/* Three phones */}
-              <div className="relative flex items-end gap-4">
-                {/* Left phone - smaller */}
-                <div className="hidden md:block w-[180px] bg-gradient-to-b from-slate-800 to-slate-900 rounded-[2rem] p-2 shadow-2xl -rotate-6 translate-y-8">
-                  <div className="bg-slate-950 rounded-[1.5rem] overflow-hidden aspect-[9/19]">
-                    <div className="h-full bg-gradient-to-b from-emerald-900/40 to-slate-900 p-3 flex flex-col">
-                      <div className="text-xs font-bold text-white/80 mb-2">Chat</div>
-                      <div className="space-y-2 flex-1">
-                        <div className="flex gap-2">
-                          <div className="w-6 h-6 bg-pink-500 rounded-full flex-shrink-0" />
-                          <div className="bg-white/10 rounded-xl p-2 text-xs text-white/70">Hey! Saw you're nearby 👋</div>
-                        </div>
-                        <div className="flex gap-2 justify-end">
-                          <div className="bg-pink-500/30 rounded-xl p-2 text-xs text-white/90">Yes! Coffee?</div>
-                        </div>
-                        <div className="flex gap-2">
-                          <div className="w-6 h-6 bg-pink-500 rounded-full flex-shrink-0" />
-                          <div className="bg-white/10 rounded-xl p-2 text-xs text-white/70">Perfect! See you in 10</div>
-                        </div>
+            <div>
+              <div className="inline-flex items-center gap-2 px-4 py-2 bg-green-500/10 border border-green-500/20 rounded-full mb-6">
+                <Shield className="w-4 h-4 text-green-400" />
+                <span className="text-sm text-green-400 font-medium">Your Safety Comes First</span>
+              </div>
+              <h2 className="text-4xl md:text-5xl font-black mb-6">
+                Privacy & Safety <span className="bg-gradient-to-r from-green-400 to-emerald-400 bg-clip-text text-transparent">Built In</span>
+              </h2>
+              <p className="text-xl text-white/60 mb-8 leading-relaxed">
+                Map & Mingle is designed with your safety at the core. Your exact location is never shared without your permission.
+              </p>
+              <div className="space-y-4">
+                {[
+                  { icon: Lock, text: 'Location privacy controls — share what you want, when you want' },
+                  { icon: UserCheck, text: 'Profile verification tools to build trust' },
+                  { icon: Flag, text: 'Easy reporting and blocking for inappropriate behavior' },
+                  { icon: Shield, text: 'Safety tips and guidelines built into the experience' },
+                ].map((item, i) => (
+                  <div key={i} className="flex items-start gap-3">
+                    <div className="w-8 h-8 bg-green-500/20 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <item.icon className="w-4 h-4 text-green-400" />
+                    </div>
+                    <p className="text-white/70">{item.text}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="relative">
+              <div className="absolute inset-0 bg-gradient-to-r from-green-500/20 to-emerald-500/20 rounded-3xl blur-3xl" />
+              <div className="relative p-8 bg-slate-900/80 border border-white/10 rounded-3xl">
+                <div className="space-y-6">
+                  <div className="p-4 bg-white/5 rounded-2xl border border-white/10">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center">
+                        <Lock className="w-5 h-5 text-white" />
                       </div>
+                      <div>
+                        <div className="font-semibold">Location Privacy</div>
+                        <div className="text-sm text-white/50">Only share approximate location</div>
+                      </div>
+                    </div>
+                    <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+                      <div className="h-full w-3/4 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full" />
                     </div>
                   </div>
-                </div>
-
-                {/* Center phone - main */}
-                <div className="w-[240px] md:w-[280px] bg-gradient-to-b from-slate-800 to-slate-900 rounded-[2.5rem] p-3 shadow-2xl z-10">
-                  <div className="bg-slate-950 rounded-[2rem] overflow-hidden aspect-[9/19]">
-                    <div className="h-8 bg-slate-900 flex items-center justify-center">
-                      <div className="w-16 h-4 bg-slate-800 rounded-full" />
-                    </div>
-                    <div className="h-full bg-gradient-to-b from-emerald-900/30 to-slate-900 p-4 relative">
-                      {/* Map pins */}
-                      <div className="absolute top-8 left-6">
-                        <div className="w-8 h-8 bg-pink-500 rounded-full flex items-center justify-center shadow-lg animate-bounce" style={{ animationDuration: '2s' }}>
-                          <Heart className="w-4 h-4 text-white" />
+                  <div className="p-4 bg-white/5 rounded-2xl border border-white/10">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center">
+                          <Eye className="w-5 h-5 text-white" />
+                        </div>
+                        <div>
+                          <div className="font-semibold">Profile Visibility</div>
+                          <div className="text-sm text-white/50">Control who sees you</div>
                         </div>
                       </div>
-                      <div className="absolute top-16 right-8">
-                        <div className="w-8 h-8 bg-purple-500 rounded-full flex items-center justify-center shadow-lg animate-bounce" style={{ animationDuration: '2.5s', animationDelay: '0.3s' }}>
-                          <Users className="w-4 h-4 text-white" />
-                        </div>
-                      </div>
-                      <div className="absolute top-32 left-12">
-                        <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center shadow-lg animate-bounce" style={{ animationDuration: '2.2s', animationDelay: '0.6s' }}>
-                          <Calendar className="w-4 h-4 text-white" />
-                        </div>
-                      </div>
-                      <div className="absolute top-24 right-16">
-                        <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center shadow-lg animate-bounce" style={{ animationDuration: '2.8s', animationDelay: '0.9s' }}>
-                          <Briefcase className="w-4 h-4 text-white" />
-                        </div>
-                      </div>
-                      
-                      {/* User card overlay */}
-                      <div className="absolute bottom-4 left-3 right-3 bg-white/10 backdrop-blur-xl rounded-xl p-3 border border-white/20">
-                        <div className="flex items-center gap-2">
-                          <div className="w-10 h-10 bg-gradient-to-br from-pink-500 to-purple-500 rounded-full" />
-                          <div className="flex-1 min-w-0">
-                            <div className="font-semibold text-white text-sm">Alex K.</div>
-                            <div className="text-xs text-white/60">0.2 mi • Networking</div>
-                          </div>
-                          <button className="px-3 py-1 bg-pink-500 rounded-full text-xs font-medium">Connect</button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Right phone - smaller */}
-                <div className="hidden md:block w-[180px] bg-gradient-to-b from-slate-800 to-slate-900 rounded-[2rem] p-2 shadow-2xl rotate-6 translate-y-8">
-                  <div className="bg-slate-950 rounded-[1.5rem] overflow-hidden aspect-[9/19]">
-                    <div className="h-full bg-gradient-to-b from-purple-900/40 to-slate-900 p-3 flex flex-col">
-                      <div className="text-xs font-bold text-white/80 mb-2">Profile</div>
-                      <div className="flex flex-col items-center">
-                        <div className="w-16 h-16 bg-gradient-to-br from-pink-500 to-purple-500 rounded-full mb-2" />
-                        <div className="text-sm font-bold text-white">Sarah M.</div>
-                        <div className="text-xs text-white/60 mb-3">Denver, CO</div>
-                        <div className="flex flex-wrap gap-1 justify-center">
-                          <span className="px-2 py-0.5 bg-pink-500/30 rounded-full text-xs">Coffee</span>
-                          <span className="px-2 py-0.5 bg-purple-500/30 rounded-full text-xs">Hiking</span>
-                          <span className="px-2 py-0.5 bg-blue-500/30 rounded-full text-xs">Tech</span>
-                        </div>
+                      <div className="w-12 h-6 bg-green-500 rounded-full relative">
+                        <div className="absolute right-1 top-1 w-4 h-4 bg-white rounded-full" />
                       </div>
                     </div>
                   </div>
                 </div>
               </div>
-            </div>
-
-            {/* Feature List */}
-            <div className="space-y-6">
-              {[
-                { icon: MapPin, title: 'Real-Time Map', desc: 'Your world, visualized. See who\'s around you right now.' },
-                { icon: Zap, title: 'Smart Modes', desc: 'Switch between purposes instantly — dating, friends, networking, events.' },
-                { icon: Eye, title: 'Instant Profiles', desc: 'Simple, signal-rich profiles that help you decide in seconds.' },
-                { icon: MessageCircle, title: 'Built-In Chat', desc: 'Fast conversations, zero friction. Go from map to message instantly.' },
-                { icon: Shield, title: 'Safety & Controls', desc: 'Privacy settings you control. Block, report, and hide with one tap.' },
-              ].map((feature, i) => (
-                <div key={i} className="flex gap-4 items-start group">
-                  <div className="w-12 h-12 bg-gradient-to-br from-pink-500/20 to-purple-500/20 rounded-xl flex items-center justify-center flex-shrink-0 group-hover:from-pink-500/30 group-hover:to-purple-500/30 transition-all">
-                    <feature.icon className="w-6 h-6 text-pink-400" />
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-lg mb-1">{feature.title}</h3>
-                    <p className="text-white/60">{feature.desc}</p>
-                  </div>
-                </div>
-              ))}
             </div>
           </div>
         </div>
       </section>
 
       {/* Who It's For */}
-      <section className="relative z-10 px-6 py-24 bg-gradient-to-b from-transparent to-slate-900/50">
+      <section id="who-its-for" className="relative z-10 px-6 py-24">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-5xl font-black mb-4">
-              Who It's For
-            </h2>
-            <p className="text-xl text-white/60 max-w-2xl mx-auto">
-              Whether you're here for connection, opportunity, or adventure — you'll find your people.
-            </p>
+            <h2 className="text-4xl md:text-5xl font-black mb-4">Who It's For</h2>
+            <p className="text-xl text-white/60 max-w-2xl mx-auto">Whether you're here for connection, opportunity, or adventure — you'll find your people.</p>
           </div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {[
-              {
-                icon: Heart,
-                title: 'People looking to date',
-                desc: 'Meet people nearby and connect in real life — not after endless swiping.',
-                gradient: 'from-pink-500 to-rose-500',
-              },
-              {
-                icon: Users,
-                title: 'People building friendships',
-                desc: 'Find locals who actually live around you and want to connect.',
-                gradient: 'from-purple-500 to-indigo-500',
-              },
-              {
-                icon: Briefcase,
-                title: 'Professionals networking',
-                desc: 'Meet creators, remote workers, and entrepreneurs near you.',
-                gradient: 'from-blue-500 to-cyan-500',
-              },
-              {
-                icon: Plane,
-                title: 'Travelers and digital nomads',
-                desc: 'See fellow travelers, locals, and events as soon as you land in a new city.',
-                gradient: 'from-orange-500 to-amber-500',
-              },
-              {
-                icon: Calendar,
-                title: 'Community seekers',
-                desc: 'Discover meetups, gatherings, and things to do — all plotted on your map.',
-                gradient: 'from-green-500 to-emerald-500',
-              },
-              {
-                icon: Sparkles,
-                title: 'Everyone else',
-                desc: 'Whatever brings you here, there\'s a mode for you. Start exploring.',
-                gradient: 'from-violet-500 to-purple-500',
-              },
+              { icon: Heart, title: 'People looking to date', desc: 'Meet people nearby and connect in real life — not after endless swiping.', gradient: 'from-pink-500 to-rose-500' },
+              { icon: Users, title: 'People building friendships', desc: 'Find locals who actually live around you and want to connect.', gradient: 'from-purple-500 to-indigo-500' },
+              { icon: Briefcase, title: 'Professionals networking', desc: 'Meet creators, remote workers, and entrepreneurs near you.', gradient: 'from-blue-500 to-cyan-500' },
+              { icon: Plane, title: 'Travelers and digital nomads', desc: 'See fellow travelers, locals, and events as soon as you land in a new city.', gradient: 'from-orange-500 to-amber-500' },
+              { icon: Calendar, title: 'Community seekers', desc: 'Discover meetups, gatherings, and things to do — all plotted on your map.', gradient: 'from-green-500 to-emerald-500' },
+              { icon: Sparkles, title: 'Everyone else', desc: 'Whatever brings you here, there\'s a mode for you. Start exploring.', gradient: 'from-violet-500 to-purple-500' },
             ].map((item, i) => (
               <div key={i} className="group relative overflow-hidden rounded-2xl">
                 <div className={`absolute inset-0 bg-gradient-to-br ${item.gradient} opacity-10 group-hover:opacity-20 transition-opacity`} />
@@ -517,12 +459,10 @@ export default function LandingPage() {
       </section>
 
       {/* Testimonials */}
-      <section className="relative z-10 px-6 py-24">
+      <section id="testimonials" className="relative z-10 px-6 py-24 bg-gradient-to-b from-transparent to-purple-950/30">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-5xl font-black mb-4">
-              Real Stories, Real People
-            </h2>
+            <h2 className="text-4xl md:text-5xl font-black mb-4">Real Stories, Real People</h2>
           </div>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -560,12 +500,8 @@ export default function LandingPage() {
           <div className="relative">
             <div className="absolute inset-0 bg-gradient-to-r from-pink-500/20 to-purple-600/20 rounded-3xl blur-3xl" />
             <div className="relative p-12 bg-gradient-to-br from-slate-900 to-slate-800 border border-white/10 rounded-3xl">
-              <h2 className="text-4xl md:text-5xl font-black mb-4">
-                Ready to find your people?
-              </h2>
-              <p className="text-xl text-white/60 mb-8 max-w-xl mx-auto">
-                Join thousands of people connecting in real life, every day. It's free to start.
-              </p>
+              <h2 className="text-4xl md:text-5xl font-black mb-4">Ready to find your people?</h2>
+              <p className="text-xl text-white/60 mb-8 max-w-xl mx-auto">Join thousands of people connecting in real life, every day. It's free to start.</p>
               <button 
                 onClick={() => navigate('/register')}
                 className="group px-10 py-5 bg-gradient-to-r from-pink-500 to-purple-600 rounded-2xl font-bold text-xl hover:shadow-xl hover:shadow-pink-500/30 transition-all hover:scale-105 inline-flex items-center gap-3"
@@ -578,24 +514,117 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="relative z-10 px-6 py-12 border-t border-white/10">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex flex-col md:flex-row justify-between items-center gap-6">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-pink-500 to-purple-600 flex items-center justify-center">
-                <MapPin className="w-4 h-4 text-white" />
+      {/* Comprehensive Footer */}
+      <footer className="relative z-10 border-t border-white/10 bg-slate-900/50">
+        <div className="max-w-7xl mx-auto px-6 py-16">
+          {/* Main Footer Grid */}
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-8 mb-12">
+            {/* Brand Column */}
+            <div className="col-span-2 md:col-span-4 lg:col-span-1 mb-8 lg:mb-0">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-pink-500 to-purple-600 flex items-center justify-center">
+                  <MapPin className="w-5 h-5 text-white" />
+                </div>
+                <span className="text-xl font-bold bg-gradient-to-r from-pink-400 to-purple-400 bg-clip-text text-transparent">
+                  Map & Mingle
+                </span>
               </div>
-              <span className="font-bold text-white/80">Map & Mingle</span>
+              <p className="text-white/50 text-sm leading-relaxed mb-4">
+                The real-time map for dating, friendships, networking, events, and travel connections near you.
+              </p>
+              <div className="flex gap-3">
+                <a href="#" className="w-9 h-9 bg-white/5 hover:bg-white/10 rounded-lg flex items-center justify-center transition-colors">
+                  <Instagram className="w-4 h-4 text-white/60" />
+                </a>
+                <a href="#" className="w-9 h-9 bg-white/5 hover:bg-white/10 rounded-lg flex items-center justify-center transition-colors">
+                  <Twitter className="w-4 h-4 text-white/60" />
+                </a>
+                <a href="#" className="w-9 h-9 bg-white/5 hover:bg-white/10 rounded-lg flex items-center justify-center transition-colors">
+                  <Linkedin className="w-4 h-4 text-white/60" />
+                </a>
+              </div>
             </div>
-            <div className="flex flex-wrap justify-center gap-6 text-sm text-white/50">
-              <button onClick={() => navigate('/legal/privacy')} className="hover:text-white transition-colors">Privacy Policy</button>
-              <button onClick={() => navigate('/legal/terms')} className="hover:text-white transition-colors">Terms of Service</button>
-              <button onClick={() => navigate('/legal/community-guidelines')} className="hover:text-white transition-colors">Community Guidelines</button>
+
+            {/* Product Column */}
+            <div>
+              <h4 className="font-semibold text-white mb-4">Product</h4>
+              <ul className="space-y-3">
+                <li><button onClick={() => scrollToSection('how-it-works')} className="text-white/50 hover:text-white text-sm transition-colors">How It Works</button></li>
+                <li><button onClick={() => scrollToSection('features')} className="text-white/50 hover:text-white text-sm transition-colors">Features</button></li>
+                <li><button onClick={() => scrollToSection('who-its-for')} className="text-white/50 hover:text-white text-sm transition-colors">Who It's For</button></li>
+                <li><button onClick={() => scrollToSection('safety')} className="text-white/50 hover:text-white text-sm transition-colors">Safety & Privacy</button></li>
+                <li><span className="text-white/30 text-sm">Download App (Coming Soon)</span></li>
+              </ul>
             </div>
-            <div className="text-sm text-white/40">
-              © 2025 Map & Mingle. All rights reserved.
+
+            {/* Community Column */}
+            <div>
+              <h4 className="font-semibold text-white mb-4">Community</h4>
+              <ul className="space-y-3">
+                <li><button onClick={() => scrollToSection('testimonials')} className="text-white/50 hover:text-white text-sm transition-colors">Stories & Successes</button></li>
+                <li><span className="text-white/30 text-sm">Events & Meetups (Soon)</span></li>
+                <li><span className="text-white/30 text-sm">Blog (Coming Soon)</span></li>
+                <li><span className="text-white/30 text-sm">Ambassador Program</span></li>
+              </ul>
             </div>
+
+            {/* Support Column */}
+            <div>
+              <h4 className="font-semibold text-white mb-4">Support</h4>
+              <ul className="space-y-3">
+                <li><span className="text-white/30 text-sm">Help Center (Soon)</span></li>
+                <li><button onClick={() => scrollToSection('safety')} className="text-white/50 hover:text-white text-sm transition-colors">Safety & Privacy</button></li>
+                <li><button onClick={() => navigate('/report-status')} className="text-white/50 hover:text-white text-sm transition-colors">Report a Problem</button></li>
+                <li><a href="mailto:support@mapandmingle.com" className="text-white/50 hover:text-white text-sm transition-colors">Contact Us</a></li>
+              </ul>
+            </div>
+
+            {/* Legal Column */}
+            <div>
+              <h4 className="font-semibold text-white mb-4">Legal</h4>
+              <ul className="space-y-3">
+                <li><button onClick={() => navigate('/legal/privacy')} className="text-white/50 hover:text-white text-sm transition-colors">Privacy Policy</button></li>
+                <li><button onClick={() => navigate('/legal/terms')} className="text-white/50 hover:text-white text-sm transition-colors">Terms of Use</button></li>
+                <li><button onClick={() => navigate('/legal/community-guidelines')} className="text-white/50 hover:text-white text-sm transition-colors">Community Guidelines</button></li>
+              </ul>
+            </div>
+          </div>
+
+          {/* App Store Buttons */}
+          <div className="flex flex-wrap justify-center gap-4 py-8 border-y border-white/10 mb-8">
+            <div className="px-6 py-3 bg-white/5 border border-white/10 rounded-xl flex items-center gap-3 opacity-60">
+              <Apple className="w-6 h-6 text-white" />
+              <div>
+                <div className="text-xs text-white/50">Coming soon to</div>
+                <div className="font-semibold text-sm">App Store</div>
+              </div>
+            </div>
+            <div className="px-6 py-3 bg-white/5 border border-white/10 rounded-xl flex items-center gap-3 opacity-60">
+              <Play className="w-6 h-6 text-white" />
+              <div>
+                <div className="text-xs text-white/50">Coming soon to</div>
+                <div className="font-semibold text-sm">Google Play</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Safety Disclaimer */}
+          <div className="text-center mb-8">
+            <div className="inline-flex items-center gap-2 px-4 py-2 bg-green-500/10 border border-green-500/20 rounded-full mb-4">
+              <Shield className="w-4 h-4 text-green-400" />
+              <span className="text-sm text-green-400 font-medium">Your Safety Matters</span>
+            </div>
+            <p className="text-white/40 text-sm max-w-2xl mx-auto leading-relaxed">
+              Always meet in public places and use your judgment. Your safety comes first. Location sharing is always optional and under your control.
+            </p>
+            <p className="text-white/30 text-xs mt-3 max-w-2xl mx-auto">
+              Map & Mingle does not guarantee any specific outcomes from connections made on the platform. Please use common sense and follow local laws and safety guidelines.
+            </p>
+          </div>
+
+          {/* Copyright */}
+          <div className="text-center pt-8 border-t border-white/10">
+            <p className="text-white/40 text-sm">© {new Date().getFullYear()} Map & Mingle. All rights reserved.</p>
           </div>
         </div>
       </footer>
