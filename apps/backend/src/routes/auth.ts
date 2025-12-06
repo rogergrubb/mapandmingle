@@ -576,50 +576,84 @@ authRoutes.get('/google/callback', async (c) => {
     }
     
     // Find or create user
-    let user = await prisma.user.findUnique({
-      where: { email: googleUser.email },
-      include: { profile: true, accounts: true },
-    });
+    let user: any = null;
+    let profile: any = null;
+    let accounts: any[] = [];
+    
+    try {
+      // First try simple query without includes
+      user = await prisma.user.findUnique({
+        where: { email: googleUser.email },
+      });
+      
+      if (user) {
+        // Fetch profile and accounts separately to avoid schema issues
+        profile = await prisma.profile.findUnique({
+          where: { userId: user.id },
+        }).catch(() => null);
+        
+        accounts = await prisma.account.findMany({
+          where: { userId: user.id },
+        }).catch(() => []);
+      }
+    } catch (dbError) {
+      console.error('Database query error:', dbError);
+      return c.redirect(`${FRONTEND_URL}/login?error=callback_failed&detail=${encodeURIComponent('Database error: ' + (dbError as Error).message)}`);
+    }
     
     if (!user) {
       // Create new user
-      user = await prisma.user.create({
-        data: {
-          email: googleUser.email,
-          name: googleUser.name || googleUser.email.split('@')[0],
-          image: googleUser.picture,
-          emailVerified: true, // Google emails are verified
-        },
-        include: { profile: true, accounts: true },
-      });
+      try {
+        user = await prisma.user.create({
+          data: {
+            email: googleUser.email,
+            name: googleUser.name || googleUser.email.split('@')[0],
+            image: googleUser.picture,
+            emailVerified: true, // Google emails are verified
+          },
+        });
+      } catch (createError) {
+        console.error('User creation error:', createError);
+        return c.redirect(`${FRONTEND_URL}/login?error=callback_failed&detail=${encodeURIComponent('Failed to create user')}`);
+      }
       
       // Create Google account link
-      await prisma.account.create({
-        data: {
-          userId: user.id,
-          accountId: googleUser.id,
-          providerId: 'google',
-          accessToken: tokenData.access_token,
-          refreshToken: tokenData.refresh_token,
-          accessTokenExpiresAt: new Date(Date.now() + tokenData.expires_in * 1000),
-        },
-      });
+      try {
+        await prisma.account.create({
+          data: {
+            userId: user.id,
+            accountId: googleUser.id,
+            providerId: 'google',
+            accessToken: tokenData.access_token,
+            refreshToken: tokenData.refresh_token,
+            accessTokenExpiresAt: new Date(Date.now() + tokenData.expires_in * 1000),
+          },
+        });
+      } catch (accountError) {
+        console.error('Account creation error:', accountError);
+        // Continue - account linking is not critical
+      }
       
       // Create profile with 30-day trial
-      const trialEnd = new Date();
-      trialEnd.setDate(trialEnd.getDate() + 30);
-      
-      await prisma.profile.create({
-        data: {
-          userId: user.id,
-          displayName: googleUser.name,
-          avatar: googleUser.picture,
-          subscriptionStatus: 'trial',
-          subscriptionStartedAt: new Date(),
-          subscriptionExpiresAt: trialEnd,
-          trustScore: 50,
-        },
-      });
+      try {
+        const trialEnd = new Date();
+        trialEnd.setDate(trialEnd.getDate() + 30);
+        
+        await prisma.profile.create({
+          data: {
+            userId: user.id,
+            displayName: googleUser.name,
+            avatar: googleUser.picture,
+            subscriptionStatus: 'trial',
+            subscriptionStartedAt: new Date(),
+            subscriptionExpiresAt: trialEnd,
+            trustScore: 50,
+          },
+        });
+      } catch (profileError) {
+        console.error('Profile creation error:', profileError);
+        // Continue - profile creation is not critical for login
+      }
       
       // Create Stripe customer
       try {
@@ -637,53 +671,58 @@ authRoutes.get('/google/callback', async (c) => {
         console.error('Failed to create Stripe customer:', err);
       }
       
-      // Refetch user with profile
-      user = await prisma.user.findUnique({
-        where: { id: user.id },
-        include: { profile: true, accounts: true },
-      });
+      // Set empty arrays for new user
+      accounts = [];
     } else {
       // User exists - check if Google account is linked
-      const googleAccount = user.accounts.find(a => a.providerId === 'google');
+      const googleAccount = accounts.find(a => a.providerId === 'google');
       
       if (!googleAccount) {
         // Link Google account to existing user
-        await prisma.account.create({
-          data: {
-            userId: user.id,
-            accountId: googleUser.id,
-            providerId: 'google',
-            accessToken: tokenData.access_token,
-            refreshToken: tokenData.refresh_token,
-            accessTokenExpiresAt: new Date(Date.now() + tokenData.expires_in * 1000),
-          },
-        });
+        try {
+          await prisma.account.create({
+            data: {
+              userId: user.id,
+              accountId: googleUser.id,
+              providerId: 'google',
+              accessToken: tokenData.access_token,
+              refreshToken: tokenData.refresh_token,
+              accessTokenExpiresAt: new Date(Date.now() + tokenData.expires_in * 1000),
+            },
+          });
+        } catch (err) {
+          console.error('Failed to link Google account:', err);
+        }
       } else {
         // Update existing Google account tokens
-        await prisma.account.update({
-          where: { id: googleAccount.id },
-          data: {
-            accessToken: tokenData.access_token,
-            refreshToken: tokenData.refresh_token || googleAccount.refreshToken,
-            accessTokenExpiresAt: new Date(Date.now() + tokenData.expires_in * 1000),
-          },
-        });
+        try {
+          await prisma.account.update({
+            where: { id: googleAccount.id },
+            data: {
+              accessToken: tokenData.access_token,
+              refreshToken: tokenData.refresh_token || googleAccount.refreshToken,
+              accessTokenExpiresAt: new Date(Date.now() + tokenData.expires_in * 1000),
+            },
+          });
+        } catch (err) {
+          console.error('Failed to update Google account tokens:', err);
+        }
       }
       
       // Update profile avatar if not set
-      if (user.profile && !user.profile.avatar && googleUser.picture) {
+      if (profile && !profile.avatar && googleUser.picture) {
         await prisma.profile.update({
           where: { userId: user.id },
           data: { avatar: googleUser.picture },
-        });
+        }).catch(err => console.error('Failed to update avatar:', err));
       }
       
       // Update last active
-      if (user.profile) {
+      if (profile) {
         await prisma.profile.update({
           where: { userId: user.id },
           data: { lastActiveAt: new Date() },
-        });
+        }).catch(err => console.error('Failed to update lastActiveAt:', err));
       }
     }
     
