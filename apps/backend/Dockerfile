@@ -47,5 +47,5 @@ ENV NODE_ENV=production
 # Expose port
 EXPOSE 8080
 
-# Start server with db push first
-CMD npx prisma db push --skip-generate && node dist/index.js
+# Start server directly - migrations handled separately
+CMD ["node", "dist/index.js"]
