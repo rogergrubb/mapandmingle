@@ -12,36 +12,60 @@ export default function AuthCallback() {
 
   useEffect(() => {
     const handleCallback = async () => {
+      console.log('AuthCallback: Starting callback handling');
+      
       const accessToken = searchParams.get('accessToken');
       const refreshToken = searchParams.get('refreshToken');
       const error = searchParams.get('error');
+      const detail = searchParams.get('detail');
+
+      console.log('AuthCallback: accessToken present:', !!accessToken);
+      console.log('AuthCallback: refreshToken present:', !!refreshToken);
+      console.log('AuthCallback: error:', error);
 
       if (error) {
+        console.error('AuthCallback: Error from backend:', error, detail);
         setStatus('error');
-        setErrorMessage(getErrorMessage(error));
+        setErrorMessage(getErrorMessage(error) + (detail ? ` (${detail})` : ''));
         setTimeout(() => navigate('/login'), 3000);
         return;
       }
 
       if (accessToken && refreshToken) {
         try {
-          // Store tokens
+          console.log('AuthCallback: Storing tokens...');
+          
+          // Store tokens in localStorage first
+          localStorage.setItem('token', accessToken);
+          localStorage.setItem('refreshToken', refreshToken);
+          
+          // Then call setTokens to update zustand state
           setTokens(accessToken, refreshToken);
+          
+          console.log('AuthCallback: Tokens stored, fetching user...');
+          
+          // Small delay to ensure state is updated
+          await new Promise(resolve => setTimeout(resolve, 100));
           
           // Fetch user data
           await fetchUser();
           
+          console.log('AuthCallback: User fetched, setting success...');
           setStatus('success');
           
-          // Redirect to home after brief success message
-          setTimeout(() => navigate('/'), 1500);
+          // Redirect to map after brief success message
+          setTimeout(() => {
+            console.log('AuthCallback: Redirecting to /map');
+            navigate('/map');
+          }, 1000);
         } catch (err) {
-          console.error('Auth callback error:', err);
+          console.error('AuthCallback: Error during auth:', err);
           setStatus('error');
           setErrorMessage('Failed to complete sign in. Please try again.');
           setTimeout(() => navigate('/login'), 3000);
         }
       } else {
+        console.error('AuthCallback: Missing tokens');
         setStatus('error');
         setErrorMessage('Missing authentication data. Please try again.');
         setTimeout(() => navigate('/login'), 3000);
