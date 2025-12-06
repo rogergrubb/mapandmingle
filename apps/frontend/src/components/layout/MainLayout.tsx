@@ -1,5 +1,5 @@
 import { Outlet, Link, useLocation } from 'react-router-dom';
-import { MapPin, Calendar, Activity, MessageCircle, User, Bell } from 'lucide-react';
+import { MapPin, Compass, MessageCircle, Heart, User, Bell } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import api from '../../lib/api';
 
@@ -58,9 +58,9 @@ export default function MainLayout() {
 
   const navItems = [
     { path: '/', icon: MapPin, label: 'Map' },
-    { path: '/events', icon: Calendar, label: 'Events' },
-    { path: '/activity', icon: Activity, label: 'Activity' },
+    { path: '/events', icon: Compass, label: 'Discover' },
     { path: '/messages', icon: MessageCircle, label: 'Messages' },
+    { path: '/activity', icon: Heart, label: 'Connections' },
     { path: '/profile', icon: User, label: 'Profile' },
   ];
 
@@ -179,75 +179,59 @@ export default function MainLayout() {
         <Outlet />
       </main>
 
-      {/* Bottom Navigation - iOS Style Glassmorphic */}
+      {/* Bottom Navigation - Redesigned */}
       <nav 
-        className="flex-shrink-0 relative"
+        className="flex-shrink-0 relative bg-white/90 backdrop-blur-xl border-t border-gray-200/50"
         style={{
           paddingBottom: 'env(safe-area-inset-bottom, 0px)',
         }}
       >
-        {/* Glassmorphic background */}
-        <div 
-          className="absolute inset-0 backdrop-blur-xl bg-white/70"
-          style={{
-            boxShadow: '0 -1px 0 rgba(0, 0, 0, 0.04), 0 -8px 32px rgba(0, 0, 0, 0.04)',
-          }}
-        />
-        
-        {/* Top border with subtle gradient */}
-        <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-gray-300/50 to-transparent" />
+        {/* Subtle gradient top line */}
+        <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-pink-300/50 to-transparent" />
         
         {/* Navigation items */}
-        <div className="relative flex justify-around items-stretch px-2">
+        <div className="relative flex justify-around items-stretch px-1">
           {navItems.map(({ path, icon: Icon, label }) => {
-            const isActive = location.pathname === path;
+            const isActive = path === '/' 
+              ? location.pathname === '/' || location.pathname === '/map'
+              : location.pathname.startsWith(path);
             const showBadge = label === 'Messages' && unreadCount > 0;
+            
             return (
               <Link
                 key={path}
                 to={path}
-                className={`
-                  flex-1 flex flex-col items-center justify-center 
-                  py-2 px-2 
-                  transition-all duration-200 ease-out
-                  relative group
-                  select-none
-                  ${isActive ? 'text-pink-600' : 'text-gray-400'}
-                `}
+                className="flex-1 flex flex-col items-center justify-center py-2 px-2 transition-all duration-200 relative group"
                 style={{
-                  minHeight: '56px',
+                  minHeight: '60px',
                   WebkitTapHighlightColor: 'transparent',
                 }}
               >
-                {/* Press effect overlay */}
-                <div 
-                  className={`
-                    absolute inset-1 rounded-2xl 
-                    transition-all duration-150 ease-out
-                    ${isActive 
-                      ? 'bg-pink-50/80' 
-                      : 'bg-transparent group-hover:bg-gray-100/60 group-active:bg-gray-200/80 group-active:scale-95'
-                    }
-                  `}
-                />
+                {/* Active background glow */}
+                {isActive && (
+                  <div className="absolute inset-1 bg-gradient-to-b from-pink-100/80 to-purple-100/50 rounded-2xl" />
+                )}
                 
                 {/* Icon container */}
                 <div className="relative z-10">
                   <div className="relative">
-                    <Icon
-                      size={26}
-                      strokeWidth={isActive ? 2.2 : 1.8}
-                      className={`
-                        transition-all duration-200 ease-out
-                        ${isActive 
-                          ? 'scale-110 drop-shadow-sm' 
-                          : 'group-hover:scale-105 group-active:scale-95'
-                        }
-                      `}
-                    />
-                    {/* Unread Message Badge */}
+                    <div className={`
+                      p-2 rounded-xl transition-all duration-200
+                      ${isActive 
+                        ? 'bg-gradient-to-br from-pink-500 to-purple-600 shadow-lg shadow-pink-500/30' 
+                        : 'group-hover:bg-gray-100 group-active:scale-90'
+                      }
+                    `}>
+                      <Icon
+                        size={22}
+                        strokeWidth={isActive ? 2.5 : 2}
+                        className={isActive ? 'text-white' : 'text-gray-500 group-hover:text-gray-700'}
+                      />
+                    </div>
+                    
+                    {/* Badge */}
                     {showBadge && (
-                      <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] flex items-center justify-center bg-red-500 text-white text-[10px] font-bold rounded-full px-1 shadow-md ring-2 ring-white">
+                      <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] flex items-center justify-center bg-red-500 text-white text-[10px] font-bold rounded-full px-1 shadow-md ring-2 ring-white">
                         {unreadCount > 99 ? '99+' : unreadCount}
                       </span>
                     )}
@@ -257,26 +241,15 @@ export default function MainLayout() {
                 {/* Label */}
                 <span 
                   className={`
-                    relative z-10 text-[10px] mt-1 
-                    transition-all duration-200
+                    relative z-10 text-[10px] mt-1 font-medium
                     ${isActive 
-                      ? 'font-semibold text-pink-600' 
-                      : 'font-medium text-gray-500 group-hover:text-gray-700'
+                      ? 'text-pink-600 font-semibold' 
+                      : 'text-gray-500 group-hover:text-gray-700'
                     }
                   `}
                 >
                   {label}
                 </span>
-                
-                {/* Active indicator dot */}
-                {isActive && (
-                  <div 
-                    className="absolute -bottom-0.5 w-1 h-1 rounded-full bg-pink-500"
-                    style={{
-                      boxShadow: '0 0 6px 1px rgba(236, 72, 153, 0.4)',
-                    }}
-                  />
-                )}
               </Link>
             );
           })}
