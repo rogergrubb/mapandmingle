@@ -206,53 +206,88 @@ export default function LandingPage() {
                       <div className="w-20 h-5 bg-slate-800 rounded-full" />
                     </div>
                     
-                    {/* Map Preview */}
-                    <div className="relative h-full bg-gradient-to-b from-emerald-900/30 to-slate-900 p-4">
-                      {/* Map Pins */}
+                    {/* Map Preview - Simulated Map */}
+                    <div className="relative h-full overflow-hidden">
+                      {/* Map Base - Light colored like real maps */}
+                      <div className="absolute inset-0 bg-[#e8e4df]">
+                        {/* Water/River */}
+                        <div className="absolute top-1/3 -left-8 w-[150%] h-16 bg-[#aadaff] rotate-12 opacity-60" />
+                        
+                        {/* Parks */}
+                        <div className="absolute top-20 left-4 w-16 h-12 bg-[#c5e8c5] rounded-lg opacity-80" />
+                        <div className="absolute bottom-40 right-8 w-20 h-16 bg-[#c5e8c5] rounded-xl opacity-80" />
+                        <div className="absolute top-48 right-4 w-12 h-10 bg-[#c5e8c5] rounded-lg opacity-80" />
+                        
+                        {/* Major Roads */}
+                        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-full bg-white" />
+                        <div className="absolute top-1/2 left-0 w-full h-6 bg-white -translate-y-1/2" />
+                        <div className="absolute top-1/4 left-0 w-full h-4 bg-[#fefefe] rotate-3" />
+                        <div className="absolute top-2/3 left-0 w-full h-4 bg-[#fefefe] -rotate-2" />
+                        
+                        {/* Secondary Streets - Grid Pattern */}
+                        <div className="absolute top-16 left-0 w-full h-2 bg-white/80" />
+                        <div className="absolute top-32 left-0 w-full h-2 bg-white/80" />
+                        <div className="absolute bottom-24 left-0 w-full h-2 bg-white/80" />
+                        <div className="absolute bottom-48 left-0 w-full h-2 bg-white/80" />
+                        
+                        <div className="absolute top-0 left-8 w-2 h-full bg-white/80" />
+                        <div className="absolute top-0 left-20 w-2 h-full bg-white/80" />
+                        <div className="absolute top-0 right-8 w-2 h-full bg-white/80" />
+                        <div className="absolute top-0 right-20 w-2 h-full bg-white/80" />
+                        
+                        {/* Buildings/Blocks - subtle shapes */}
+                        <div className="absolute top-8 left-10 w-8 h-6 bg-[#d8d4cf] rounded-sm opacity-60" />
+                        <div className="absolute top-8 right-12 w-10 h-8 bg-[#d8d4cf] rounded-sm opacity-60" />
+                        <div className="absolute top-24 left-24 w-6 h-10 bg-[#d8d4cf] rounded-sm opacity-60" />
+                        <div className="absolute bottom-56 left-6 w-8 h-6 bg-[#d8d4cf] rounded-sm opacity-60" />
+                        <div className="absolute bottom-64 right-16 w-6 h-8 bg-[#d8d4cf] rounded-sm opacity-60" />
+                      </div>
+
+                      {/* Map Pins - Keep exactly as they were */}
                       <div className="absolute top-16 left-8 animate-bounce" style={{ animationDelay: '0s' }}>
-                        <div className="w-10 h-10 bg-pink-500 rounded-full flex items-center justify-center shadow-lg shadow-pink-500/50">
+                        <div className="w-10 h-10 bg-pink-500 rounded-full flex items-center justify-center shadow-lg shadow-pink-500/50 border-2 border-white">
                           <Heart className="w-5 h-5 text-white" />
                         </div>
                         <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-pink-500 rotate-45" />
                       </div>
                       
                       <div className="absolute top-24 right-12 animate-bounce" style={{ animationDelay: '0.3s' }}>
-                        <div className="w-10 h-10 bg-purple-500 rounded-full flex items-center justify-center shadow-lg shadow-purple-500/50">
+                        <div className="w-10 h-10 bg-purple-500 rounded-full flex items-center justify-center shadow-lg shadow-purple-500/50 border-2 border-white">
                           <Users className="w-5 h-5 text-white" />
                         </div>
                         <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-purple-500 rotate-45" />
                       </div>
                       
                       <div className="absolute top-44 left-16 animate-bounce" style={{ animationDelay: '0.6s' }}>
-                        <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center shadow-lg shadow-blue-500/50">
+                        <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center shadow-lg shadow-blue-500/50 border-2 border-white">
                           <Briefcase className="w-5 h-5 text-white" />
                         </div>
                         <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-blue-500 rotate-45" />
                       </div>
                       
                       <div className="absolute top-36 right-8 animate-bounce" style={{ animationDelay: '0.9s' }}>
-                        <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center shadow-lg shadow-green-500/50">
+                        <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center shadow-lg shadow-green-500/50 border-2 border-white">
                           <Calendar className="w-5 h-5 text-white" />
                         </div>
                         <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-green-500 rotate-45" />
                       </div>
                       
                       <div className="absolute bottom-32 left-1/2 -translate-x-1/2 animate-bounce" style={{ animationDelay: '1.2s' }}>
-                        <div className="w-10 h-10 bg-orange-500 rounded-full flex items-center justify-center shadow-lg shadow-orange-500/50">
+                        <div className="w-10 h-10 bg-orange-500 rounded-full flex items-center justify-center shadow-lg shadow-orange-500/50 border-2 border-white">
                           <Plane className="w-5 h-5 text-white" />
                         </div>
                         <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-orange-500 rotate-45" />
                       </div>
 
                       {/* Preview Card */}
-                      <div className="absolute bottom-4 left-4 right-4 bg-white/10 backdrop-blur-xl rounded-2xl p-4 border border-white/20">
+                      <div className="absolute bottom-4 left-4 right-4 bg-white/95 backdrop-blur-xl rounded-2xl p-4 shadow-xl border border-gray-200">
                         <div className="flex items-center gap-3">
                           <div className="w-12 h-12 bg-gradient-to-br from-pink-500 to-purple-500 rounded-full" />
                           <div className="flex-1">
-                            <div className="font-semibold text-white">Sarah M.</div>
-                            <div className="text-sm text-white/60">0.3 mi away • Friends</div>
+                            <div className="font-semibold text-gray-900">Sarah M.</div>
+                            <div className="text-sm text-gray-500">0.3 mi away •</div>
                           </div>
-                          <button className="px-3 py-1.5 bg-pink-500 rounded-full text-sm font-medium">
+                          <button className="px-4 py-2 bg-gradient-to-r from-pink-500 to-purple-500 rounded-full text-sm font-semibold text-white shadow-md">
                             Wave
                           </button>
                         </div>
