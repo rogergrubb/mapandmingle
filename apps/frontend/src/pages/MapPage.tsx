@@ -173,6 +173,15 @@ function ClusteredMarkers({
       // Create popup content
       const popupContent = document.createElement('div');
       popupContent.className = 'min-w-[200px]';
+      
+      // Check if avatar is a URL or emoji/fallback
+      const avatarUrl = pin.createdBy?.avatar;
+      const hasImageAvatar = avatarUrl && (avatarUrl.startsWith('http') || avatarUrl.startsWith('/'));
+      
+      const avatarHtml = hasImageAvatar 
+        ? `<img src="${avatarUrl}" alt="" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;" onerror="this.style.display='none'; this.nextSibling.style.display='flex';" /><span style="display:none; width:100%; height:100%; align-items:center; justify-content:center;">👤</span>`
+        : '👤';
+      
       popupContent.innerHTML = `
         <div style="padding: 12px;">
           <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
@@ -185,8 +194,10 @@ function ClusteredMarkers({
               align-items: center;
               justify-content: center;
               font-size: 20px;
+              overflow: hidden;
+              flex-shrink: 0;
             ">
-              ${pin.createdBy?.avatar || '👤'}
+              ${avatarHtml}
             </div>
             <div>
               <div style="font-weight: 600; font-size: 16px; color: #111;">
@@ -201,7 +212,7 @@ function ClusteredMarkers({
             </div>
           </div>
           <p style="font-size: 14px; color: #444; margin-bottom: 12px; line-height: 1.4;">
-            ${pin.description || 'Ready to mingle!'}
+            ${pin.description || 'Mingling here!'}
           </p>
           <button 
             class="view-profile-btn"
