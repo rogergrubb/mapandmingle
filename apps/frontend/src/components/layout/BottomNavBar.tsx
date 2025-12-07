@@ -2,6 +2,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { 
   MapPin, Compass, MessageCircle, Heart, User
 } from 'lucide-react';
+import haptic from '../../lib/haptics';
 
 interface BottomNavBarProps {
   unreadCount?: number;
@@ -46,6 +47,10 @@ export function BottomNavBar({ unreadCount = 0, connectionsCount = 0 }: BottomNa
     },
   ];
 
+  const handleNavClick = () => {
+    haptic.navTap();
+  };
+
   return (
     <nav 
       className="relative bg-white border-t border-gray-100"
@@ -63,6 +68,7 @@ export function BottomNavBar({ unreadCount = 0, connectionsCount = 0 }: BottomNa
             <Link
               key={path}
               to={path}
+              onClick={handleNavClick}
               className="flex-1 flex flex-col items-center justify-center py-2 px-2 transition-all duration-200 relative group"
               style={{
                 minHeight: '56px',

@@ -6,8 +6,9 @@ import { useMapStore } from '../stores/mapStore';
 import { useAuthStore } from '../stores/authStore';
 import { MapControlBar, type MingleMode, type DistanceFilter } from '../components/map/MapControlBar';
 import { VisibilityStrip } from '../components/map/VisibilityStrip';
-import { PresenceBar } from '../components/map/PresenceBar';
+import { PresenceButtonRow } from '../components/map/PresenceButtonRow';
 import WelcomeCard from '../components/WelcomeCard';
+import haptic from '../lib/haptics';
 import ProfileInterestsSetup from '../components/ProfileInterestsSetup';
 import api from '../lib/api';
 import 'leaflet/dist/leaflet.css';
@@ -356,8 +357,9 @@ export default function MapPage() {
   const [isVisible, setIsVisible] = useState(true);
   const [creatingPin, setCreatingPin] = useState(false);
   const [pinCreationSuccess, setPinCreationSuccess] = useState(false);
+  const [pinSuccessMessage, setPinSuccessMessage] = useState('');
   const [isPlacementMode, setIsPlacementMode] = useState(false);
-  const [placementType, setPlacementType] = useState<'here' | 'heading' | null>(null);
+  const [placementType, setPlacementType] = useState<'here' | 'there' | null>(null);
   
   // Welcome/Onboarding state
   const [showWelcomeCard, setShowWelcomeCard] = useState(false);
@@ -472,7 +474,9 @@ export default function MapPage() {
 
   const handleDropPin = async () => {
     if (!userPosition) {
-      alert('Location not available');
+      // GPS not available - fall back to manual placement
+      setPlacementType('here');
+      setIsPlacementMode(true);
       return;
     }
 
@@ -488,7 +492,10 @@ export default function MapPage() {
         longitude: userPosition[1],
       });
       
+      haptic.confirm(); // Haptic feedback on pin drop
+      setPinSuccessMessage("You're checked in here.");
       setPinCreationSuccess(true);
+      haptic.microPulse(); // Haptic for toast
       setTimeout(() => setPinCreationSuccess(false), 3000);
       
       // Refresh pins
@@ -504,8 +511,10 @@ export default function MapPage() {
     } catch (err: any) {
       const errorMsg = err.response?.data?.error || err.message;
       if (errorMsg?.includes('already has a pin')) {
-        // Pin was updated, show success
+        haptic.confirm();
+        setPinSuccessMessage("You're checked in here.");
         setPinCreationSuccess(true);
+        haptic.microPulse();
         setTimeout(() => setPinCreationSuccess(false), 3000);
       } else {
         alert(errorMsg || 'Failed to create pin');
@@ -515,13 +524,16 @@ export default function MapPage() {
     }
   };
 
-  // Handler for "I'm Heading There" or "Pick My Spot" - drop pin at selected location
+  // Handler for "Where I'll Be" or manual placement - drop pin at selected location
   const handlePlacementPinDrop = useCallback(async (lat: number, lng: number) => {
     if (!isAuthenticated) {
       navigate('/login');
       return;
     }
 
+    haptic.confirm(); // Haptic on map tap placement
+    
+    const wasPlacementType = placementType;
     setIsPlacementMode(false);
     setPlacementType(null);
     setCreatingPin(true);
@@ -532,7 +544,11 @@ export default function MapPage() {
         longitude: lng,
       });
       
+      haptic.confirm(); // Haptic on pin drop
+      // Different message based on placement type
+      setPinSuccessMessage(wasPlacementType === 'there' ? "You're checked in there." : "You're checked in here.");
       setPinCreationSuccess(true);
+      haptic.microPulse(); // Haptic for toast
       setTimeout(() => setPinCreationSuccess(false), 3000);
       
       // Refresh pins
@@ -548,7 +564,10 @@ export default function MapPage() {
     } catch (err: any) {
       const errorMsg = err.response?.data?.error || err.message;
       if (errorMsg?.includes('already has a pin')) {
+        haptic.confirm();
+        setPinSuccessMessage(wasPlacementType === 'there' ? "You're checked in there." : "You're checked in here.");
         setPinCreationSuccess(true);
+        haptic.microPulse();
         setTimeout(() => setPinCreationSuccess(false), 3000);
       } else {
         alert(errorMsg || 'Failed to create pin');
@@ -556,7 +575,7 @@ export default function MapPage() {
     } finally {
       setCreatingPin(false);
     }
-  }, [isAuthenticated, navigate]);
+  }, [isAuthenticated, navigate, placementType]);
 
   if (isLocating) {
     return (
@@ -624,21 +643,18 @@ export default function MapPage() {
         />
       )}
 
-      {/* ROW 3 - Presence Bar */}
-      <PresenceBar
+      {/* ROW 3 - Two-Button Presence Row */}
+      <PresenceButtonRow
         isPlacementMode={isPlacementMode}
         placementType={placementType}
         hasGPS={hasGPS}
-        onImHere={handleDropPin}
-        onImHereManual={() => {
-          setPlacementType('here');
-          setIsPlacementMode(true);
-        }}
-        onHeadingThere={() => {
-          setPlacementType('heading');
+        onWhereImAt={handleDropPin}
+        onWhereIllBe={() => {
+          setPlacementType('there');
           setIsPlacementMode(true);
         }}
         onCancelPlacement={() => {
+          haptic.softTick();
           setIsPlacementMode(false);
           setPlacementType(null);
         }}
@@ -686,10 +702,10 @@ export default function MapPage() {
 
       {/* Success Toast */}
       {pinCreationSuccess && (
-        <div className="absolute bottom-36 left-1/2 -translate-x-1/2 z-[1000] animate-in fade-in slide-in-from-bottom-4">
-          <div className="bg-green-500 text-white px-6 py-3 rounded-full shadow-xl flex items-center gap-2">
+        <div className="absolute bottom-24 left-1/2 -translate-x-1/2 z-[1000] animate-in fade-in slide-in-from-bottom-4">
+          <div className="bg-gray-900 text-white px-5 py-3 rounded-2xl shadow-xl flex items-center gap-2">
             <span className="text-lg">✓</span>
-            <span className="font-semibold">You're on the map!</span>
+            <span className="font-medium">{pinSuccessMessage || "You're checked in!"}</span>
           </div>
         </div>
       )}

@@ -1,3 +1,5 @@
+import haptic from '../../lib/haptics';
+
 interface VisibilityStripProps {
   isVisible: boolean;
   onVisibilityToggle: () => void;
@@ -11,6 +13,12 @@ export function VisibilityStrip({
   liveNow,
   inView,
 }: VisibilityStripProps) {
+  
+  const handleToggle = () => {
+    haptic.softTick();
+    onVisibilityToggle();
+  };
+
   // Determine the contextual message
   const getMessage = () => {
     if (liveNow >= 1) {
@@ -25,7 +33,7 @@ export function VisibilityStrip({
   const message = getMessage();
 
   return (
-    <div className="absolute top-14 left-4 right-4 z-[1000]">
+    <div className="absolute top-12 left-3 right-3 z-[1000]">
       <div 
         className="bg-white/95 backdrop-blur-xl rounded-xl px-3 py-2"
         style={{
@@ -36,7 +44,7 @@ export function VisibilityStrip({
         <div className="flex items-center justify-between gap-3">
           {/* Visibility Toggle */}
           <button
-            onClick={onVisibilityToggle}
+            onClick={handleToggle}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all hover:scale-[1.02] active:scale-[0.98] ${
               isVisible 
                 ? 'bg-green-500 text-white shadow-sm' 
