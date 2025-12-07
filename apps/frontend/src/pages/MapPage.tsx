@@ -5,7 +5,6 @@ import { Loader } from 'lucide-react';
 import { useMapStore } from '../stores/mapStore';
 import { useAuthStore } from '../stores/authStore';
 import { MapControlBar, type MingleMode, type DistanceFilter } from '../components/map/MapControlBar';
-import { MapFAB } from '../components/map/MapFAB';
 import WelcomeCard from '../components/WelcomeCard';
 import ProfileInterestsSetup from '../components/ProfileInterestsSetup';
 import api from '../lib/api';
@@ -607,7 +606,7 @@ export default function MapPage() {
         )}
       </MapContainer>
 
-      {/* Control Bar */}
+      {/* Control Bar - All navigation at top */}
       <MapControlBar
         currentMode={currentMode}
         distanceFilter={distanceFilter}
@@ -616,10 +615,6 @@ export default function MapPage() {
         onDistanceChange={setDistanceFilter}
         onVisibilityToggle={handleVisibilityToggle}
         onSearch={() => {}}
-      />
-
-      {/* FAB - Expanding Actions */}
-      <MapFAB
         onDropPin={handleDropPin}
         onCreateEvent={() => navigate('/events/create')}
         onMyLocation={handleCenterOnUser}
