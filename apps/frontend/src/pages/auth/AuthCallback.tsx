@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Loader2, CheckCircle, XCircle } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
+import api from '../../lib/api';
 
 export default function AuthCallback() {
   const navigate = useNavigate();
@@ -50,13 +51,22 @@ export default function AuthCallback() {
           // Fetch user data
           await fetchUser();
           
-          console.log('AuthCallback: User fetched, setting success...');
+          // Check if user has completed onboarding
+          const userData = await api.get('/api/users/me');
+          const onboardingComplete = userData.data?.onboardingComplete || userData.onboardingComplete;
+          
+          console.log('AuthCallback: User fetched, onboardingComplete:', onboardingComplete);
           setStatus('success');
           
-          // Redirect to map after brief success message
+          // Redirect based on onboarding status
           setTimeout(() => {
-            console.log('AuthCallback: Redirecting to /map');
-            navigate('/map');
+            if (onboardingComplete) {
+              console.log('AuthCallback: Redirecting to /map');
+              navigate('/map');
+            } else {
+              console.log('AuthCallback: Redirecting to /onboarding');
+              navigate('/onboarding');
+            }
           }, 1000);
         } catch (err) {
           console.error('AuthCallback: Error during auth:', err);

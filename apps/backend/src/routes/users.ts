@@ -66,6 +66,10 @@ userRoutes.get('/me', authMiddleware, async (c) => {
       schoolRole: user.profile?.schoolRole,
       gradYear: user.profile?.gradYear,
       schoolVerified: user.profile?.schoolVerified || false,
+      // Onboarding & Referral
+      onboardingComplete: user.profile?.onboardingComplete || false,
+      onboardingStep: user.profile?.onboardingStep,
+      referralCode: user.profile?.referralCode,
       createdAt: user.createdAt.toISOString(),
       lastActive: user.profile?.lastActiveAt?.toISOString(),
     });
@@ -129,6 +133,133 @@ userRoutes.get('/me/stats', authMiddleware, async (c) => {
   } catch (error) {
     console.error('Error fetching user stats:', error);
     return c.json({ error: 'Failed to fetch stats' }, 500);
+  }
+});
+
+// Helper function to generate referral code
+function generateReferralCode(): string {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // Removed confusing chars like 0, O, 1, I
+  let code = '';
+  for (let i = 0; i < 8; i++) {
+    code += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return code;
+}
+
+// GET /api/users/me/referral-code - Get or generate user's referral code
+userRoutes.get('/me/referral-code', authMiddleware, async (c) => {
+  try {
+    const userId = c.get('userId');
+
+    const profile = await prisma.profile.findUnique({
+      where: { userId },
+      select: { referralCode: true },
+    });
+
+    if (!profile) {
+      return c.json({ error: 'Profile not found' }, 404);
+    }
+
+    // If user already has a referral code, return it
+    if (profile.referralCode) {
+      return c.json({ 
+        referralCode: profile.referralCode,
+        shareUrl: `https://www.mapandmingle.com/join/${profile.referralCode}`,
+      });
+    }
+
+    // Generate a new unique referral code
+    let newCode = generateReferralCode();
+    let attempts = 0;
+    while (attempts < 10) {
+      const existing = await prisma.profile.findFirst({
+        where: { referralCode: newCode },
+      });
+      if (!existing) break;
+      newCode = generateReferralCode();
+      attempts++;
+    }
+
+    // Save the code
+    await prisma.profile.update({
+      where: { userId },
+      data: { referralCode: newCode },
+    });
+
+    return c.json({ 
+      referralCode: newCode,
+      shareUrl: `https://www.mapandmingle.com/join/${newCode}`,
+    });
+  } catch (error) {
+    console.error('Error generating referral code:', error);
+    return c.json({ error: 'Failed to generate referral code' }, 500);
+  }
+});
+
+// GET /api/users/referral/:code - Get info about who invited (public endpoint)
+userRoutes.get('/referral/:code', async (c) => {
+  try {
+    const code = c.req.param('code').toUpperCase();
+
+    const profile = await prisma.profile.findFirst({
+      where: { referralCode: code },
+      include: {
+        user: {
+          select: { name: true, image: true },
+        },
+      },
+    });
+
+    if (!profile) {
+      return c.json({ error: 'Invalid referral code' }, 404);
+    }
+
+    return c.json({
+      valid: true,
+      referrerName: profile.displayName || profile.user.name || 'A friend',
+      referrerAvatar: profile.avatar || profile.user.image,
+    });
+  } catch (error) {
+    console.error('Error checking referral code:', error);
+    return c.json({ error: 'Failed to check referral code' }, 500);
+  }
+});
+
+// POST /api/users/onboarding/complete - Mark onboarding as complete
+userRoutes.post('/onboarding/complete', authMiddleware, async (c) => {
+  try {
+    const userId = c.get('userId');
+
+    await prisma.profile.update({
+      where: { userId },
+      data: { 
+        onboardingComplete: true,
+        onboardingStep: null,
+      },
+    });
+
+    return c.json({ success: true });
+  } catch (error) {
+    console.error('Error completing onboarding:', error);
+    return c.json({ error: 'Failed to complete onboarding' }, 500);
+  }
+});
+
+// PATCH /api/users/onboarding/step - Update current onboarding step
+userRoutes.patch('/onboarding/step', authMiddleware, async (c) => {
+  try {
+    const userId = c.get('userId');
+    const { step } = await c.req.json();
+
+    await prisma.profile.update({
+      where: { userId },
+      data: { onboardingStep: step },
+    });
+
+    return c.json({ success: true, step });
+  } catch (error) {
+    console.error('Error updating onboarding step:', error);
+    return c.json({ error: 'Failed to update onboarding step' }, 500);
   }
 });
 

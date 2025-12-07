@@ -53,7 +53,23 @@ export function Onboarding() {
 
   const handleComplete = async () => {
     try {
-      await api.put('/api/users/profile', formData);
+      // Save profile data
+      await api.put('/api/users/profile', {
+        displayName: formData.name,
+        bio: formData.bio,
+        age: formData.age ? parseInt(formData.age) : null,
+        gender: formData.gender,
+        location: formData.location,
+        interests: JSON.stringify(formData.interests),
+        lookingFor: JSON.stringify(formData.lookingFor),
+        activityIntent: formData.activityIntent.join(', '),
+        visibilityMode: formData.profileVisibility,
+        ghostMode: !formData.showLocation,
+      });
+      
+      // Mark onboarding as complete
+      await api.post('/api/users/onboarding/complete');
+      
       navigate('/map');
     } catch (error) {
       console.error('Failed to complete onboarding:', error);

@@ -10,6 +10,7 @@ import ForgotPassword from './pages/auth/ForgotPassword';
 import ResetPassword from './pages/auth/ResetPassword';
 import ReportStatus from './pages/ReportStatus';
 import { Onboarding } from './pages/Onboarding';
+import { Join } from './pages/Join';
 import LandingPage from './pages/LandingPage';
 import MapPage from './pages/MapPage';
 import EventsPage from './pages/EventsPage';
@@ -86,6 +87,7 @@ function App() {
         <Route path="/legal/privacy" element={<PrivacyPolicyPage />} />
         <Route path="/legal/terms" element={<TermsOfService />} />
         <Route path="/legal/community-guidelines" element={<CommunityGuidelines />} />
+        <Route path="/join/:code" element={<Join />} />
         <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
         
         {/* Landing Page for non-authenticated users */}

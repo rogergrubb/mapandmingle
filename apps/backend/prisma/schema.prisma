@@ -277,6 +277,14 @@ model Profile {
   lastActiveAt DateTime?
   lastSeenAt   DateTime?
 
+  // Onboarding
+  onboardingComplete Boolean @default(false)
+  onboardingStep     String? // Current step if not complete
+
+  // Referrals
+  referralCode String? @unique // User's unique invite code
+  referredBy   String? // referralCode of user who invited them
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }

@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Settings, Crown, Award, Flame, MapPin, Calendar, Heart, MessageCircle, LogOut } from "lucide-react";
+import { Settings, Crown, Award, Flame, MapPin, Calendar, Heart, MessageCircle, LogOut, Share2 } from "lucide-react";
 import { useAuthStore } from "../stores/authStore";
 import MyPinsManager from "../components/profile/MyPinsManager";
 import { PhotoGallery } from "../components/profile/PhotoGallery";
+import { InviteFriends } from "../components/InviteFriends";
 import api from "../lib/api";
 
 interface UserStats {
@@ -16,6 +17,7 @@ interface UserStats {
 export default function ProfilePage() {
   const navigate = useNavigate();
   const { user, logout } = useAuthStore();
+  const [showInviteModal, setShowInviteModal] = useState(false);
   const [stats, setStats] = useState<UserStats>({
     pinsCount: 0,
     eventsCount: 0,
@@ -69,6 +71,7 @@ export default function ProfilePage() {
 
   const menuItems = [
     { label: "Edit Profile", path: "/settings/edit-profile", icon: Settings },
+    { label: "Invite Friends", action: () => setShowInviteModal(true), icon: Share2, highlight: true },
     { label: "Saved Pins", path: "/settings/saved-pins", icon: MapPin },
     { label: "Privacy & Safety", path: "/settings/privacy", icon: Settings },
     { label: "Notifications", path: "/settings/notifications", icon: Settings },
@@ -188,15 +191,24 @@ export default function ProfilePage() {
         {menuItems.map((item, index) => {
           const isLast = index === menuItems.length - 1;
           const borderClass = isLast ? "" : "border-b border-gray-100";
+          const ItemIcon = item.icon;
+          const isHighlight = 'highlight' in item && item.highlight;
+          
           return (
             <button
-              key={item.path}
-              onClick={() => navigate(item.path)}
-              className={`w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors ${borderClass}`}
+              key={item.label}
+              onClick={() => {
+                if ('action' in item && item.action) {
+                  item.action();
+                } else if ('path' in item && item.path) {
+                  navigate(item.path);
+                }
+              }}
+              className={`w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors ${borderClass} ${isHighlight ? 'bg-gradient-to-r from-pink-50 to-purple-50' : ''}`}
             >
               <div className="flex items-center space-x-3">
-                <item.icon size={20} className="text-gray-600" />
-                <span className="text-gray-900 font-medium">{item.label}</span>
+                <ItemIcon size={20} className={isHighlight ? 'text-pink-500' : 'text-gray-600'} />
+                <span className={`font-medium ${isHighlight ? 'text-pink-600' : 'text-gray-900'}`}>{item.label}</span>
               </div>
               <span className="text-gray-400">›</span>
             </button>
@@ -211,6 +223,12 @@ export default function ProfilePage() {
         <LogOut size={20} />
         <span className="font-medium">Log Out</span>
       </button>
+
+      {/* Invite Friends Modal */}
+      <InviteFriends 
+        isOpen={showInviteModal} 
+        onClose={() => setShowInviteModal(false)} 
+      />
     </div>
   );
 }

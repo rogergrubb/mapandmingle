@@ -702,6 +702,32 @@ async function runMigrations() {
       ADD COLUMN IF NOT EXISTS "imageUrl" TEXT;
     `).catch(() => {});
     
+    // ========== ONBOARDING & REFERRAL MIGRATIONS ==========
+    await prisma.$executeRawUnsafe(`
+      ALTER TABLE "Profile" 
+      ADD COLUMN IF NOT EXISTS "onboardingComplete" BOOLEAN DEFAULT false;
+    `).catch(() => {});
+    
+    await prisma.$executeRawUnsafe(`
+      ALTER TABLE "Profile" 
+      ADD COLUMN IF NOT EXISTS "onboardingStep" TEXT;
+    `).catch(() => {});
+    
+    await prisma.$executeRawUnsafe(`
+      ALTER TABLE "Profile" 
+      ADD COLUMN IF NOT EXISTS "referralCode" TEXT;
+    `).catch(() => {});
+    
+    await prisma.$executeRawUnsafe(`
+      ALTER TABLE "Profile" 
+      ADD COLUMN IF NOT EXISTS "referredBy" TEXT;
+    `).catch(() => {});
+    
+    // Create unique index for referral codes
+    await prisma.$executeRawUnsafe(`
+      CREATE UNIQUE INDEX IF NOT EXISTS "Profile_referralCode_key" ON "Profile"("referralCode") WHERE "referralCode" IS NOT NULL;
+    `).catch(() => {});
+    
     console.log('✅ Database migrations complete');
   } catch (error) {
     console.error('⚠️ Migration error (non-fatal):', error);
