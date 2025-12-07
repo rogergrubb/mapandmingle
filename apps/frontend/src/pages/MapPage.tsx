@@ -355,6 +355,7 @@ export default function MapPage() {
   const [creatingPin, setCreatingPin] = useState(false);
   const [pinCreationSuccess, setPinCreationSuccess] = useState(false);
   const [isPlacementMode, setIsPlacementMode] = useState(false);
+  const [placementType, setPlacementType] = useState<'here' | 'heading' | null>(null);
   
   // Welcome/Onboarding state
   const [showWelcomeCard, setShowWelcomeCard] = useState(false);
@@ -510,7 +511,7 @@ export default function MapPage() {
     }
   };
 
-  // Handler for "I'm Heading There" - drop pin at selected location
+  // Handler for "I'm Heading There" or "Pick My Spot" - drop pin at selected location
   const handlePlacementPinDrop = useCallback(async (lat: number, lng: number) => {
     if (!isAuthenticated) {
       navigate('/login');
@@ -518,6 +519,7 @@ export default function MapPage() {
     }
 
     setIsPlacementMode(false);
+    setPlacementType(null);
     setCreatingPin(true);
     
     try {
@@ -701,9 +703,20 @@ export default function MapPage() {
       {/* Big Central Presence Button */}
       <PresenceButton
         isPlacementMode={isPlacementMode}
+        placementType={placementType}
         onImHere={handleDropPin}
-        onHeadingThere={() => setIsPlacementMode(true)}
-        onCancelPlacement={() => setIsPlacementMode(false)}
+        onPlaceManually={() => {
+          setPlacementType('here');
+          setIsPlacementMode(true);
+        }}
+        onHeadingThere={() => {
+          setPlacementType('heading');
+          setIsPlacementMode(true);
+        }}
+        onCancelPlacement={() => {
+          setIsPlacementMode(false);
+          setPlacementType(null);
+        }}
       />
 
       {/* Success Toast */}

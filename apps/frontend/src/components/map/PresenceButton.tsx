@@ -1,16 +1,20 @@
 import { useState } from 'react';
-import { MapPin, Navigation, X } from 'lucide-react';
+import { MapPin, Navigation, X, Crosshair } from 'lucide-react';
 
 interface PresenceButtonProps {
   isPlacementMode: boolean;
+  placementType: 'here' | 'heading' | null;
   onImHere: () => void;
+  onPlaceManually: () => void;
   onHeadingThere: () => void;
   onCancelPlacement: () => void;
 }
 
 export function PresenceButton({
   isPlacementMode,
+  placementType,
   onImHere,
+  onPlaceManually,
   onHeadingThere,
   onCancelPlacement,
 }: PresenceButtonProps) {
@@ -18,6 +22,11 @@ export function PresenceButton({
 
   const handleImHere = () => {
     onImHere();
+    setIsOpen(false);
+  };
+
+  const handlePlaceManually = () => {
+    onPlaceManually();
     setIsOpen(false);
   };
 
@@ -34,6 +43,16 @@ export function PresenceButton({
     }
   };
 
+  // Get placement mode message
+  const getPlacementMessage = () => {
+    if (placementType === 'here') {
+      return { title: 'Tap to mark your spot', subtitle: 'Choose your location on the map' };
+    }
+    return { title: 'Tap anywhere on the map', subtitle: 'Mark where you\'re heading' };
+  };
+
+  const placementMessage = getPlacementMessage();
+
   return (
     <>
       {/* Backdrop overlay */}
@@ -49,45 +68,68 @@ export function PresenceButton({
         
         {/* Action buttons - arc layout */}
         {isOpen && (
-          <div className="absolute bottom-20 left-1/2 -translate-x-1/2 flex gap-4">
-            {/* I'm Heading There - Left */}
-            <button
-              onClick={handleHeadingThere}
-              className="flex items-center gap-3 px-5 py-4 bg-white rounded-full shadow-2xl hover:shadow-3xl transition-all hover:scale-105 active:scale-95"
-              style={{
-                animation: 'slideUpLeft 0.28s cubic-bezier(0.34, 1.56, 0.64, 1) forwards',
-                transform: 'translateY(20px)',
-                opacity: 0,
-              }}
-            >
-              <div className="w-11 h-11 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-full flex items-center justify-center shadow-lg">
-                <Navigation size={22} className="text-white" />
-              </div>
-              <div className="text-left pr-2">
-                <div className="font-bold text-gray-900 text-[15px]">I'm Heading There</div>
-                <div className="text-xs text-gray-500">Tap the map to mark it</div>
-              </div>
-            </button>
+          <div className="absolute bottom-20 left-1/2 -translate-x-1/2">
+            {/* Three options in a row */}
+            <div className="flex gap-3 items-end">
+              {/* I'm Heading There - Left */}
+              <button
+                onClick={handleHeadingThere}
+                className="flex flex-col items-center gap-2 px-4 py-3 bg-white rounded-2xl shadow-2xl hover:shadow-3xl transition-all hover:scale-105 active:scale-95 min-w-[100px]"
+                style={{
+                  animation: 'slideUp 0.28s cubic-bezier(0.34, 1.56, 0.64, 1) forwards',
+                  transform: 'translateY(20px)',
+                  opacity: 0,
+                }}
+              >
+                <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-full flex items-center justify-center shadow-lg">
+                  <Navigation size={24} className="text-white" />
+                </div>
+                <div className="text-center">
+                  <div className="font-bold text-gray-900 text-sm">Heading</div>
+                  <div className="font-bold text-gray-900 text-sm">There</div>
+                </div>
+              </button>
 
-            {/* I'm Here - Right */}
-            <button
-              onClick={handleImHere}
-              className="flex items-center gap-3 px-5 py-4 bg-white rounded-full shadow-2xl hover:shadow-3xl transition-all hover:scale-105 active:scale-95"
-              style={{
-                animation: 'slideUpRight 0.28s cubic-bezier(0.34, 1.56, 0.64, 1) forwards',
-                animationDelay: '60ms',
-                transform: 'translateY(20px)',
-                opacity: 0,
-              }}
-            >
-              <div className="w-11 h-11 bg-gradient-to-br from-pink-500 to-rose-500 rounded-full flex items-center justify-center shadow-lg">
-                <MapPin size={22} className="text-white" />
-              </div>
-              <div className="text-left pr-2">
-                <div className="font-bold text-gray-900 text-[15px]">I'm Here</div>
-                <div className="text-xs text-gray-500">Drop your pin now</div>
-              </div>
-            </button>
+              {/* I'm Here (GPS) - Center, larger */}
+              <button
+                onClick={handleImHere}
+                className="flex flex-col items-center gap-2 px-5 py-4 bg-white rounded-2xl shadow-2xl hover:shadow-3xl transition-all hover:scale-105 active:scale-95 min-w-[110px] -mt-2"
+                style={{
+                  animation: 'slideUp 0.28s cubic-bezier(0.34, 1.56, 0.64, 1) forwards',
+                  animationDelay: '40ms',
+                  transform: 'translateY(20px)',
+                  opacity: 0,
+                }}
+              >
+                <div className="w-14 h-14 bg-gradient-to-br from-pink-500 to-rose-500 rounded-full flex items-center justify-center shadow-lg">
+                  <MapPin size={28} className="text-white" />
+                </div>
+                <div className="text-center">
+                  <div className="font-bold text-gray-900 text-[15px]">I'm Here</div>
+                  <div className="text-xs text-gray-500">Use GPS</div>
+                </div>
+              </button>
+
+              {/* Pick My Spot - Right */}
+              <button
+                onClick={handlePlaceManually}
+                className="flex flex-col items-center gap-2 px-4 py-3 bg-white rounded-2xl shadow-2xl hover:shadow-3xl transition-all hover:scale-105 active:scale-95 min-w-[100px]"
+                style={{
+                  animation: 'slideUp 0.28s cubic-bezier(0.34, 1.56, 0.64, 1) forwards',
+                  animationDelay: '80ms',
+                  transform: 'translateY(20px)',
+                  opacity: 0,
+                }}
+              >
+                <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-full flex items-center justify-center shadow-lg">
+                  <Crosshair size={24} className="text-white" />
+                </div>
+                <div className="text-center">
+                  <div className="font-bold text-gray-900 text-sm">Pick My</div>
+                  <div className="font-bold text-gray-900 text-sm">Spot</div>
+                </div>
+              </button>
+            </div>
           </div>
         )}
 
@@ -132,13 +174,19 @@ export function PresenceButton({
       {isPlacementMode && (
         <div className="absolute top-20 left-4 right-4 z-[1000]">
           <div 
-            className="bg-purple-600 text-white px-6 py-3 rounded-2xl shadow-xl text-center"
+            className={`text-white px-6 py-3 rounded-2xl shadow-xl text-center ${
+              placementType === 'here' 
+                ? 'bg-blue-600' 
+                : 'bg-purple-600'
+            }`}
             style={{
               animation: 'slideDown 0.3s ease-out forwards',
             }}
           >
-            <div className="font-semibold">Tap anywhere on the map</div>
-            <div className="text-sm text-purple-200">to mark where you're heading</div>
+            <div className="font-semibold">{placementMessage.title}</div>
+            <div className={`text-sm ${placementType === 'here' ? 'text-blue-200' : 'text-purple-200'}`}>
+              {placementMessage.subtitle}
+            </div>
           </div>
         </div>
       )}
@@ -156,25 +204,14 @@ export function PresenceButton({
           }
         }
         
-        @keyframes slideUpLeft {
+        @keyframes slideUp {
           from {
             opacity: 0;
-            transform: translate(20px, 20px) scale(0.9);
+            transform: translateY(20px) scale(0.9);
           }
           to {
             opacity: 1;
-            transform: translate(0, 0) scale(1);
-          }
-        }
-        
-        @keyframes slideUpRight {
-          from {
-            opacity: 0;
-            transform: translate(-20px, 20px) scale(0.9);
-          }
-          to {
-            opacity: 1;
-            transform: translate(0, 0) scale(1);
+            transform: translateY(0) scale(1);
           }
         }
         
