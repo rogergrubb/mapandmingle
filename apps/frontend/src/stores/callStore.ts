@@ -63,6 +63,11 @@ export const useCallStore = create<CallState>((set, get) => ({
   ...initialState,
 
   initiateCall: async (userId, userName, userImage, isVideo) => {
+    if (!userId) {
+      console.error('Cannot initiate call: userId is required');
+      return;
+    }
+    
     try {
       set({
         status: 'calling',
@@ -120,8 +125,10 @@ export const useCallStore = create<CallState>((set, get) => ({
         }
       }, 60000);
 
-    } catch (error) {
-      console.error('Failed to initiate call:', error);
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.error || error.message || 'Unknown error';
+      console.error('Failed to initiate call:', errorMessage, error.response?.data);
+      alert(`Could not start call: ${errorMessage}`);
       get().reset();
       throw error;
     }
