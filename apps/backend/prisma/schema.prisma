@@ -211,6 +211,22 @@ model Profile {
   incognitoMode    Boolean @default(false)
   showAvailability Boolean @default(true)
 
+  // Per-field Privacy Controls (hide specific info from profile)
+  hideBio        Boolean @default(false)
+  hideAge        Boolean @default(false)
+  hideInterests  Boolean @default(false)
+  hideLookingFor Boolean @default(false)
+  hideOccupation Boolean @default(false)
+  hideEducation  Boolean @default(false)
+  hideLocation   Boolean @default(false)
+  hideLanguages  Boolean @default(false)
+
+  // Extended Profile Info
+  occupation String?
+  education  String?
+  location   String?
+  languages  String? // JSON array
+
   // Selective Visibility (Smart Invisibility)
   selectiveVisibilityEnabled Boolean @default(false)
   visibilityMinAge           Int?
