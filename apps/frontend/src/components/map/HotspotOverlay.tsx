@@ -42,20 +42,20 @@ export function HotspotOverlay({
 
   return (
     <>
-      {/* Hotspot Toggle Button - floats on left side */}
-      <div className="absolute top-28 left-4 z-[900]">
+      {/* Hotspot Toggle Button - floats on left side below controls */}
+      <div className="absolute top-20 left-4 z-[900]">
         <button
           onClick={onToggle}
-          className={`flex items-center gap-2 px-4 py-2.5 rounded-full shadow-lg transition-all ${
+          className={`flex items-center gap-2 px-3 py-2 rounded-full shadow-lg transition-all text-sm ${
             isVisible
               ? 'bg-gradient-to-r from-orange-500 to-red-500 text-white'
-              : 'bg-white text-gray-700 hover:bg-gray-50'
+              : 'bg-white/95 backdrop-blur-xl text-gray-700 hover:shadow-xl'
           }`}
         >
-          <Flame size={18} className={isVisible ? 'animate-pulse' : ''} />
-          <span className="font-semibold text-sm">Hotspots</span>
+          <Flame size={16} className={isVisible ? 'animate-pulse' : ''} />
+          <span className="font-semibold hidden sm:inline">Hotspots</span>
           {isVisible && hotspots.length > 0 && (
-            <span className="bg-white/20 px-2 py-0.5 rounded-full text-xs font-bold">
+            <span className="bg-white/20 px-1.5 py-0.5 rounded-full text-xs font-bold">
               {hotspots.length}
             </span>
           )}
