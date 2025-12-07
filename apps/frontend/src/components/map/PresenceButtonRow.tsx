@@ -46,7 +46,7 @@ export function PresenceButtonRow({
         : "Tap anywhere to choose where you'll be.";
 
     return (
-      <div className="absolute top-[108px] left-3 right-3 z-[1000]">
+      <div className="absolute top-[52px] left-3 right-3 z-[1000]">
         {/* Instruction Banner */}
         <div 
           className={`mb-2 px-4 py-2.5 rounded-xl shadow-lg text-center text-sm ${
@@ -83,9 +83,9 @@ export function PresenceButtonRow({
     );
   }
 
-  // Default state - Two buttons side by side
+  // Default state - Two buttons side by side, directly below top bar
   return (
-    <div className="absolute top-[108px] left-3 right-3 z-[1000]">
+    <div className="absolute top-[52px] left-3 right-3 z-[1000]">
       <div className="flex gap-2">
         {/* Where I'm At */}
         <button

@@ -5,7 +5,6 @@ import { Loader } from 'lucide-react';
 import { useMapStore } from '../stores/mapStore';
 import { useAuthStore } from '../stores/authStore';
 import { MapControlBar, type MingleMode, type DistanceFilter } from '../components/map/MapControlBar';
-import { VisibilityStrip } from '../components/map/VisibilityStrip';
 import { PresenceButtonRow } from '../components/map/PresenceButtonRow';
 import WelcomeCard from '../components/WelcomeCard';
 import haptic from '../lib/haptics';
@@ -626,24 +625,18 @@ export default function MapPage() {
         }
       `}</style>
 
-      {/* ROW 1 - Top Controls: Mode + Profile */}
+      {/* Top Control Bar with Visibility + Stats */}
       <MapControlBar
         currentMode={currentMode}
         onModeChange={handleModeChange}
         onMyLocation={handleCenterOnUser}
+        isVisible={isVisible}
+        onVisibilityToggle={handleVisibilityToggle}
+        liveNow={viewportStats.liveNow}
+        inView={viewportStats.activeToday}
       />
 
-      {/* ROW 2 - Visibility + Activity Strip */}
-      {!isPlacementMode && (
-        <VisibilityStrip
-          isVisible={isVisible}
-          onVisibilityToggle={handleVisibilityToggle}
-          liveNow={viewportStats.liveNow}
-          inView={viewportStats.activeToday}
-        />
-      )}
-
-      {/* ROW 3 - Two-Button Presence Row */}
+      {/* Two-Button Presence Row - directly below top bar */}
       <PresenceButtonRow
         isPlacementMode={isPlacementMode}
         placementType={placementType}

@@ -4,6 +4,7 @@ import {
   ChevronDown, Globe, User, Locate
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import haptic from '../../lib/haptics';
 
 export type MingleMode = 'everybody' | 'dating' | 'friends' | 'networking' | 'events' | 'travel';
 export type DistanceFilter = 'nearby' | 'walking' | 'city' | 'anywhere';
@@ -13,6 +14,10 @@ interface MapControlBarProps {
   currentMode: MingleMode;
   onModeChange: (mode: MingleMode) => void;
   onMyLocation: () => void;
+  isVisible: boolean;
+  onVisibilityToggle: () => void;
+  liveNow: number;
+  inView: number;
 }
 
 const modeConfig = {
@@ -58,11 +63,20 @@ export function MapControlBar({
   currentMode,
   onModeChange,
   onMyLocation,
+  isVisible,
+  onVisibilityToggle,
+  liveNow,
+  inView,
 }: MapControlBarProps) {
   const [showModeSelector, setShowModeSelector] = useState(false);
 
   const config = modeConfig[currentMode];
   const ModeIcon = config.icon;
+
+  const handleVisibilityToggle = () => {
+    haptic.softTick();
+    onVisibilityToggle();
+  };
 
   return (
     <>
@@ -74,13 +88,12 @@ export function MapControlBar({
         />
       )}
 
-      {/* ROW 1 - Top Controls: My Location + Mode + Profile */}
+      {/* Top Control Bar */}
       <div className="absolute top-3 left-3 right-3 z-[1000]">
         <div className="flex items-center justify-between">
           
           {/* Left: My Location + Mode Selector */}
           <div className="flex items-center gap-1.5">
-            {/* My Location Button */}
             <button
               onClick={onMyLocation}
               className="w-9 h-9 rounded-full bg-white/90 backdrop-blur-sm shadow-md flex items-center justify-center hover:shadow-lg transition-all hover:scale-105 active:scale-95"
@@ -88,7 +101,6 @@ export function MapControlBar({
               <Locate size={16} className="text-blue-500" />
             </button>
 
-            {/* Mode Selector */}
             <button
               onClick={() => setShowModeSelector(!showModeSelector)}
               className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-gradient-to-r ${config.color} text-white text-xs font-semibold shadow-md hover:shadow-lg transition-all hover:scale-[1.02] active:scale-[0.98]`}
@@ -97,6 +109,47 @@ export function MapControlBar({
               <span>{config.shortLabel}</span>
               <ChevronDown size={12} className={`transition-transform opacity-70 ${showModeSelector ? 'rotate-180' : ''}`} />
             </button>
+          </div>
+
+          {/* Center: Visibility + Activity Stats */}
+          <div className="flex items-center gap-3">
+            {/* Visibility Toggle */}
+            <button
+              onClick={handleVisibilityToggle}
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-semibold transition-all hover:scale-[1.02] active:scale-[0.98] ${
+                isVisible 
+                  ? 'bg-green-500 text-white shadow-sm' 
+                  : 'bg-gray-200 text-gray-600'
+              }`}
+            >
+              <span className="relative flex h-2 w-2">
+                {isVisible && (
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-60"></span>
+                )}
+                <span className={`relative inline-flex rounded-full h-2 w-2 ${isVisible ? 'bg-white' : 'bg-gray-400'}`}></span>
+              </span>
+              <span>{isVisible ? 'Visible' : 'Hidden'}</span>
+            </button>
+
+            {/* Activity Stats */}
+            <div className="flex items-center gap-2 text-xs">
+              <div className="flex items-center gap-1">
+                <span className="relative flex h-1.5 w-1.5">
+                  {liveNow > 0 && (
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                  )}
+                  <span className={`relative inline-flex rounded-full h-1.5 w-1.5 ${liveNow > 0 ? 'bg-green-500' : 'bg-gray-300'}`}></span>
+                </span>
+                <span className="text-gray-600 font-medium">{liveNow} live</span>
+              </div>
+              
+              <div className="flex items-center gap-1">
+                <span className="relative flex h-1.5 w-1.5">
+                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-blue-500"></span>
+                </span>
+                <span className="text-gray-600 font-medium">{inView} in view</span>
+              </div>
+            </div>
           </div>
 
           {/* Right: Profile */}
