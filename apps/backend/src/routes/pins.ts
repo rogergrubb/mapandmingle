@@ -37,6 +37,7 @@ const getPinsSchema = z.object({
   east: z.coerce.number(),
   west: z.coerce.number(),
   filter: z.enum(['all', '24h', 'week']).optional(),
+  lookingFor: z.string().optional(), // Filter by connection type: dating, friends, networking, events, travel
 });
 
 // Helper: Check if viewer can see a pin based on selective visibility
@@ -118,7 +119,7 @@ pinRoutes.get('/', async (c) => {
       return c.json({ error: 'Invalid parameters', details: parsed.error.errors }, 400);
     }
     
-    const { north, south, east, west, filter } = parsed.data;
+    const { north, south, east, west, filter, lookingFor } = parsed.data;
     
     // Build date filter
     let dateFilter = {};
@@ -142,7 +143,11 @@ pinRoutes.get('/', async (c) => {
             name: true,
             image: true,
             profile: {
-              select: { avatar: true },
+              select: { 
+                avatar: true,
+                lookingFor: true,
+                displayName: true,
+              },
             },
           },
         },
@@ -154,9 +159,26 @@ pinRoutes.get('/', async (c) => {
     // Get viewer ID from header
     const viewerId = c.req.header('X-User-Id') || null;
     
-    // Filter based on visibility rules
+    // Filter based on visibility rules and lookingFor filter
     const visiblePins = [];
     for (const pin of pins) {
+      // Check lookingFor filter if specified (skip 'everybody' mode)
+      if (lookingFor && lookingFor !== 'everybody') {
+        const userLookingFor = pin.user.profile?.lookingFor;
+        if (userLookingFor) {
+          try {
+            const lookingForArray = JSON.parse(userLookingFor);
+            if (!lookingForArray.includes(lookingFor)) {
+              continue; // Skip this pin - user not looking for this type
+            }
+          } catch {
+            continue; // Skip if can't parse
+          }
+        } else {
+          continue; // Skip if no lookingFor set
+        }
+      }
+      
       if (await canViewPin(pin, viewerId)) {
         visiblePins.push({
           id: pin.id,
@@ -169,7 +191,7 @@ pinRoutes.get('/', async (c) => {
           updatedAt: pin.updatedAt.toISOString(),
           createdBy: {
             id: pin.user.id,
-            name: pin.user.name,
+            name: pin.user.profile?.displayName || pin.user.name,
             image: pin.user.image,
             avatar: pin.user.profile?.avatar,
           },
