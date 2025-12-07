@@ -329,6 +329,30 @@ function PlacementModeHandler({
   return null;
 }
 
+// Component to track popup open/close state
+function PopupStateHandler({ 
+  onPopupChange 
+}: { 
+  onPopupChange: (isOpen: boolean) => void;
+}) {
+  const map = useMap();
+
+  useEffect(() => {
+    const handlePopupOpen = () => onPopupChange(true);
+    const handlePopupClose = () => onPopupChange(false);
+
+    map.on('popupopen', handlePopupOpen);
+    map.on('popupclose', handlePopupClose);
+
+    return () => {
+      map.off('popupopen', handlePopupOpen);
+      map.off('popupclose', handlePopupClose);
+    };
+  }, [map, onPopupChange]);
+
+  return null;
+}
+
 export default function MapPage() {
   const navigate = useNavigate();
   const { pins, setUserLocation, setLookingForFilter, fetchPins } = useMapStore();
@@ -359,6 +383,7 @@ export default function MapPage() {
   const [pinSuccessMessage, setPinSuccessMessage] = useState('');
   const [isPlacementMode, setIsPlacementMode] = useState(false);
   const [placementType, setPlacementType] = useState<'here' | 'there' | null>(null);
+  const [isPopupOpen, setIsPopupOpen] = useState(false);
   
   // Welcome/Onboarding state
   const [showWelcomeCard, setShowWelcomeCard] = useState(false);
@@ -641,6 +666,7 @@ export default function MapPage() {
         isPlacementMode={isPlacementMode}
         placementType={placementType}
         hasGPS={hasGPS}
+        hidden={isPopupOpen}
         onWhereImAt={handleDropPin}
         onWhereIllBe={() => {
           setPlacementType('there');
@@ -667,6 +693,9 @@ export default function MapPage() {
         />
 
         <MapController />
+        
+        {/* Track popup open/close state */}
+        <PopupStateHandler onPopupChange={setIsPopupOpen} />
         
         {/* Placement Mode Handler - for "I'm Heading There" */}
         <PlacementModeHandler 

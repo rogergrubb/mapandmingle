@@ -9,6 +9,7 @@ interface PresenceButtonRowProps {
   onCancelPlacement: () => void;
   hasGPS: boolean;
   gpsAccuracyPoor?: boolean;
+  hidden?: boolean;
 }
 
 export function PresenceButtonRow({
@@ -19,6 +20,7 @@ export function PresenceButtonRow({
   onCancelPlacement,
   hasGPS,
   gpsAccuracyPoor,
+  hidden = false,
 }: PresenceButtonRowProps) {
   
   const handleWhereImAt = () => {
@@ -84,8 +86,13 @@ export function PresenceButtonRow({
   }
 
   // Default state - Two compact buttons centered
+  // Hidden state slides buttons up and fades out
   return (
-    <div className="absolute top-[52px] left-0 right-0 z-[1000] flex justify-center">
+    <div 
+      className={`absolute top-[52px] left-0 right-0 z-[1000] flex justify-center transition-all duration-300 ease-out ${
+        hidden ? 'opacity-0 -translate-y-4 pointer-events-none' : 'opacity-100 translate-y-0'
+      }`}
+    >
       <div className="flex gap-1.5">
         {/* Where I'm At */}
         <button
