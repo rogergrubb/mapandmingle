@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { prisma, broadcastToAll } from '../index';
 import { z } from 'zod';
+import { notifyAboutNewPin } from '../services/notificationService';
 
 
 // Helper to extract userId from JWT token
@@ -487,6 +488,18 @@ pinRoutes.post('/auto-create', async (c) => {
       },
     });
     
+    // Only send notifications for new pins (not location updates)
+    if (!isUpdate) {
+      notifyAboutNewPin({
+        pinId: pin.id,
+        pinUserId: pin.user.id,
+        pinUserName: pin.user.name || 'Someone',
+        pinLat: pin.latitude,
+        pinLng: pin.longitude,
+        pinDescription: pin.description,
+      }).catch(err => console.error('Notification error:', err));
+    }
+    
     return c.json({
       id: pin.id,
       latitude: pin.latitude,
@@ -755,6 +768,16 @@ pinRoutes.post('/', async (c) => {
         },
       },
     });
+    
+    // Trigger notifications to friends and nearby users (async, don't wait)
+    notifyAboutNewPin({
+      pinId: pin.id,
+      pinUserId: pin.user.id,
+      pinUserName: pin.user.name || 'Someone',
+      pinLat: pin.latitude,
+      pinLng: pin.longitude,
+      pinDescription: pin.description,
+    }).catch(err => console.error('Notification error:', err));
     
     return c.json({
       id: pin.id,

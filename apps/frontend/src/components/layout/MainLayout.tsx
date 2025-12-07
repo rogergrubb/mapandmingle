@@ -2,6 +2,7 @@ import { Outlet, Link, useLocation } from 'react-router-dom';
 import { MapPin, Compass, MessageCircle, Heart, User, Bell } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import api from '../../lib/api';
+import NotificationCenter, { NotificationBell } from '../NotificationCenter';
 
 export default function MainLayout() {
   const location = useLocation();
@@ -9,6 +10,7 @@ export default function MainLayout() {
   const [loadingGhost, setLoadingGhost] = useState(false);
   const [subscriptionTier, setSubscriptionTier] = useState('free');
   const [unreadCount, setUnreadCount] = useState(0);
+  const [showNotifications, setShowNotifications] = useState(false);
 
   // Load user data on mount
   useEffect(() => {
@@ -135,20 +137,15 @@ export default function MainLayout() {
             </div>
 
             {/* Right: Notifications & Ghost Toggle */}
-            <div className="flex items-center gap-2">
-              {/* Notification Bell with Badge */}
-              <Link
-                to="/messages"
-                className="relative flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center bg-white shadow-sm hover:shadow-md transition-all duration-200 ring-1 ring-transparent hover:ring-gray-300"
-                title="Messages"
-              >
-                <Bell size={20} className="text-gray-700" />
-                {unreadCount > 0 && (
-                  <span className="absolute -top-1 -right-1 min-w-[20px] h-[20px] flex items-center justify-center bg-red-500 text-white text-[11px] font-bold rounded-full px-1 shadow-lg">
-                    {unreadCount > 99 ? '99+' : unreadCount}
-                  </span>
-                )}
-              </Link>
+            <div className="flex items-center gap-2 relative">
+              {/* Notification Bell */}
+              <NotificationBell onClick={() => setShowNotifications(!showNotifications)} />
+              
+              {/* Notification Center Dropdown */}
+              <NotificationCenter 
+                isOpen={showNotifications} 
+                onClose={() => setShowNotifications(false)} 
+              />
               
               {/* Ghost Toggle Button */}
               <button

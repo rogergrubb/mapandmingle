@@ -31,6 +31,7 @@ import EditProfile from './pages/settings/EditProfile';
 import SavedPins from './pages/settings/SavedPins';
 import PrivacySafety from './pages/settings/PrivacySafety';
 import NotificationsSettings from './pages/settings/NotificationsSettings';
+import NotificationSettingsPage from './pages/NotificationSettings';
 import Subscription from './pages/settings/Subscription';
 import AccountSettings from './pages/settings/AccountSettings';
 import HelpSupport from './pages/settings/HelpSupport';
@@ -113,6 +114,7 @@ function App() {
           <Route path="/settings/saved-pins" element={<SavedPins />} />
           <Route path="/settings/privacy" element={<PrivacySafety />} />
           <Route path="/settings/notifications" element={<NotificationsSettings />} />
+          <Route path="/notifications/settings" element={<NotificationSettingsPage />} />
           <Route path="/settings/subscription" element={<Subscription />} />
           <Route path="/settings/account" element={<AccountSettings />} />
           <Route path="/settings/help" element={<HelpSupport />} />

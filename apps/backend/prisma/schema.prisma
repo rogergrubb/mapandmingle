@@ -285,6 +285,20 @@ model Profile {
   referralCode String? @unique // User's unique invite code
   referredBy   String? // referralCode of user who invited them
 
+  // Pin Alert Notification Settings
+  notifyFriendPins     Boolean @default(true)  // Get notified when friends drop pins
+  notifyNearbyPins     Boolean @default(false) // Get notified when anyone nearby drops pins
+  nearbyRadiusKm       Float   @default(5.0)   // Radius for "nearby" notifications (km)
+  notifyViaEmail       Boolean @default(true)  // Send email notifications
+  notifyViaSms         Boolean @default(false) // Send SMS notifications
+  notifyViaInApp       Boolean @default(true)  // In-app notifications
+  phoneNumber          String?                 // Phone number for SMS (E.164 format)
+  phoneVerified        Boolean @default(false) // Is phone number verified
+  notificationDigest   String  @default("instant") // instant, hourly, daily
+  quietHoursStart      String? // e.g., "22:00"
+  quietHoursEnd        String? // e.g., "08:00"
+  quietHoursTimezone   String? // e.g., "America/Los_Angeles"
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }

@@ -728,6 +728,67 @@ async function runMigrations() {
       CREATE UNIQUE INDEX IF NOT EXISTS "Profile_referralCode_key" ON "Profile"("referralCode") WHERE "referralCode" IS NOT NULL;
     `).catch(() => {});
     
+    // Pin Alert Notification Settings
+    await prisma.$executeRawUnsafe(`
+      ALTER TABLE "Profile" 
+      ADD COLUMN IF NOT EXISTS "notifyFriendPins" BOOLEAN DEFAULT true;
+    `).catch(() => {});
+    
+    await prisma.$executeRawUnsafe(`
+      ALTER TABLE "Profile" 
+      ADD COLUMN IF NOT EXISTS "notifyNearbyPins" BOOLEAN DEFAULT false;
+    `).catch(() => {});
+    
+    await prisma.$executeRawUnsafe(`
+      ALTER TABLE "Profile" 
+      ADD COLUMN IF NOT EXISTS "nearbyRadiusKm" DOUBLE PRECISION DEFAULT 5.0;
+    `).catch(() => {});
+    
+    await prisma.$executeRawUnsafe(`
+      ALTER TABLE "Profile" 
+      ADD COLUMN IF NOT EXISTS "notifyViaEmail" BOOLEAN DEFAULT true;
+    `).catch(() => {});
+    
+    await prisma.$executeRawUnsafe(`
+      ALTER TABLE "Profile" 
+      ADD COLUMN IF NOT EXISTS "notifyViaSms" BOOLEAN DEFAULT false;
+    `).catch(() => {});
+    
+    await prisma.$executeRawUnsafe(`
+      ALTER TABLE "Profile" 
+      ADD COLUMN IF NOT EXISTS "notifyViaInApp" BOOLEAN DEFAULT true;
+    `).catch(() => {});
+    
+    await prisma.$executeRawUnsafe(`
+      ALTER TABLE "Profile" 
+      ADD COLUMN IF NOT EXISTS "phoneNumber" TEXT;
+    `).catch(() => {});
+    
+    await prisma.$executeRawUnsafe(`
+      ALTER TABLE "Profile" 
+      ADD COLUMN IF NOT EXISTS "phoneVerified" BOOLEAN DEFAULT false;
+    `).catch(() => {});
+    
+    await prisma.$executeRawUnsafe(`
+      ALTER TABLE "Profile" 
+      ADD COLUMN IF NOT EXISTS "notificationDigest" TEXT DEFAULT 'instant';
+    `).catch(() => {});
+    
+    await prisma.$executeRawUnsafe(`
+      ALTER TABLE "Profile" 
+      ADD COLUMN IF NOT EXISTS "quietHoursStart" TEXT;
+    `).catch(() => {});
+    
+    await prisma.$executeRawUnsafe(`
+      ALTER TABLE "Profile" 
+      ADD COLUMN IF NOT EXISTS "quietHoursEnd" TEXT;
+    `).catch(() => {});
+    
+    await prisma.$executeRawUnsafe(`
+      ALTER TABLE "Profile" 
+      ADD COLUMN IF NOT EXISTS "quietHoursTimezone" TEXT;
+    `).catch(() => {});
+    
     console.log('✅ Database migrations complete');
   } catch (error) {
     console.error('⚠️ Migration error (non-fatal):', error);
