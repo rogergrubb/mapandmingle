@@ -85,88 +85,92 @@ export default function MainLayout() {
 
   const badge = getSubscriptionBadge();
 
+  const isMapPage = location.pathname === '/' || location.pathname === '/map';
+
   return (
     <div className="h-screen flex flex-col bg-gradient-to-b from-gray-50 to-white overflow-hidden">
-      {/* Professional Top Navigation - Apple-inspired */}
-      <header className="bg-white/80 backdrop-blur-xl border-b border-gray-200/50 safe-area-top sticky top-0 z-40">
-        <div className="max-w-full px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between">
-          {/* Left: Brand */}
-          <div className="flex items-center gap-2 min-w-0">
-            <div className="flex-shrink-0">
-              <div className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-pink-500 via-purple-500 to-blue-500 bg-clip-text text-transparent">
-                Map & Mingle
+      {/* Professional Top Navigation - Hidden on Map Page */}
+      {!isMapPage && (
+        <header className="bg-white/80 backdrop-blur-xl border-b border-gray-200/50 safe-area-top sticky top-0 z-40">
+          <div className="max-w-full px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between">
+            {/* Left: Brand */}
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="flex-shrink-0">
+                <div className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-pink-500 via-purple-500 to-blue-500 bg-clip-text text-transparent">
+                  Map & Mingle
+                </div>
               </div>
             </div>
-          </div>
 
-          {/* Center: Status Indicators */}
-          <div className="flex items-center gap-2 sm:gap-3">
-            {/* Subscription Badge */}
-            {badge && (
-              <div className={`hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${badge.color}`}>
-                <span>{badge.icon}</span>
-                <span>{badge.label}</span>
-              </div>
-            )}
-
-            {/* Online Status Indicator - More Prominent */}
-            <div className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold transition-all shadow-md ${
-              ghostMode
-                ? 'bg-gray-800 text-gray-300 border-2 border-gray-600'
-                : 'bg-gradient-to-r from-green-400 to-emerald-500 text-white border-2 border-green-300'
-            }`}>
-              {/* Pulsing dot indicator */}
-              <span className="relative flex h-3 w-3">
-                {!ghostMode && (
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
-                )}
-                <span className={`relative inline-flex rounded-full h-3 w-3 ${
-                  ghostMode ? 'bg-gray-500' : 'bg-white'
-                }`}></span>
-              </span>
-              <span>{ghostMode ? 'Invisible' : 'Visible'}</span>
-              {!ghostMode && (
-                <span className="text-xs opacity-80 hidden sm:inline">• Online</span>
+            {/* Center: Status Indicators */}
+            <div className="flex items-center gap-2 sm:gap-3">
+              {/* Subscription Badge */}
+              {badge && (
+                <div className={`hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${badge.color}`}>
+                  <span>{badge.icon}</span>
+                  <span>{badge.label}</span>
+                </div>
               )}
-            </div>
-          </div>
 
-          {/* Right: Notifications & Ghost Toggle */}
-          <div className="flex items-center gap-2">
-            {/* Notification Bell with Badge */}
-            <Link
-              to="/messages"
-              className="relative flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center bg-white shadow-sm hover:shadow-md transition-all duration-200 ring-1 ring-transparent hover:ring-gray-300"
-              title="Messages"
-            >
-              <Bell size={20} className="text-gray-700" />
-              {unreadCount > 0 && (
-                <span className="absolute -top-1 -right-1 min-w-[20px] h-[20px] flex items-center justify-center bg-red-500 text-white text-[11px] font-bold rounded-full px-1 shadow-lg">
-                  {unreadCount > 99 ? '99+' : unreadCount}
-                </span>
-              )}
-            </Link>
-            
-            {/* Ghost Toggle Button */}
-            <button
-              onClick={handleGhostModeToggle}
-              disabled={loadingGhost}
-              className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200 font-semibold text-lg ring-1 ring-transparent hover:ring-gray-300 ${
+              {/* Online Status Indicator - More Prominent */}
+              <div className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold transition-all shadow-md ${
                 ghostMode
-                  ? 'bg-gray-900 text-white shadow-md'
-                  : 'bg-white text-gray-700 shadow-sm hover:shadow-md'
-              } disabled:opacity-50 disabled:cursor-not-allowed`}
-              title={ghostMode ? 'Become visible' : 'Go invisible'}
-            >
-              {loadingGhost ? (
-                <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-              ) : (
-                '👻'
-              )}
-            </button>
+                  ? 'bg-gray-800 text-gray-300 border-2 border-gray-600'
+                  : 'bg-gradient-to-r from-green-400 to-emerald-500 text-white border-2 border-green-300'
+              }`}>
+                {/* Pulsing dot indicator */}
+                <span className="relative flex h-3 w-3">
+                  {!ghostMode && (
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
+                  )}
+                  <span className={`relative inline-flex rounded-full h-3 w-3 ${
+                    ghostMode ? 'bg-gray-500' : 'bg-white'
+                  }`}></span>
+                </span>
+                <span>{ghostMode ? 'Invisible' : 'Visible'}</span>
+                {!ghostMode && (
+                  <span className="text-xs opacity-80 hidden sm:inline">• Online</span>
+                )}
+              </div>
+            </div>
+
+            {/* Right: Notifications & Ghost Toggle */}
+            <div className="flex items-center gap-2">
+              {/* Notification Bell with Badge */}
+              <Link
+                to="/messages"
+                className="relative flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center bg-white shadow-sm hover:shadow-md transition-all duration-200 ring-1 ring-transparent hover:ring-gray-300"
+                title="Messages"
+              >
+                <Bell size={20} className="text-gray-700" />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 min-w-[20px] h-[20px] flex items-center justify-center bg-red-500 text-white text-[11px] font-bold rounded-full px-1 shadow-lg">
+                    {unreadCount > 99 ? '99+' : unreadCount}
+                  </span>
+                )}
+              </Link>
+              
+              {/* Ghost Toggle Button */}
+              <button
+                onClick={handleGhostModeToggle}
+                disabled={loadingGhost}
+                className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200 font-semibold text-lg ring-1 ring-transparent hover:ring-gray-300 ${
+                  ghostMode
+                    ? 'bg-gray-900 text-white shadow-md'
+                    : 'bg-white text-gray-700 shadow-sm hover:shadow-md'
+                } disabled:opacity-50 disabled:cursor-not-allowed`}
+                title={ghostMode ? 'Become visible' : 'Go invisible'}
+              >
+                {loadingGhost ? (
+                  <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  '👻'
+                )}
+              </button>
+            </div>
           </div>
-        </div>
-      </header>
+        </header>
+      )}
 
       {/* Main Content */}
       <main 
