@@ -71,7 +71,7 @@ export default function CreateEventScreen() {
   // Form state
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [category, setCategory] = useState<CategoryId | null>(null);
+  const [categories, setCategories] = useState<CategoryId[]>([]); // Changed to array
   const [coverImage, setCoverImage] = useState<string | null>(null);
 
   // Date & Time state
@@ -261,7 +261,7 @@ export default function CreateEventScreen() {
   };
 
   // Form validation
-  const isStep1Valid = title.trim().length >= 3 && category !== null;
+  const isStep1Valid = title.trim().length >= 3 && categories.length > 0;
   const isStep2Valid = startDate > new Date();
   const isStep3Valid = venueName.trim().length > 0 && location !== null;
   const isStep4Valid = true; // All optional
@@ -312,7 +312,7 @@ export default function CreateEventScreen() {
       await api.post('/api/events', {
         title: title.trim(),
         description: description.trim() || undefined,
-        category,
+        categories, // Send array of categories
         image: coverImage || undefined,
         venueName: venueName.trim(),
         venueAddress: venueAddress.trim() || undefined,
@@ -399,16 +399,28 @@ export default function CreateEventScreen() {
 
       {/* Category */}
       <View className="mb-4">
-        <Text className="text-gray-700 font-medium mb-3">Category *</Text>
+        <Text className="text-gray-700 font-medium mb-3">Categories * (up to 5)</Text>
         <View className="flex-row flex-wrap gap-2">
           {CATEGORIES.map((cat) => {
-            const isSelected = category === cat.id;
+            const isSelected = categories.includes(cat.id);
             return (
               <TouchableOpacity
                 key={cat.id}
                 onPress={() => {
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  setCategory(cat.id);
+                  setCategories(prev => {
+                    if (isSelected) {
+                      // Remove category
+                      return prev.filter(c => c !== cat.id);
+                    } else {
+                      // Add category (max 5)
+                      if (prev.length >= 5) {
+                        Alert.alert('Limit reached', 'You can select up to 5 categories');
+                        return prev;
+                      }
+                      return [...prev, cat.id];
+                    }
+                  });
                 }}
                 className={`flex-row items-center px-4 py-2.5 rounded-full border ${
                   isSelected
@@ -434,12 +446,12 @@ export default function CreateEventScreen() {
             );
           })}
         </View>
-        {category && (
+        {categories.length > 0 && (
           <Animated.Text
             entering={FadeIn.duration(200)}
             className="text-gray-500 text-sm mt-2"
           >
-            {CATEGORIES.find((c) => c.id === category)?.description}
+            {categories.length} {categories.length === 1 ? 'category' : 'categories'} selected
           </Animated.Text>
         )}
       </View>
@@ -867,21 +879,23 @@ export default function CreateEventScreen() {
         <Text className="text-gray-900 font-semibold text-lg mb-3">Event Summary</Text>
 
         <View className="space-y-3">
-          {/* Title & Category */}
+          {/* Title & Categories */}
           <View className="flex-row items-start">
             <View
               className="w-8 h-8 rounded-full items-center justify-center mr-3"
-              style={{ backgroundColor: CATEGORIES.find((c) => c.id === category)?.color || '#6B7280' }}
+              style={{ backgroundColor: CATEGORIES.find((c) => c.id === categories[0])?.color || '#6B7280' }}
             >
               <Ionicons
-                name={(CATEGORIES.find((c) => c.id === category)?.icon || 'calendar') as any}
+                name={(CATEGORIES.find((c) => c.id === categories[0])?.icon || 'calendar') as any}
                 size={16}
                 color="white"
               />
             </View>
             <View className="flex-1">
               <Text className="text-gray-900 font-medium">{title || 'Untitled Event'}</Text>
-              <Text className="text-gray-500 text-sm capitalize">{category || 'No category'}</Text>
+              <Text className="text-gray-500 text-sm capitalize">
+                {categories.length > 0 ? categories.join(', ') : 'No categories'}
+              </Text>
             </View>
           </View>
 
