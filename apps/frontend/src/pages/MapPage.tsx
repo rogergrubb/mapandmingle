@@ -209,9 +209,9 @@ function ClusteredMarkers({
                 ${pin.createdBy?.name || 'Mingler'}
               </div>
               <div style="font-size: 12px; color: #666; display: flex; align-items: center; gap: 4px;">
-                ${isOnline 
+                ${isActive 
                   ? '<span style="width:8px;height:8px;background:#22c55e;border-radius:50%;"></span> Online now' 
-                  : 'Active recently'
+                  : '<span style="width:8px;height:8px;background:#9ca3af;border-radius:50%;"></span> Active recently'
                 }
               </div>
             </div>
