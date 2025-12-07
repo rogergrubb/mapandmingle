@@ -61,6 +61,7 @@ export default function CreateEvent() {
     
     // Location
     locationType: 'in-person' as 'in-person' | 'online' | 'hybrid',
+    venueName: '', // Added for proper venue name
     address: '',
     city: '',
     latitude: 0,
@@ -161,14 +162,20 @@ export default function CreateEvent() {
       
       if (data.features && data.features.length > 0) {
         const place = data.features[0];
-        const address = place.place_name;
+        const fullAddress = place.place_name;
         const city = place.context?.find((c: any) => c.id.startsWith('place'))?.text || '';
+        
+        // Extract venue name (first part before comma) or use POI name if available
+        const venueName = place.text || fullAddress.split(',')[0] || 'Selected Location';
+        
+        console.log('📍 Geocoded location:', { venueName, fullAddress, city, lat, lng });
         
         setFormData(prev => ({
           ...prev,
           latitude: lat,
           longitude: lng,
-          address: address,
+          venueName: venueName,
+          address: fullAddress,
           city: city,
         }));
       } else {
