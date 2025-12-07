@@ -26,6 +26,7 @@ L.Icon.Default.mergeOptions({
 
 // Mode-specific colors for pins
 const modeColors = {
+  everybody: { primary: '#4b5563', secondary: '#1f2937' },
   dating: { primary: '#ec4899', secondary: '#f43f5e' },
   friends: { primary: '#8b5cf6', secondary: '#6366f1' },
   networking: { primary: '#3b82f6', secondary: '#06b6d4' },
@@ -304,7 +305,7 @@ export default function MapPage() {
   const mapRef = useRef<L.Map>(null);
   
   // UI state
-  const [currentMode, setCurrentMode] = useState<MingleMode>('friends');
+  const [currentMode, setCurrentMode] = useState<MingleMode>('everybody');
   const [distanceFilter, setDistanceFilter] = useState<DistanceFilter>('city');
   const [isVisible, setIsVisible] = useState(true);
   const [creatingPin, setCreatingPin] = useState(false);
