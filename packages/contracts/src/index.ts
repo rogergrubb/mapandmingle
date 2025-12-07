@@ -241,7 +241,7 @@ export const eventSchema = z.object({
   id: z.string(),
   title: z.string(),
   description: z.string().nullable(),
-  category: EventCategoryEnum,
+  categories: z.array(EventCategoryEnum), // Changed to array
   image: z.string().nullable(),
   venueName: z.string(),
   venueAddress: z.string().nullable(),
@@ -264,7 +264,7 @@ export const eventSchema = z.object({
 export const createEventRequestSchema = z.object({
   title: z.string().min(1).max(100),
   description: z.string().max(1000).optional(),
-  category: EventCategoryEnum,
+  categories: z.array(EventCategoryEnum).min(1).max(5), // Changed to array with min 1, max 5
   image: z.string().optional(),
   venueName: z.string().min(1),
   venueAddress: z.string().optional(),
