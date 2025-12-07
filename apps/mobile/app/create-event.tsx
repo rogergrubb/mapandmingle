@@ -308,8 +308,8 @@ export default function CreateEventScreen() {
 
     try {
       const endTime = getEndTime();
-
-      await api.post('/api/events', {
+      
+      const eventData = {
         title: title.trim(),
         description: description.trim() || undefined,
         categories, // Send array of categories
@@ -321,7 +321,16 @@ export default function CreateEventScreen() {
         startTime: startDate.toISOString(),
         endTime: endTime.toISOString(),
         maxAttendees: maxAttendees || undefined,
+      };
+      
+      console.log('📍 Creating event with location data:', {
+        venueName: eventData.venueName,
+        venueAddress: eventData.venueAddress,
+        latitude: eventData.latitude,
+        longitude: eventData.longitude,
       });
+
+      await api.post('/api/events', eventData);
 
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       
@@ -331,6 +340,7 @@ export default function CreateEventScreen() {
         [{ text: 'View Events', onPress: () => router.back() }]
       );
     } catch (error: any) {
+      console.error('Event creation error:', error);
       Alert.alert('Error', error.message || 'Failed to create event. Please try again.');
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     } finally {
