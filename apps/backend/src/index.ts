@@ -538,6 +538,68 @@ async function runMigrations() {
       CREATE INDEX IF NOT EXISTS "Report_status_idx" ON "Report"("status");
     `).catch(() => {});
     
+    // Add per-field privacy controls to Profile
+    await prisma.$executeRawUnsafe(`
+      ALTER TABLE "Profile" 
+      ADD COLUMN IF NOT EXISTS "hideBio" BOOLEAN DEFAULT false;
+    `).catch(() => {});
+    
+    await prisma.$executeRawUnsafe(`
+      ALTER TABLE "Profile" 
+      ADD COLUMN IF NOT EXISTS "hideAge" BOOLEAN DEFAULT false;
+    `).catch(() => {});
+    
+    await prisma.$executeRawUnsafe(`
+      ALTER TABLE "Profile" 
+      ADD COLUMN IF NOT EXISTS "hideInterests" BOOLEAN DEFAULT false;
+    `).catch(() => {});
+    
+    await prisma.$executeRawUnsafe(`
+      ALTER TABLE "Profile" 
+      ADD COLUMN IF NOT EXISTS "hideLookingFor" BOOLEAN DEFAULT false;
+    `).catch(() => {});
+    
+    await prisma.$executeRawUnsafe(`
+      ALTER TABLE "Profile" 
+      ADD COLUMN IF NOT EXISTS "hideOccupation" BOOLEAN DEFAULT false;
+    `).catch(() => {});
+    
+    await prisma.$executeRawUnsafe(`
+      ALTER TABLE "Profile" 
+      ADD COLUMN IF NOT EXISTS "hideEducation" BOOLEAN DEFAULT false;
+    `).catch(() => {});
+    
+    await prisma.$executeRawUnsafe(`
+      ALTER TABLE "Profile" 
+      ADD COLUMN IF NOT EXISTS "hideLocation" BOOLEAN DEFAULT false;
+    `).catch(() => {});
+    
+    await prisma.$executeRawUnsafe(`
+      ALTER TABLE "Profile" 
+      ADD COLUMN IF NOT EXISTS "hideLanguages" BOOLEAN DEFAULT false;
+    `).catch(() => {});
+    
+    // Add extended profile fields
+    await prisma.$executeRawUnsafe(`
+      ALTER TABLE "Profile" 
+      ADD COLUMN IF NOT EXISTS "occupation" TEXT;
+    `).catch(() => {});
+    
+    await prisma.$executeRawUnsafe(`
+      ALTER TABLE "Profile" 
+      ADD COLUMN IF NOT EXISTS "education" TEXT;
+    `).catch(() => {});
+    
+    await prisma.$executeRawUnsafe(`
+      ALTER TABLE "Profile" 
+      ADD COLUMN IF NOT EXISTS "location" TEXT;
+    `).catch(() => {});
+    
+    await prisma.$executeRawUnsafe(`
+      ALTER TABLE "Profile" 
+      ADD COLUMN IF NOT EXISTS "languages" TEXT;
+    `).catch(() => {});
+    
     console.log('✅ Database migrations complete');
   } catch (error) {
     console.error('⚠️ Migration error (non-fatal):', error);
