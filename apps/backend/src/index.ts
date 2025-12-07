@@ -630,6 +630,37 @@ async function runMigrations() {
       ADD COLUMN IF NOT EXISTS "schoolAffiliation" TEXT;
     `).catch(() => {});
     
+    // ========== CONNECTIONS SYSTEM MIGRATIONS ==========
+    // Create Connection table for friend relationships
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "Connection" (
+        "id" TEXT NOT NULL,
+        "requesterId" TEXT NOT NULL,
+        "addresseeId" TEXT NOT NULL,
+        "status" TEXT NOT NULL DEFAULT 'pending',
+        "metAt" TEXT,
+        "metLocation" TEXT,
+        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT "Connection_pkey" PRIMARY KEY ("id"),
+        CONSTRAINT "Connection_requesterId_fkey" FOREIGN KEY ("requesterId") REFERENCES "User"("id") ON DELETE CASCADE,
+        CONSTRAINT "Connection_addresseeId_fkey" FOREIGN KEY ("addresseeId") REFERENCES "User"("id") ON DELETE CASCADE,
+        CONSTRAINT "Connection_requesterId_addresseeId_key" UNIQUE ("requesterId", "addresseeId")
+      );
+    `).catch(() => {});
+    
+    await prisma.$executeRawUnsafe(`
+      CREATE INDEX IF NOT EXISTS "Connection_requesterId_idx" ON "Connection"("requesterId");
+    `).catch(() => {});
+    
+    await prisma.$executeRawUnsafe(`
+      CREATE INDEX IF NOT EXISTS "Connection_addresseeId_idx" ON "Connection"("addresseeId");
+    `).catch(() => {});
+    
+    await prisma.$executeRawUnsafe(`
+      CREATE INDEX IF NOT EXISTS "Connection_status_idx" ON "Connection"("status");
+    `).catch(() => {});
+    
     console.log('✅ Database migrations complete');
   } catch (error) {
     console.error('⚠️ Migration error (non-fatal):', error);
