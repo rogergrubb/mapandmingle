@@ -114,11 +114,22 @@ eventRoutes.post('/', authMiddleware, async (c) => {
     
     const data = parsed.data;
     
+    // Debug logging
+    console.log('📍 Event creation - Location data received:', {
+      venueName: data.venueName,
+      venueAddress: data.venueAddress,
+      address: data.address,
+      latitude: data.latitude,
+      longitude: data.longitude,
+    });
+    
     // Ensure we have a proper venue name
     let venueName = data.venueName?.trim() || data.address?.trim() || '';
     if (!venueName || venueName === 'TBD') {
       venueName = 'Location to be announced';
     }
+    
+    console.log('📍 Processed venueName:', venueName);
     
     const event = await prisma.event.create({
       data: {
