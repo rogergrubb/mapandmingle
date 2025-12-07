@@ -2,14 +2,19 @@ import { Hono } from 'hono';
 import { prisma } from '../lib/prisma';
 import { authMiddleware } from '../middleware/auth';
 
-const connections = new Hono();
+// Define context variables type for TypeScript
+type Variables = {
+  userId: string;
+};
+
+const connections = new Hono<{ Variables: Variables }>();
 
 // All routes require authentication
 connections.use('*', authMiddleware);
 
 // Get all connections (friends) for current user
 connections.get('/', async (c) => {
-  const userId = c.get('userId') as string;
+  const userId = c.get('userId');
 
   const connectionsList = await prisma.connection.findMany({
     where: {
@@ -51,7 +56,7 @@ connections.get('/', async (c) => {
 
 // Get pending connection requests (received)
 connections.get('/requests', async (c) => {
-  const userId = c.get('userId') as string;
+  const userId = c.get('userId');
 
   const requestsList = await prisma.connection.findMany({
     where: {
@@ -88,7 +93,7 @@ connections.get('/requests', async (c) => {
 
 // Get sent connection requests (pending)
 connections.get('/sent', async (c) => {
-  const userId = c.get('userId') as string;
+  const userId = c.get('userId');
 
   const sentList = await prisma.connection.findMany({
     where: {
@@ -123,7 +128,7 @@ connections.get('/sent', async (c) => {
 
 // Check connection status with a specific user
 connections.get('/status/:userId', async (c) => {
-  const currentUserId = c.get('userId') as string;
+  const currentUserId = c.get('userId');
   const targetUserId = c.req.param('userId');
 
   const connection = await prisma.connection.findFirst({
@@ -152,7 +157,7 @@ connections.get('/status/:userId', async (c) => {
 
 // Send a connection request
 connections.post('/request', async (c) => {
-  const requesterId = c.get('userId') as string;
+  const requesterId = c.get('userId');
   const { addresseeId, metAt, metLocation } = await c.req.json();
 
   if (!addresseeId) {
@@ -222,7 +227,7 @@ connections.post('/request', async (c) => {
 
 // Accept a connection request
 connections.post('/:id/accept', async (c) => {
-  const userId = c.get('userId') as string;
+  const userId = c.get('userId');
   const connectionId = c.req.param('id');
 
   const connection = await prisma.connection.findUnique({
@@ -251,7 +256,7 @@ connections.post('/:id/accept', async (c) => {
 
 // Decline a connection request
 connections.post('/:id/decline', async (c) => {
-  const userId = c.get('userId') as string;
+  const userId = c.get('userId');
   const connectionId = c.req.param('id');
 
   const connection = await prisma.connection.findUnique({
@@ -275,7 +280,7 @@ connections.post('/:id/decline', async (c) => {
 
 // Remove a connection (unfriend)
 connections.delete('/:id', async (c) => {
-  const userId = c.get('userId') as string;
+  const userId = c.get('userId');
   const connectionId = c.req.param('id');
 
   const connection = await prisma.connection.findUnique({
@@ -299,7 +304,7 @@ connections.delete('/:id', async (c) => {
 
 // Cancel a sent request
 connections.delete('/request/:id', async (c) => {
-  const userId = c.get('userId') as string;
+  const userId = c.get('userId');
   const connectionId = c.req.param('id');
 
   const connection = await prisma.connection.findUnique({
