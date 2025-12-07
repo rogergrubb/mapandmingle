@@ -296,7 +296,7 @@ function MapController() {
 
 export default function MapPage() {
   const navigate = useNavigate();
-  const { pins, hotspots, showHotspots, setShowHotspots, setUserLocation } = useMapStore();
+  const { pins, hotspots, showHotspots, setShowHotspots, setUserLocation, setLookingForFilter, fetchPins } = useMapStore();
   const { user, isAuthenticated } = useAuthStore();
   
   // Map state
@@ -314,6 +314,23 @@ export default function MapPage() {
   // Welcome/Onboarding state
   const [showWelcomeCard, setShowWelcomeCard] = useState(false);
   const [showInterestsSetup, setShowInterestsSetup] = useState(false);
+
+  // Handle mode change - update store and refetch pins
+  const handleModeChange = (mode: MingleMode) => {
+    setCurrentMode(mode);
+    setLookingForFilter(mode);
+    
+    // Refetch pins with new filter
+    if (mapRef.current) {
+      const bounds = mapRef.current.getBounds();
+      fetchPins({
+        north: bounds.getNorth(),
+        south: bounds.getSouth(),
+        east: bounds.getEast(),
+        west: bounds.getWest(),
+      });
+    }
+  };
 
   // Load visibility status
   useEffect(() => {
@@ -536,7 +553,7 @@ export default function MapPage() {
         distanceFilter={distanceFilter}
         isVisible={isVisible}
         peopleCount={pins.length}
-        onModeChange={setCurrentMode}
+        onModeChange={handleModeChange}
         onDistanceChange={setDistanceFilter}
         onVisibilityToggle={handleVisibilityToggle}
         onSearch={() => {}}
@@ -561,7 +578,7 @@ export default function MapPage() {
       {/* FAB */}
       <MapFAB
         currentMode={currentMode}
-        onModeChange={setCurrentMode}
+        onModeChange={handleModeChange}
         onDropPin={handleDropPin}
         onCreateEvent={() => navigate('/events/create')}
         onBroadcast={() => {}}
