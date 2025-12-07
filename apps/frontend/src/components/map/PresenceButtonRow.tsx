@@ -83,25 +83,25 @@ export function PresenceButtonRow({
     );
   }
 
-  // Default state - Two buttons side by side, directly below top bar
+  // Default state - Two compact buttons centered
   return (
-    <div className="absolute top-[52px] left-3 right-3 z-[1000]">
-      <div className="flex gap-2">
+    <div className="absolute top-[52px] left-0 right-0 z-[1000] flex justify-center">
+      <div className="flex gap-1.5">
         {/* Where I'm At */}
         <button
           onClick={handleWhereImAt}
-          className="flex-1 flex items-center gap-3 px-4 py-3 bg-white rounded-2xl shadow-md hover:shadow-lg transition-all hover:translate-y-[-1px] active:scale-[1.02]"
+          className="flex items-center gap-2 px-3 py-2 bg-white rounded-xl shadow-md hover:shadow-lg transition-all hover:translate-y-[-1px] active:scale-[1.02]"
           style={{
-            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
           }}
         >
-          <div className="w-10 h-10 bg-gradient-to-br from-pink-100 to-rose-100 rounded-xl flex items-center justify-center flex-shrink-0">
-            <MapPin size={20} className="text-pink-500" />
+          <div className="w-7 h-7 bg-gradient-to-br from-pink-100 to-rose-100 rounded-lg flex items-center justify-center flex-shrink-0">
+            <MapPin size={14} className="text-pink-500" />
           </div>
-          <div className="text-left min-w-0">
-            <div className="font-semibold text-gray-900 text-sm truncate">Where I'm At</div>
-            <div className="text-xs text-gray-500 truncate">
-              {hasGPS && !gpsAccuracyPoor ? 'Use my location' : 'Tap the map'}
+          <div className="text-left">
+            <div className="font-semibold text-gray-900 text-xs">Where I'm At</div>
+            <div className="text-[10px] text-gray-500">
+              {hasGPS && !gpsAccuracyPoor ? 'Use location' : 'Tap map'}
             </div>
           </div>
         </button>
@@ -109,17 +109,17 @@ export function PresenceButtonRow({
         {/* Where I'll Be */}
         <button
           onClick={handleWhereIllBe}
-          className="flex-1 flex items-center gap-3 px-4 py-3 bg-white rounded-2xl shadow-md hover:shadow-lg transition-all hover:translate-y-[-1px] active:scale-[1.02]"
+          className="flex items-center gap-2 px-3 py-2 bg-white rounded-xl shadow-md hover:shadow-lg transition-all hover:translate-y-[-1px] active:scale-[1.02]"
           style={{
-            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
           }}
         >
-          <div className="w-10 h-10 bg-gradient-to-br from-purple-100 to-indigo-100 rounded-xl flex items-center justify-center flex-shrink-0">
-            <Navigation size={20} className="text-purple-500" />
+          <div className="w-7 h-7 bg-gradient-to-br from-purple-100 to-indigo-100 rounded-lg flex items-center justify-center flex-shrink-0">
+            <Navigation size={14} className="text-purple-500" />
           </div>
-          <div className="text-left min-w-0">
-            <div className="font-semibold text-gray-900 text-sm truncate">Where I'll Be</div>
-            <div className="text-xs text-gray-500 truncate">Tap the map</div>
+          <div className="text-left">
+            <div className="font-semibold text-gray-900 text-xs">Where I'll Be</div>
+            <div className="text-[10px] text-gray-500">Tap map</div>
           </div>
         </button>
       </div>
