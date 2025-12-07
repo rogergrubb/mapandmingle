@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { 
   Plus, X, Heart, Users, Briefcase, Calendar, Plane,
-  MapPin, Coffee, MessageCircle, Zap, Radio
+  MapPin, Coffee, MessageCircle, Zap, Radio, Globe
 } from 'lucide-react';
 import type { MingleMode } from './MapControlBar';
 
@@ -14,6 +14,7 @@ interface MapFABProps {
 }
 
 const modeConfig = {
+  everybody: { icon: Globe, color: 'from-gray-600 to-gray-800', label: 'All' },
   dating: { icon: Heart, color: 'from-pink-500 to-rose-500', label: 'Dating' },
   friends: { icon: Users, color: 'from-purple-500 to-indigo-500', label: 'Friends' },
   networking: { icon: Briefcase, color: 'from-blue-500 to-cyan-500', label: 'Network' },
@@ -78,7 +79,7 @@ export function MapFAB({
               const isActive = mode === currentMode;
               
               // Calculate position in arc
-              const totalModes = 5;
+              const totalModes = 6;
               const arcSpan = 180; // degrees
               const startAngle = 180; // start from left
               const angle = startAngle + (index / (totalModes - 1)) * arcSpan;
