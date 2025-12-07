@@ -371,7 +371,7 @@ pinRoutes.get('/user/mine', async (c) => {
   }
 });
 
-// GET /api/pins/:id - Get single pin
+// GET /api/pins/:id - Get single pin with full user profile
 pinRoutes.get('/:id', async (c) => {
   try {
     const id = c.req.param('id');
@@ -383,9 +383,32 @@ pinRoutes.get('/:id', async (c) => {
           select: {
             id: true,
             name: true,
+            email: true,
             image: true,
             profile: {
-              select: { avatar: true, bio: true },
+              select: {
+                avatar: true,
+                bio: true,
+                displayName: true,
+                age: true,
+                gender: true,
+                interests: true,
+                lookingFor: true,
+                occupation: true,
+                education: true,
+                location: true,
+                languages: true,
+                lastActiveAt: true,
+                // Privacy controls
+                hideBio: true,
+                hideAge: true,
+                hideInterests: true,
+                hideLookingFor: true,
+                hideOccupation: true,
+                hideEducation: true,
+                hideLocation: true,
+                hideLanguages: true,
+              },
             },
           },
         },
@@ -401,30 +424,70 @@ pinRoutes.get('/:id', async (c) => {
       return c.json({ error: 'Pin not found' }, 404);
     }
     
+    // Parse JSON fields and respect privacy settings
+    const profile = pin.user.profile;
+    let interests: string[] = [];
+    let lookingFor: string[] = [];
+    let languages: string[] = [];
+    
+    if (profile) {
+      try {
+        if (profile.interests && !profile.hideInterests) {
+          interests = JSON.parse(profile.interests);
+        }
+      } catch {}
+      
+      try {
+        if (profile.lookingFor && !profile.hideLookingFor) {
+          lookingFor = JSON.parse(profile.lookingFor);
+        }
+      } catch {}
+      
+      try {
+        if (profile.languages && !profile.hideLanguages) {
+          languages = JSON.parse(profile.languages);
+        }
+      } catch {}
+    }
+    
     return c.json({
       id: pin.id,
-      userId: pin.userId, // Add userId at top level for frontend compatibility
+      userId: pin.userId,
       latitude: pin.latitude,
       longitude: pin.longitude,
       description: pin.description,
       image: pin.image,
-      photoUrl: pin.image, // Alias for frontend
+      photoUrl: pin.image,
       likesCount: pin.likesCount,
       likedByUser: false,
       createdAt: pin.createdAt.toISOString(),
-      user: { // Use 'user' instead of 'createdBy' for frontend compatibility
+      user: {
         id: pin.user.id,
         name: pin.user.name,
         image: pin.user.image,
-        avatar: pin.user.profile?.avatar,
-        bio: pin.user.profile?.bio,
-      },
-      createdBy: { // Keep for backwards compatibility
-        id: pin.user.id,
-        name: pin.user.name,
-        image: pin.user.image,
-        avatar: pin.user.profile?.avatar,
-        bio: pin.user.profile?.bio,
+        avatar: profile?.avatar,
+        displayName: profile?.displayName,
+        bio: profile?.hideBio ? null : profile?.bio,
+        age: profile?.hideAge ? null : profile?.age,
+        gender: profile?.gender,
+        interests: profile?.hideInterests ? null : interests,
+        lookingFor: profile?.hideLookingFor ? null : lookingFor,
+        occupation: profile?.hideOccupation ? null : profile?.occupation,
+        education: profile?.hideEducation ? null : profile?.education,
+        location: profile?.hideLocation ? null : profile?.location,
+        languages: profile?.hideLanguages ? null : languages,
+        lastActiveAt: profile?.lastActiveAt,
+        // Include privacy flags so frontend knows if hidden vs just empty
+        privacy: {
+          hideBio: profile?.hideBio || false,
+          hideAge: profile?.hideAge || false,
+          hideInterests: profile?.hideInterests || false,
+          hideLookingFor: profile?.hideLookingFor || false,
+          hideOccupation: profile?.hideOccupation || false,
+          hideEducation: profile?.hideEducation || false,
+          hideLocation: profile?.hideLocation || false,
+          hideLanguages: profile?.hideLanguages || false,
+        },
       },
     });
   } catch (error) {
