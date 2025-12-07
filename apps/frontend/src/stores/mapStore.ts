@@ -7,6 +7,7 @@ interface MapState {
   hotspots: Hotspot[];
   userLocation: { latitude: number; longitude: number } | null;
   filter: 'all' | '24h' | 'week';
+  lookingForFilter: string | null; // 'everybody', 'dating', 'friends', 'networking', 'events', 'travel'
   showHotspots: boolean;
   isLoading: boolean;
   fetchPins: (bounds: {
@@ -17,6 +18,7 @@ interface MapState {
   }) => Promise<void>;
   fetchHotspots: (location: { latitude: number; longitude: number; radius: number }) => Promise<void>;
   setFilter: (filter: 'all' | '24h' | 'week') => void;
+  setLookingForFilter: (lookingFor: string | null) => void;
   setShowHotspots: (show: boolean) => void;
   setUserLocation: (location: { latitude: number; longitude: number }) => void;
   likePin: (pinId: string) => Promise<void>;
@@ -29,16 +31,19 @@ export const useMapStore = create<MapState>((set, get) => ({
   hotspots: [],
   userLocation: null,
   filter: 'all',
+  lookingForFilter: 'everybody', // Default to showing everybody
   showHotspots: false,
   isLoading: false,
 
   fetchPins: async (bounds) => {
     set({ isLoading: true });
     try {
+      const lookingFor = get().lookingForFilter;
       const response: any = await api.get('/api/pins', {
         params: {
           ...bounds,
           filter: get().filter,
+          ...(lookingFor && lookingFor !== 'everybody' ? { lookingFor } : {}),
         },
       });
       // Ensure pins is always an array
@@ -66,6 +71,10 @@ export const useMapStore = create<MapState>((set, get) => ({
 
   setFilter: (filter) => {
     set({ filter });
+  },
+
+  setLookingForFilter: (lookingFor) => {
+    set({ lookingForFilter: lookingFor });
   },
 
   setShowHotspots: (show) => {
