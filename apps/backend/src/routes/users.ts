@@ -35,6 +35,14 @@ userRoutes.get('/me', authMiddleware, async (c) => {
       } catch {}
     }
 
+    // Parse lookingFor
+    let lookingFor: string[] = [];
+    if (user.profile?.lookingFor) {
+      try {
+        lookingFor = JSON.parse(user.profile.lookingFor);
+      } catch {}
+    }
+
     return c.json({
       id: user.id,
       email: user.email,
@@ -45,6 +53,7 @@ userRoutes.get('/me', authMiddleware, async (c) => {
       avatar: user.profile?.avatar || user.image,
       bio: user.profile?.bio,
       interests,
+      lookingFor,
       activityIntent: user.profile?.activityIntent,
       chatReadiness: user.profile?.chatReadiness || 'browsing_only',
       visibilityMode: user.profile?.visibilityMode || 'public',
@@ -133,6 +142,7 @@ userRoutes.patch('/me', authMiddleware, async (c) => {
       bio,
       avatar,
       interests,
+      lookingFor,
       activityIntent,
       chatReadiness,
       visibilityMode,
@@ -158,6 +168,10 @@ userRoutes.patch('/me', authMiddleware, async (c) => {
     if (interests !== undefined) {
       // Convert array to JSON string for storage
       profileData.interests = JSON.stringify(interests);
+    }
+    if (lookingFor !== undefined) {
+      // Convert array to JSON string for storage
+      profileData.lookingFor = JSON.stringify(lookingFor);
     }
     if (activityIntent !== undefined) profileData.activityIntent = activityIntent;
     if (chatReadiness !== undefined) profileData.chatReadiness = chatReadiness;
@@ -195,6 +209,14 @@ userRoutes.patch('/me', authMiddleware, async (c) => {
       } catch {}
     }
 
+    // Parse lookingFor for response
+    let parsedLookingFor: string[] = [];
+    if (updatedUser?.profile?.lookingFor) {
+      try {
+        parsedLookingFor = JSON.parse(updatedUser.profile.lookingFor);
+      } catch {}
+    }
+
     return c.json({
       id: updatedUser!.id,
       email: updatedUser!.email,
@@ -205,6 +227,7 @@ userRoutes.patch('/me', authMiddleware, async (c) => {
       avatar: updatedUser!.profile?.avatar || updatedUser!.image,
       bio: updatedUser!.profile?.bio,
       interests: parsedInterests,
+      lookingFor: parsedLookingFor,
       activityIntent: updatedUser!.profile?.activityIntent,
       chatReadiness: updatedUser!.profile?.chatReadiness || 'browsing_only',
       visibilityMode: updatedUser!.profile?.visibilityMode || 'public',
