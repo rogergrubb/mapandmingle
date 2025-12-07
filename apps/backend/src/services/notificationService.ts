@@ -50,6 +50,117 @@ interface PinAlertData {
   pinDescription: string;
 }
 
+// Create in-app notification
+export async function createInAppNotification(
+  userId: string,
+  type: string,
+  title: string,
+  body: string,
+  fromUserId?: string,
+  data?: object
+) {
+  try {
+    await prisma.notification.create({
+      data: {
+        userId,
+        type,
+        title,
+        body,
+        fromUserId: fromUserId || null,
+        data: data ? JSON.stringify(data) : null,
+      },
+    });
+    console.log(`In-app notification created for ${userId}: ${type}`);
+  } catch (error) {
+    console.error('In-app notification error:', error);
+  }
+}
+
+// Notify about new message
+export async function notifyAboutMessage(
+  recipientId: string,
+  senderId: string,
+  senderName: string,
+  messagePreview: string
+) {
+  await createInAppNotification(
+    recipientId,
+    'message',
+    `New message from ${senderName}`,
+    messagePreview.substring(0, 100),
+    senderId,
+    { type: 'message' }
+  );
+}
+
+// Notify about connection request
+export async function notifyAboutConnectionRequest(
+  recipientId: string,
+  requesterId: string,
+  requesterName: string
+) {
+  await createInAppNotification(
+    recipientId,
+    'connection_request',
+    'New connection request',
+    `${requesterName} wants to connect with you`,
+    requesterId,
+    { type: 'connection_request' }
+  );
+}
+
+// Notify about connection accepted
+export async function notifyAboutConnectionAccepted(
+  requesterId: string,
+  accepterId: string,
+  accepterName: string
+) {
+  await createInAppNotification(
+    requesterId,
+    'connection_accepted',
+    'Connection accepted!',
+    `${accepterName} accepted your connection request`,
+    accepterId,
+    { type: 'connection_accepted' }
+  );
+}
+
+// Notify about pin like
+export async function notifyAboutPinLike(
+  pinOwnerId: string,
+  likerId: string,
+  likerName: string,
+  pinId: string
+) {
+  await createInAppNotification(
+    pinOwnerId,
+    'like',
+    `${likerName} liked your pin`,
+    'Tap to view your pin',
+    likerId,
+    { pinId, type: 'like' }
+  );
+}
+
+// Notify about event comment
+export async function notifyAboutEventComment(
+  eventHostId: string,
+  commenterId: string,
+  commenterName: string,
+  eventId: string,
+  eventTitle: string,
+  commentPreview: string
+) {
+  await createInAppNotification(
+    eventHostId,
+    'comment',
+    `New comment on "${eventTitle}"`,
+    `${commenterName}: ${commentPreview.substring(0, 80)}`,
+    commenterId,
+    { eventId, type: 'comment' }
+  );
+}
+
 // Send email notification via Resend
 async function sendEmailNotification(
   to: string,
@@ -155,32 +266,6 @@ async function sendSmsNotification(
     }
   } catch (error) {
     console.error('SMS error:', error);
-  }
-}
-
-// Create in-app notification
-async function createInAppNotification(
-  userId: string,
-  type: string,
-  title: string,
-  body: string,
-  fromUserId: string,
-  data?: object
-) {
-  try {
-    await prisma.notification.create({
-      data: {
-        userId,
-        type,
-        title,
-        body,
-        fromUserId,
-        data: data ? JSON.stringify(data) : null,
-      },
-    });
-    console.log(`In-app notification created for ${userId}`);
-  } catch (error) {
-    console.error('In-app notification error:', error);
   }
 }
 

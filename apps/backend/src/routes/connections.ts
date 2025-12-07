@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { prisma } from '../lib/prisma';
 import { authMiddleware } from '../middleware/auth';
+import { notifyAboutConnectionRequest, notifyAboutConnectionAccepted } from '../services/notificationService';
 
 // Define context variables type for TypeScript
 type Variables = {
@@ -222,6 +223,17 @@ connections.post('/request', async (c) => {
     },
   });
 
+  // Get requester name for notification
+  const requester = await prisma.user.findUnique({
+    where: { id: requesterId },
+    select: { name: true, profile: { select: { displayName: true } } },
+  });
+  const requesterName = requester?.profile?.displayName || requester?.name || 'Someone';
+  
+  // Send notification to addressee
+  notifyAboutConnectionRequest(addresseeId, requesterId, requesterName)
+    .catch(err => console.error('Connection notification error:', err));
+
   return c.json({ connection, message: 'Connection request sent!' }, 201);
 });
 
@@ -250,6 +262,17 @@ connections.post('/:id/accept', async (c) => {
     where: { id: connectionId },
     data: { status: 'accepted' },
   });
+
+  // Get accepter name for notification
+  const accepter = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { name: true, profile: { select: { displayName: true } } },
+  });
+  const accepterName = accepter?.profile?.displayName || accepter?.name || 'Someone';
+  
+  // Notify the original requester that their request was accepted
+  notifyAboutConnectionAccepted(connection.requesterId, userId, accepterName)
+    .catch(err => console.error('Accept notification error:', err));
 
   return c.json({ connection: updated, message: 'Connection accepted!' });
 });

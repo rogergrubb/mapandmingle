@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { prisma, broadcastToAll } from '../index';
 import { z } from 'zod';
-import { notifyAboutNewPin } from '../services/notificationService';
+import { notifyAboutNewPin, notifyAboutPinLike } from '../services/notificationService';
 
 
 // Helper to extract userId from JWT token
@@ -854,6 +854,17 @@ pinRoutes.post('/:id/like', async (c) => {
           positiveInteractions: { increment: 1 },
         },
       });
+      
+      // Notify pin owner about the like (if not liking own pin)
+      if (pin.userId !== userId) {
+        const liker = await prisma.user.findUnique({
+          where: { id: userId },
+          select: { name: true, profile: { select: { displayName: true } } },
+        });
+        const likerName = liker?.profile?.displayName || liker?.name || 'Someone';
+        notifyAboutPinLike(pin.userId, userId, likerName, pinId)
+          .catch(err => console.error('Like notification error:', err));
+      }
       
       return c.json({ liked: true, likesCount: pin.likesCount + 1 });
     }

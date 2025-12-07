@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { prisma } from '../index';
 import { z } from 'zod';
 import { authMiddleware, getUserId } from '../middleware/auth';
+import { notifyAboutEventComment } from '../services/notificationService';
 
 export const eventRoutes = new Hono();
 
@@ -394,6 +395,16 @@ eventRoutes.post('/:id/comments', authMiddleware, async (c) => {
       return c.json({ error: 'Comment text is required' }, 400);
     }
     
+    // Get event for host notification
+    const event = await prisma.event.findUnique({
+      where: { id: eventId },
+      select: { hostId: true, title: true },
+    });
+    
+    if (!event) {
+      return c.json({ error: 'Event not found' }, 404);
+    }
+    
     const comment = await prisma.eventComment.create({
       data: {
         eventId,
@@ -402,10 +413,23 @@ eventRoutes.post('/:id/comments', authMiddleware, async (c) => {
       },
       include: {
         user: {
-          select: { id: true, name: true, image: true },
+          select: { id: true, name: true, image: true, profile: { select: { displayName: true } } },
         },
       },
     });
+    
+    // Notify event host (if commenter is not the host)
+    if (event.hostId !== userId) {
+      const commenterName = comment.user.profile?.displayName || comment.user.name || 'Someone';
+      notifyAboutEventComment(
+        event.hostId,
+        userId,
+        commenterName,
+        eventId,
+        event.title,
+        text.trim()
+      ).catch(err => console.error('Comment notification error:', err));
+    }
     
     return c.json({
       id: comment.id,
