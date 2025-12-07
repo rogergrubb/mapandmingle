@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { 
   Heart, Users, Briefcase, Calendar, Plane, 
-  ChevronDown, Globe, User, Locate
+  ChevronDown, Globe, User, Locate, RefreshCw
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import haptic from '../../lib/haptics';
@@ -18,6 +18,8 @@ interface MapControlBarProps {
   onVisibilityToggle: () => void;
   liveNow: number;
   inView: number;
+  onRefresh: () => void;
+  isRefreshing: boolean;
 }
 
 const modeConfig = {
@@ -67,6 +69,8 @@ export function MapControlBar({
   onVisibilityToggle,
   liveNow,
   inView,
+  onRefresh,
+  isRefreshing,
 }: MapControlBarProps) {
   const [showModeSelector, setShowModeSelector] = useState(false);
 
@@ -92,8 +96,23 @@ export function MapControlBar({
       <div className="absolute top-3 left-3 right-3 z-[1000]">
         <div className="flex items-center justify-between">
           
-          {/* Left: My Location + Mode Selector */}
+          {/* Left: Refresh + My Location + Mode Selector */}
           <div className="flex items-center gap-1.5">
+            <button
+              onClick={() => {
+                haptic.softTick();
+                onRefresh();
+              }}
+              disabled={isRefreshing}
+              className="w-9 h-9 rounded-full bg-white/90 backdrop-blur-sm shadow-md flex items-center justify-center hover:shadow-lg transition-all hover:scale-105 active:scale-95 disabled:opacity-50"
+              title="Refresh map"
+            >
+              <RefreshCw 
+                size={16} 
+                className={`text-gray-600 ${isRefreshing ? 'animate-spin' : ''}`} 
+              />
+            </button>
+
             <button
               onClick={onMyLocation}
               className="w-9 h-9 rounded-full bg-white/90 backdrop-blur-sm shadow-md flex items-center justify-center hover:shadow-lg transition-all hover:scale-105 active:scale-95"

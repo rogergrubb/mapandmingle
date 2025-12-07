@@ -384,6 +384,7 @@ export default function MapPage() {
   const [isPlacementMode, setIsPlacementMode] = useState(false);
   const [placementType, setPlacementType] = useState<'here' | 'there' | null>(null);
   const [isPopupOpen, setIsPopupOpen] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   
   // Welcome/Onboarding state
   const [showWelcomeCard, setShowWelcomeCard] = useState(false);
@@ -410,6 +411,25 @@ export default function MapPage() {
         east: bounds.getEast(),
         west: bounds.getWest(),
       });
+    }
+  };
+
+  // Manual refresh - refetch all pins
+  const handleRefresh = async () => {
+    if (isRefreshing || !mapRef.current) return;
+    
+    setIsRefreshing(true);
+    try {
+      const bounds = mapRef.current.getBounds();
+      await fetchPins({
+        north: bounds.getNorth(),
+        south: bounds.getSouth(),
+        east: bounds.getEast(),
+        west: bounds.getWest(),
+      });
+    } finally {
+      // Minimum 500ms spin for visual feedback
+      setTimeout(() => setIsRefreshing(false), 500);
     }
   };
 
@@ -659,6 +679,8 @@ export default function MapPage() {
         onVisibilityToggle={handleVisibilityToggle}
         liveNow={viewportStats.liveNow}
         inView={viewportStats.activeToday}
+        onRefresh={handleRefresh}
+        isRefreshing={isRefreshing}
       />
 
       {/* Two-Button Presence Row - directly below top bar */}
