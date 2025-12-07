@@ -9,6 +9,17 @@ import {
 import api from '../lib/api';
 import ReportModal from '../components/ReportModal';
 
+interface Privacy {
+  hideBio: boolean;
+  hideAge: boolean;
+  hideInterests: boolean;
+  hideLookingFor: boolean;
+  hideOccupation: boolean;
+  hideEducation: boolean;
+  hideLocation: boolean;
+  hideLanguages: boolean;
+}
+
 interface UserProfile {
   id: string;
   name: string;
@@ -25,16 +36,7 @@ interface UserProfile {
   location?: string;
   languages?: string[];
   lastActiveAt?: string;
-  privacy?: {
-    hideBio: boolean;
-    hideAge: boolean;
-    hideInterests: boolean;
-    hideLookingFor: boolean;
-    hideOccupation: boolean;
-    hideEducation: boolean;
-    hideLocation: boolean;
-    hideLanguages: boolean;
-  };
+  privacy?: Privacy;
 }
 
 const lookingForConfig: Record<string, { emoji: string; label: string; color: string; bgColor: string }> = {
@@ -136,7 +138,16 @@ export default function MingleDetail() {
   const ownerUserId = getOwnerUserId();
   const isOwnPin = user?.id === ownerUserId;
   const profile = mingle.user as UserProfile;
-  const privacy = profile?.privacy || {};
+  const privacy: Privacy = profile?.privacy || {
+    hideBio: false,
+    hideAge: false,
+    hideInterests: false,
+    hideLookingFor: false,
+    hideOccupation: false,
+    hideEducation: false,
+    hideLocation: false,
+    hideLanguages: false,
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 pb-24">
