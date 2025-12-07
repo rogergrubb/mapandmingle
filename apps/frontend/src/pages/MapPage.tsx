@@ -5,7 +5,8 @@ import { Loader } from 'lucide-react';
 import { useMapStore } from '../stores/mapStore';
 import { useAuthStore } from '../stores/authStore';
 import { MapControlBar, type MingleMode, type DistanceFilter } from '../components/map/MapControlBar';
-import { PresenceButton } from '../components/map/PresenceButton';
+import { VisibilityStrip } from '../components/map/VisibilityStrip';
+import { PresenceBar } from '../components/map/PresenceBar';
 import WelcomeCard from '../components/WelcomeCard';
 import ProfileInterestsSetup from '../components/ProfileInterestsSetup';
 import api from '../lib/api';
@@ -337,6 +338,7 @@ export default function MapPage() {
   const [userPosition, setUserPosition] = useState<[number, number] | null>(null);
   const [isLocating, setIsLocating] = useState(true);
   const [optimalZoom, setOptimalZoom] = useState(13); // Default zoom
+  const [hasGPS, setHasGPS] = useState(true); // Track if GPS is available
   const mapRef = useRef<L.Map>(null);
   
   // Activity counts for the strip
@@ -416,6 +418,7 @@ export default function MapPage() {
         const pos: [number, number] = [position.coords.latitude, position.coords.longitude];
         setUserPosition(pos);
         setUserLocation({ latitude: pos[0], longitude: pos[1] });
+        setHasGPS(true);
         
         // Fetch nearby stats for auto-zoom
         try {
@@ -438,6 +441,7 @@ export default function MapPage() {
       },
       () => {
         setUserPosition([37.7749, -122.4194]);
+        setHasGPS(false); // GPS not available
         setIsLocating(false);
       }
     );
@@ -603,51 +607,42 @@ export default function MapPage() {
         }
       `}</style>
 
-      {/* Activity Strip - Shows community presence */}
-      <div className="absolute top-20 left-1/2 -translate-x-1/2 z-[900] max-w-md w-full px-4">
-        <div className="bg-white/95 backdrop-blur-xl rounded-2xl shadow-lg px-4 py-3 border border-white/20">
-          {/* Counts */}
-          <div className="flex items-center justify-center gap-4 text-sm">
-            <div className="flex items-center gap-2">
-              <span className="relative flex h-2.5 w-2.5">
-                <span className={`absolute inline-flex h-full w-full rounded-full ${viewportStats.liveNow > 0 ? 'bg-green-400 animate-ping opacity-75' : 'bg-gray-300'}`}></span>
-                <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${viewportStats.liveNow > 0 ? 'bg-green-500' : 'bg-gray-400'}`}></span>
-              </span>
-              <span className="font-semibold text-gray-800">{viewportStats.liveNow}</span>
-              <span className="text-gray-500">live now</span>
-            </div>
-            <div className="w-px h-4 bg-gray-200" />
-            <div className="flex items-center gap-2">
-              <span className="text-blue-500">●</span>
-              <span className="font-semibold text-gray-800">{viewportStats.activeToday}</span>
-              <span className="text-gray-500">in view</span>
-            </div>
-            {activityStats.activeWeek > 0 && (
-              <>
-                <div className="w-px h-4 bg-gray-200" />
-                <div className="flex items-center gap-2">
-                  <span className="text-purple-400">●</span>
-                  <span className="font-semibold text-gray-800">{activityStats.activeWeek}</span>
-                  <span className="text-gray-500">this week</span>
-                </div>
-              </>
-            )}
-          </div>
-          
-          {/* Motivational micro-copy */}
-          <div className="text-center mt-2 text-xs text-gray-500">
-            {viewportStats.liveNow >= 1 ? (
-              <span className="text-green-600">People are around you right now. Zoom in and say hi! 👋</span>
-            ) : viewportStats.activeToday >= 5 ? (
-              <span>People have been active here today. Drop a pin and be the first one back!</span>
-            ) : activityStats.isEmpty ? (
-              <span className="text-purple-600">You're early! Be the first to put your area on the map. 🚀</span>
-            ) : (
-              <span>Explore the map to find your people nearby.</span>
-            )}
-          </div>
-        </div>
-      </div>
+      {/* ROW 1 - Top Controls: Mode + Profile */}
+      <MapControlBar
+        currentMode={currentMode}
+        onModeChange={handleModeChange}
+        onMyLocation={handleCenterOnUser}
+      />
+
+      {/* ROW 2 - Visibility + Activity Strip */}
+      {!isPlacementMode && (
+        <VisibilityStrip
+          isVisible={isVisible}
+          onVisibilityToggle={handleVisibilityToggle}
+          liveNow={viewportStats.liveNow}
+          inView={viewportStats.activeToday}
+        />
+      )}
+
+      {/* ROW 3 - Presence Bar */}
+      <PresenceBar
+        isPlacementMode={isPlacementMode}
+        placementType={placementType}
+        hasGPS={hasGPS}
+        onImHere={handleDropPin}
+        onImHereManual={() => {
+          setPlacementType('here');
+          setIsPlacementMode(true);
+        }}
+        onHeadingThere={() => {
+          setPlacementType('heading');
+          setIsPlacementMode(true);
+        }}
+        onCancelPlacement={() => {
+          setIsPlacementMode(false);
+          setPlacementType(null);
+        }}
+      />
 
       {/* Map Container */}
       <MapContainer
@@ -688,36 +683,6 @@ export default function MapPage() {
           />
         )}
       </MapContainer>
-
-      {/* Control Bar - Top navigation */}
-      <MapControlBar
-        currentMode={currentMode}
-        distanceFilter={distanceFilter}
-        isVisible={isVisible}
-        onModeChange={handleModeChange}
-        onDistanceChange={setDistanceFilter}
-        onVisibilityToggle={handleVisibilityToggle}
-        onMyLocation={handleCenterOnUser}
-      />
-
-      {/* Big Central Presence Button */}
-      <PresenceButton
-        isPlacementMode={isPlacementMode}
-        placementType={placementType}
-        onImHere={handleDropPin}
-        onPlaceManually={() => {
-          setPlacementType('here');
-          setIsPlacementMode(true);
-        }}
-        onHeadingThere={() => {
-          setPlacementType('heading');
-          setIsPlacementMode(true);
-        }}
-        onCancelPlacement={() => {
-          setIsPlacementMode(false);
-          setPlacementType(null);
-        }}
-      />
 
       {/* Success Toast */}
       {pinCreationSuccess && (

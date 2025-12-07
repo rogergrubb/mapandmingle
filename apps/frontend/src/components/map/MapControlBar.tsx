@@ -11,11 +11,7 @@ export type CampusFilter = 'all' | 'campus' | 'global';
 
 interface MapControlBarProps {
   currentMode: MingleMode;
-  distanceFilter: DistanceFilter;
-  isVisible: boolean;
   onModeChange: (mode: MingleMode) => void;
-  onDistanceChange: (distance: DistanceFilter) => void;
-  onVisibilityToggle: () => void;
   onMyLocation: () => void;
 }
 
@@ -60,9 +56,7 @@ const modeConfig = {
 
 export function MapControlBar({
   currentMode,
-  isVisible,
   onModeChange,
-  onVisibilityToggle,
   onMyLocation,
 }: MapControlBarProps) {
   const [showModeSelector, setShowModeSelector] = useState(false);
@@ -80,62 +74,44 @@ export function MapControlBar({
         />
       )}
 
-      {/* Top Control Bar */}
+      {/* ROW 1 - Top Controls: Mode + My Location + Profile */}
       <div className="absolute top-4 left-4 right-4 z-[1000]">
-        <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center justify-between">
           
           {/* Left: My Location + Mode Selector */}
           <div className="flex items-center gap-2">
             {/* My Location Button */}
             <button
               onClick={onMyLocation}
-              className="w-11 h-11 rounded-full bg-white/95 backdrop-blur-xl shadow-lg flex items-center justify-center hover:shadow-xl transition-all hover:scale-105 active:scale-95"
+              className="w-10 h-10 rounded-full bg-white/95 backdrop-blur-xl shadow-lg flex items-center justify-center hover:shadow-xl transition-all hover:scale-105 active:scale-95"
             >
-              <Locate size={20} className="text-blue-600" />
+              <Locate size={18} className="text-blue-600" />
             </button>
 
             {/* Mode Selector */}
             <button
               onClick={() => setShowModeSelector(!showModeSelector)}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-full bg-gradient-to-r ${config.color} text-white font-semibold shadow-lg hover:shadow-xl transition-all hover:scale-[1.02] active:scale-[0.98]`}
+              className={`flex items-center gap-2 px-3 py-2 rounded-full bg-gradient-to-r ${config.color} text-white font-semibold shadow-lg hover:shadow-xl transition-all hover:scale-[1.02] active:scale-[0.98]`}
             >
-              <ModeIcon size={18} />
-              <span className="hidden sm:inline">{config.shortLabel}</span>
+              <ModeIcon size={16} />
+              <span className="text-sm">{config.shortLabel}</span>
               <ChevronDown size={14} className={`transition-transform ${showModeSelector ? 'rotate-180' : ''}`} />
             </button>
           </div>
 
-          {/* Center: Visibility Toggle */}
-          <button
-            onClick={onVisibilityToggle}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-full font-semibold shadow-lg transition-all hover:scale-[1.02] active:scale-[0.98] ${
-              isVisible 
-                ? 'bg-gradient-to-r from-green-400 to-emerald-500 text-white' 
-                : 'bg-gray-800 text-gray-300'
-            }`}
-          >
-            <span className="relative flex h-2.5 w-2.5">
-              {isVisible && (
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
-              )}
-              <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${isVisible ? 'bg-white' : 'bg-gray-500'}`}></span>
-            </span>
-            <span className="text-sm">{isVisible ? 'Visible' : 'Hidden'}</span>
-          </button>
-
           {/* Right: Profile */}
           <Link
             to="/profile"
-            className="w-11 h-11 rounded-full bg-white/95 backdrop-blur-xl shadow-lg flex items-center justify-center hover:shadow-xl transition-all hover:scale-105"
+            className="w-10 h-10 rounded-full bg-white/95 backdrop-blur-xl shadow-lg flex items-center justify-center hover:shadow-xl transition-all hover:scale-105"
           >
-            <User size={20} className="text-gray-700" />
+            <User size={18} className="text-gray-700" />
           </Link>
         </div>
       </div>
 
       {/* Mode Selector Dropdown */}
       {showModeSelector && (
-        <div className="absolute top-16 left-16 z-[1002] bg-white rounded-2xl shadow-2xl p-2 min-w-[200px] animate-in fade-in slide-in-from-top-2 duration-200">
+        <div className="absolute top-14 left-14 z-[1002] bg-white rounded-2xl shadow-2xl p-2 min-w-[180px] animate-in fade-in slide-in-from-top-2 duration-200">
           {(Object.keys(modeConfig) as MingleMode[]).map((mode) => {
             const cfg = modeConfig[mode];
             const Icon = cfg.icon;
@@ -148,17 +124,14 @@ export function MapControlBar({
                   onModeChange(mode);
                   setShowModeSelector(false);
                 }}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all ${
                   isActive 
                     ? `bg-gradient-to-r ${cfg.color} text-white` 
                     : 'hover:bg-gray-50 text-gray-700'
                 }`}
               >
-                <Icon size={20} />
-                <span className="font-medium">{cfg.label}</span>
-                {isActive && (
-                  <span className="ml-auto text-xs bg-white/20 px-2 py-0.5 rounded-full">Active</span>
-                )}
+                <Icon size={18} />
+                <span className="font-medium text-sm">{cfg.label}</span>
               </button>
             );
           })}
