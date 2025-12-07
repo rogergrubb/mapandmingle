@@ -2,10 +2,10 @@ import { useState } from 'react';
 import { 
   Heart, Users, Briefcase, Calendar, Plane, 
   MapPin, Filter, X, ChevronDown, Sparkles,
-  Eye, EyeOff, Search
+  Eye, EyeOff, Search, Globe
 } from 'lucide-react';
 
-export type MingleMode = 'dating' | 'friends' | 'networking' | 'events' | 'travel';
+export type MingleMode = 'everybody' | 'dating' | 'friends' | 'networking' | 'events' | 'travel';
 export type DistanceFilter = 'nearby' | 'walking' | 'city' | 'anywhere';
 
 interface MapControlBarProps {
@@ -20,6 +20,15 @@ interface MapControlBarProps {
 }
 
 const modeConfig = {
+  everybody: { 
+    icon: Globe, 
+    label: 'Everybody', 
+    color: 'from-gray-600 to-gray-800',
+    bgColor: 'bg-gray-600',
+    lightBg: 'bg-gray-50',
+    textColor: 'text-gray-700',
+    description: 'See all users on the map'
+  },
   dating: { 
     icon: Heart, 
     label: 'Dating', 
