@@ -134,11 +134,25 @@ export const useCallStore = create<CallState>((set, get) => ({
       }, 60000);
 
     } catch (error: any) {
-      const errorMessage = error.response?.data?.error || error.message || 'Unknown error';
-      console.error('Failed to initiate call:', errorMessage, error.response?.data);
-      alert(`Could not start call: ${errorMessage}`);
+      const errorData = error.response?.data;
+      const errorMessage = errorData?.error || error.message || 'Unknown error';
+      
+      // Check if user is offline
+      if (errorData?.offline) {
+        const lastActive = errorData.lastActive 
+          ? new Date(errorData.lastActive).toLocaleString() 
+          : 'unknown';
+        alert(`${get().remoteUserName || 'This user'} is currently offline.\n\nLast active: ${lastActive}`);
+      } else if (errorMessage === 'Cannot call yourself') {
+        alert('You cannot call yourself');
+      } else if (errorMessage === 'User is not available for calls') {
+        alert(`${get().remoteUserName || 'This user'} is not accepting calls right now.`);
+      } else {
+        alert(`Could not start call: ${errorMessage}`);
+      }
+      
+      console.error('Failed to initiate call:', errorMessage, errorData);
       get().reset();
-      throw error;
     }
   },
 

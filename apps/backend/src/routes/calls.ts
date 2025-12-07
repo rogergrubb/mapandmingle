@@ -72,11 +72,41 @@ calls.post('/initiate', async (c) => {
     return c.json({ error: 'Cannot call yourself' }, 400);
   }
   
-  // Check if callee exists
+  // Check if callee exists and get their online status
   const callee = await prisma.user.findUnique({
     where: { id: calleeId },
-    select: { id: true, name: true },
+    select: { 
+      id: true, 
+      name: true,
+      lastActiveAt: true,
+      profile: {
+        select: {
+          ghostMode: true,
+        }
+      }
+    },
   });
+  
+  if (!callee) {
+    return c.json({ error: 'User not found' }, 404);
+  }
+  
+  // Check if user is in ghost mode (not accepting interactions)
+  if (callee.profile?.ghostMode) {
+    return c.json({ error: 'User is not available for calls' }, 403);
+  }
+  
+  // Check if user is online (active in last 5 minutes)
+  const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+  const isOnline = callee.lastActiveAt && new Date(callee.lastActiveAt) > fiveMinutesAgo;
+  
+  if (!isOnline) {
+    return c.json({ 
+      error: 'User is currently offline',
+      offline: true,
+      lastActive: callee.lastActiveAt,
+    }, 400);
+  }
   
   if (!callee) {
     return c.json({ error: 'User not found' }, 404);
