@@ -21,6 +21,8 @@ const createEventSchema = z.object({
   endTime: z.string().optional().nullable(),
   maxAttendees: z.number().min(2).max(500).optional().nullable(),
   capacity: z.number().optional().nullable(),
+  // Campus Layer
+  schoolAffiliation: z.string().optional().nullable(),
   // Additional fields from frontend
   locationType: z.string().optional(),
   virtualLink: z.string().optional(),
@@ -42,6 +44,7 @@ eventRoutes.get('/', async (c) => {
     const lng = parseFloat(c.req.query('longitude') || '0');
     const radius = parseFloat(c.req.query('radius') || '50');
     const category = c.req.query('category');
+    const school = c.req.query('school'); // Campus filter
     
     const now = new Date();
     
@@ -51,6 +54,11 @@ eventRoutes.get('/', async (c) => {
     
     if (category && category !== 'all') {
       where.category = category;
+    }
+    
+    // Campus filter: show only events from user's school
+    if (school && school !== 'all') {
+      where.schoolAffiliation = school;
     }
     
     const events = await prisma.event.findMany({
@@ -78,6 +86,7 @@ eventRoutes.get('/', async (c) => {
       startTime: e.startTime.toISOString(),
       endTime: e.endTime?.toISOString(),
       maxAttendees: e.maxAttendees,
+      schoolAffiliation: e.schoolAffiliation,
       attendeeCount: e._count.attendees,
       host: e.host,
       createdAt: e.createdAt.toISOString(),
@@ -117,6 +126,7 @@ eventRoutes.post('/', authMiddleware, async (c) => {
         startTime: new Date(data.startTime),
         endTime: data.endTime ? new Date(data.endTime) : null,
         maxAttendees: data.maxAttendees || data.capacity || null,
+        schoolAffiliation: data.schoolAffiliation || null,
       },
       include: {
         host: { select: { id: true, name: true, image: true } },
@@ -188,6 +198,7 @@ eventRoutes.get('/:id', async (c) => {
       startTime: event.startTime.toISOString(),
       endTime: event.endTime?.toISOString(),
       maxAttendees: event.maxAttendees,
+      schoolAffiliation: event.schoolAffiliation,
       host: event.host,
       attendees: event.attendees.map((a) => ({
         id: a.user.id,
@@ -319,6 +330,7 @@ eventRoutes.put('/:id', authMiddleware, async (c) => {
         startTime: body.startTime ? new Date(body.startTime) : undefined,
         endTime: body.endTime ? new Date(body.endTime) : undefined,
         maxAttendees: body.maxAttendees || body.capacity,
+        schoolAffiliation: body.schoolAffiliation,
       },
       include: {
         host: { select: { id: true, name: true, image: true } },

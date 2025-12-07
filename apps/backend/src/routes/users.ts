@@ -61,6 +61,11 @@ userRoutes.get('/me', authMiddleware, async (c) => {
       trustScore: user.profile?.trustScore || 50,
       trustLevel: user.profile?.trustLevel || 'new',
       subscriptionStatus: user.profile?.subscriptionStatus || 'trial',
+      // Campus Layer fields
+      primarySchool: user.profile?.primarySchool,
+      schoolRole: user.profile?.schoolRole,
+      gradYear: user.profile?.gradYear,
+      schoolVerified: user.profile?.schoolVerified || false,
       createdAt: user.createdAt.toISOString(),
       lastActive: user.profile?.lastActiveAt?.toISOString(),
     });
@@ -147,6 +152,10 @@ userRoutes.patch('/me', authMiddleware, async (c) => {
       chatReadiness,
       visibilityMode,
       ghostMode,
+      // Campus Layer fields
+      primarySchool,
+      schoolRole,
+      gradYear,
     } = body;
 
     // Ensure user exists
@@ -177,6 +186,21 @@ userRoutes.patch('/me', authMiddleware, async (c) => {
     if (chatReadiness !== undefined) profileData.chatReadiness = chatReadiness;
     if (visibilityMode !== undefined) profileData.visibilityMode = visibilityMode;
     if (ghostMode !== undefined) profileData.ghostMode = ghostMode;
+
+    // Campus Layer fields
+    if (primarySchool !== undefined) profileData.primarySchool = primarySchool;
+    if (schoolRole !== undefined) profileData.schoolRole = schoolRole;
+    if (gradYear !== undefined) profileData.gradYear = gradYear;
+    
+    // Auto-verify if user's email is .edu domain
+    if (primarySchool && user?.email) {
+      const emailDomain = user.email.split('@')[1]?.toLowerCase() || '';
+      const eduDomains = ['.edu', '.ac.uk', '.edu.au', '.edu.cn', '.edu.in', '.ac.jp', '.edu.mx', '.edu.sg'];
+      const isEduEmail = eduDomains.some(d => emailDomain.endsWith(d));
+      if (isEduEmail) {
+        profileData.schoolVerified = true;
+      }
+    }
 
     // Update or create profile
     if (user.profile) {
@@ -235,6 +259,11 @@ userRoutes.patch('/me', authMiddleware, async (c) => {
       trustScore: updatedUser!.profile?.trustScore || 50,
       trustLevel: updatedUser!.profile?.trustLevel || 'new',
       subscriptionStatus: updatedUser!.profile?.subscriptionStatus || 'trial',
+      // Campus Layer fields
+      primarySchool: updatedUser!.profile?.primarySchool,
+      schoolRole: updatedUser!.profile?.schoolRole,
+      gradYear: updatedUser!.profile?.gradYear,
+      schoolVerified: updatedUser!.profile?.schoolVerified || false,
       createdAt: updatedUser!.createdAt.toISOString(),
       lastActive: updatedUser!.profile?.lastActiveAt?.toISOString(),
     });
@@ -734,6 +763,90 @@ userRoutes.post('/:id/wave', async (c) => {
   } catch (error) {
     console.error('Error waving:', error);
     return c.json({ error: 'Failed to wave' }, 500);
+  }
+});
+
+// ============================================================================
+// CAMPUS LAYER ENDPOINTS
+// ============================================================================
+
+// GET /api/users/campus/stats - Get campus activity stats
+userRoutes.get('/campus/stats', authMiddleware, async (c) => {
+  try {
+    const userId = c.get('userId');
+    if (!userId) {
+      return c.json({ error: 'Unauthorized' }, 401);
+    }
+
+    // Get user's school
+    const profile = await prisma.profile.findUnique({
+      where: { userId },
+      select: { primarySchool: true },
+    });
+
+    if (!profile?.primarySchool) {
+      return c.json({ error: 'No school set' }, 400);
+    }
+
+    const school = profile.primarySchool;
+
+    // Count users at same school
+    const usersAtSchool = await prisma.profile.count({
+      where: { primarySchool: school },
+    });
+
+    // Count events at school
+    const eventsAtSchool = await prisma.event.count({
+      where: { schoolAffiliation: school },
+    });
+
+    // Count active users (active in last 7 days)
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const activeUsers = await prisma.profile.count({
+      where: {
+        primarySchool: school,
+        lastActiveAt: { gte: sevenDaysAgo },
+      },
+    });
+
+    return c.json({
+      school,
+      stats: {
+        totalMembers: usersAtSchool,
+        activeMembers: activeUsers,
+        upcomingEvents: eventsAtSchool,
+      },
+    });
+  } catch (error) {
+    console.error('Error fetching campus stats:', error);
+    return c.json({ error: 'Failed to fetch campus stats' }, 500);
+  }
+});
+
+// GET /api/users/campus/list - List schools with user counts
+userRoutes.get('/campus/list', async (c) => {
+  try {
+    const limit = parseInt(c.req.query('limit') || '50');
+
+    // Get schools with user counts using raw query
+    const schools = await prisma.$queryRaw`
+      SELECT "primarySchool" as name, COUNT(*) as count
+      FROM "Profile"
+      WHERE "primarySchool" IS NOT NULL AND "primarySchool" != ''
+      GROUP BY "primarySchool"
+      ORDER BY count DESC
+      LIMIT ${limit}
+    ` as { name: string; count: bigint }[];
+
+    return c.json({
+      schools: schools.map(s => ({
+        name: s.name,
+        memberCount: Number(s.count),
+      })),
+    });
+  } catch (error) {
+    console.error('Error listing schools:', error);
+    return c.json({ error: 'Failed to list schools' }, 500);
   }
 });
 

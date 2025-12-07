@@ -600,6 +600,34 @@ async function runMigrations() {
       ADD COLUMN IF NOT EXISTS "languages" TEXT;
     `).catch(() => {});
     
+    // ========== CAMPUS LAYER MIGRATIONS ==========
+    // Profile fields for school affiliation
+    await prisma.$executeRawUnsafe(`
+      ALTER TABLE "Profile" 
+      ADD COLUMN IF NOT EXISTS "primarySchool" TEXT;
+    `).catch(() => {});
+    
+    await prisma.$executeRawUnsafe(`
+      ALTER TABLE "Profile" 
+      ADD COLUMN IF NOT EXISTS "schoolRole" TEXT;
+    `).catch(() => {});
+    
+    await prisma.$executeRawUnsafe(`
+      ALTER TABLE "Profile" 
+      ADD COLUMN IF NOT EXISTS "gradYear" INTEGER;
+    `).catch(() => {});
+    
+    await prisma.$executeRawUnsafe(`
+      ALTER TABLE "Profile" 
+      ADD COLUMN IF NOT EXISTS "schoolVerified" BOOLEAN DEFAULT false;
+    `).catch(() => {});
+    
+    // Event field for campus events
+    await prisma.$executeRawUnsafe(`
+      ALTER TABLE "Event" 
+      ADD COLUMN IF NOT EXISTS "schoolAffiliation" TEXT;
+    `).catch(() => {});
+    
     console.log('✅ Database migrations complete');
   } catch (error) {
     console.error('⚠️ Migration error (non-fatal):', error);

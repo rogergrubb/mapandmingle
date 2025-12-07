@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Camera, ArrowLeft, Loader2, Check, Plus, X } from 'lucide-react';
+import { Camera, ArrowLeft, Loader2, Check, Plus, X, GraduationCap, BadgeCheck } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
 import api from '../../lib/api';
 
@@ -8,6 +8,24 @@ const INTERESTS_OPTIONS = [
   'Hiking', 'Coffee', 'Food', 'Music', 'Art', 'Sports', 'Gaming',
   'Reading', 'Travel', 'Photography', 'Fitness', 'Yoga', 'Dancing',
   'Movies', 'Cooking', 'Pets', 'Tech', 'Fashion', 'Nightlife', 'Volunteering'
+];
+
+const POPULAR_SCHOOLS = [
+  'MIT', 'Stanford University', 'Harvard University', 'UC Berkeley',
+  'UCLA', 'Yale University', 'Princeton University', 'Columbia University',
+  'University of Michigan', 'NYU', 'University of Texas at Austin',
+  'Georgia Tech', 'University of Washington', 'USC', 'Duke University',
+  'Northwestern University', 'Cornell University', 'University of Chicago',
+  'Penn State', 'Ohio State University', 'University of Florida',
+  'Arizona State University', 'Boston University', 'Purdue University'
+];
+
+const SCHOOL_ROLES = [
+  { value: 'student', label: 'Student' },
+  { value: 'faculty', label: 'Faculty' },
+  { value: 'staff', label: 'Staff' },
+  { value: 'alum', label: 'Alumni' },
+  { value: 'parent', label: 'Parent' },
 ];
 
 export default function EditProfile() {
@@ -18,13 +36,34 @@ export default function EditProfile() {
   const [loading, setLoading] = useState(false);
   const [saved, setSaved] = useState(false);
   const [customInterestsInput, setCustomInterestsInput] = useState('');
+  const [schoolSearch, setSchoolSearch] = useState('');
+  const [showSchoolDropdown, setShowSchoolDropdown] = useState(false);
   const [formData, setFormData] = useState({
     displayName: user?.displayName || '',
     username: user?.username || '',
     bio: user?.bio || '',
     interests: user?.interests || [],
     avatar: user?.avatar || '',
+    // Campus fields
+    primarySchool: (user as any)?.primarySchool || '',
+    schoolRole: (user as any)?.schoolRole || '',
+    gradYear: (user as any)?.gradYear || null,
   });
+
+  // Generate graduation years (current year - 10 to current year + 6)
+  const currentYear = new Date().getFullYear();
+  const gradYears = Array.from({ length: 17 }, (_, i) => currentYear - 10 + i);
+
+  // Filter schools based on search
+  const filteredSchools = POPULAR_SCHOOLS.filter(school =>
+    school.toLowerCase().includes(schoolSearch.toLowerCase())
+  );
+
+  const selectSchool = (school: string) => {
+    setFormData(prev => ({ ...prev, primarySchool: school }));
+    setSchoolSearch('');
+    setShowSchoolDropdown(false);
+  };
 
   // Separate preset interests from custom ones
   const customInterests = formData.interests.filter(i => !INTERESTS_OPTIONS.includes(i));
@@ -243,6 +282,119 @@ export default function EditProfile() {
                 />
                 <p className="text-xs text-gray-400 text-right">{formData.bio.length}/500</p>
               </div>
+            </div>
+          </div>
+
+          {/* Campus Community Section */}
+          <div 
+            className="bg-white/80 backdrop-blur-sm rounded-3xl p-8 shadow-sm shadow-gray-200/50 
+                       border border-white/50 transform transition-all duration-500 hover:shadow-lg"
+          >
+            <div className="flex items-center gap-3 mb-2">
+              <GraduationCap className="w-5 h-5 text-purple-600" />
+              <h2 className="text-lg font-semibold text-gray-900">Campus Community</h2>
+              {(user as any)?.schoolVerified && (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-xs font-medium">
+                  <BadgeCheck className="w-3 h-3" />
+                  Verified
+                </span>
+              )}
+            </div>
+            <p className="text-sm text-gray-500 mb-6">
+              Connect with your school community and find campus events
+            </p>
+
+            <div className="space-y-5">
+              {/* School Selection */}
+              <div className="space-y-2 relative">
+                <label className="block text-sm font-medium text-gray-600">School / University</label>
+                <input
+                  type="text"
+                  value={formData.primarySchool || schoolSearch}
+                  onChange={(e) => {
+                    setSchoolSearch(e.target.value);
+                    setFormData(prev => ({ ...prev, primarySchool: e.target.value }));
+                    setShowSchoolDropdown(true);
+                  }}
+                  onFocus={() => setShowSchoolDropdown(true)}
+                  className="w-full px-4 py-3 bg-gray-50/80 border border-gray-200/80 rounded-xl 
+                             focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-400
+                             focus:bg-white transition-all duration-300 text-gray-900 placeholder-gray-400"
+                  placeholder="Search for your school..."
+                />
+                
+                {/* School Dropdown */}
+                {showSchoolDropdown && (schoolSearch || formData.primarySchool) && filteredSchools.length > 0 && (
+                  <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-48 overflow-y-auto z-10">
+                    {filteredSchools.slice(0, 8).map((school) => (
+                      <button
+                        key={school}
+                        onClick={() => selectSchool(school)}
+                        className="w-full px-4 py-2.5 text-left hover:bg-purple-50 text-gray-700 text-sm
+                                   transition-colors duration-150 first:rounded-t-xl last:rounded-b-xl"
+                      >
+                        {school}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <p className="text-xs text-gray-400">
+                  Type your school name or select from popular options
+                </p>
+              </div>
+
+              {/* Role Selection */}
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-600">Your Role</label>
+                <div className="flex flex-wrap gap-2">
+                  {SCHOOL_ROLES.map((role) => (
+                    <button
+                      key={role.value}
+                      onClick={() => setFormData(prev => ({ ...prev, schoolRole: role.value }))}
+                      className={`px-4 py-2 rounded-full font-medium text-sm transition-all duration-300 active:scale-95
+                        ${formData.schoolRole === role.value
+                          ? 'bg-gradient-to-r from-purple-500 to-indigo-600 text-white shadow-md shadow-purple-500/25'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200 hover:shadow-sm'
+                        }`}
+                    >
+                      {role.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Graduation Year - only for students and alumni */}
+              {(formData.schoolRole === 'student' || formData.schoolRole === 'alum') && (
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-600">
+                    {formData.schoolRole === 'student' ? 'Expected Graduation Year' : 'Graduation Year'}
+                  </label>
+                  <select
+                    value={formData.gradYear || ''}
+                    onChange={(e) => setFormData(prev => ({ 
+                      ...prev, 
+                      gradYear: e.target.value ? parseInt(e.target.value) : null 
+                    }))}
+                    className="w-full px-4 py-3 bg-gray-50/80 border border-gray-200/80 rounded-xl 
+                               focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-400
+                               focus:bg-white transition-all duration-300 text-gray-900 appearance-none"
+                  >
+                    <option value="">Select year...</option>
+                    {gradYears.map((year) => (
+                      <option key={year} value={year}>{year}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {/* Verification Notice */}
+              {formData.primarySchool && !(user as any)?.schoolVerified && (
+                <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                  <p className="text-sm text-blue-700">
+                    💡 <strong>Tip:</strong> Sign up with your .edu email to get verified and unlock campus-only events!
+                  </p>
+                </div>
+              )}
             </div>
           </div>
 

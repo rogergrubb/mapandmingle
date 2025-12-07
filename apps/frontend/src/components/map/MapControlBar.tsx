@@ -2,20 +2,24 @@ import { useState } from 'react';
 import { 
   Heart, Users, Briefcase, Calendar, Plane, 
   Filter, X, ChevronDown, Sparkles,
-  Eye, EyeOff, Search, Globe, Bell, User
+  Eye, EyeOff, Search, Globe, Bell, User, GraduationCap
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export type MingleMode = 'everybody' | 'dating' | 'friends' | 'networking' | 'events' | 'travel';
 export type DistanceFilter = 'nearby' | 'walking' | 'city' | 'anywhere';
+export type CampusFilter = 'all' | 'campus' | 'global';
 
 interface MapControlBarProps {
   currentMode: MingleMode;
   distanceFilter: DistanceFilter;
+  campusFilter?: CampusFilter;
+  userSchool?: string;
   isVisible: boolean;
   peopleCount: number;
   onModeChange: (mode: MingleMode) => void;
   onDistanceChange: (distance: DistanceFilter) => void;
+  onCampusChange?: (campus: CampusFilter) => void;
   onVisibilityToggle: () => void;
   onSearch: () => void;
 }
@@ -93,10 +97,13 @@ const distanceOptions = [
 export function MapControlBar({
   currentMode,
   distanceFilter,
+  campusFilter = 'all',
+  userSchool,
   isVisible,
   peopleCount,
   onModeChange,
   onDistanceChange,
+  onCampusChange,
   onVisibilityToggle,
   onSearch,
 }: MapControlBarProps) {
@@ -105,6 +112,12 @@ export function MapControlBar({
 
   const config = modeConfig[currentMode];
   const ModeIcon = config.icon;
+
+  const campusOptions = [
+    { value: 'all' as CampusFilter, label: 'All People' },
+    { value: 'campus' as CampusFilter, label: userSchool ? `My Campus` : 'Set Your School', disabled: !userSchool },
+    { value: 'global' as CampusFilter, label: 'Global' },
+  ];
 
   return (
     <>
@@ -261,6 +274,37 @@ export function MapControlBar({
               </div>
               
               <div className="p-3 space-y-3">
+                {/* Campus Filter - Only show if user has a school set */}
+                {userSchool && onCampusChange && (
+                  <div>
+                    <label className="text-xs font-medium text-gray-700 mb-1.5 flex items-center gap-1.5">
+                      <GraduationCap size={14} className="text-purple-500" />
+                      Campus Filter
+                    </label>
+                    <div className="grid grid-cols-3 gap-1.5">
+                      {campusOptions.filter(o => !o.disabled).map((option) => {
+                        const isActive = option.value === campusFilter;
+                        return (
+                          <button
+                            key={option.value}
+                            onClick={() => onCampusChange(option.value)}
+                            className={`py-2 px-2 rounded-lg text-xs font-medium transition-all ${
+                              isActive 
+                                ? 'bg-gradient-to-r from-purple-500 to-indigo-600 text-white shadow-md' 
+                                : 'bg-gray-100 hover:bg-purple-100 hover:text-purple-700 text-gray-700'
+                            }`}
+                          >
+                            {option.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {campusFilter === 'campus' && (
+                      <p className="text-xs text-purple-600 mt-1.5">{userSchool}</p>
+                    )}
+                  </div>
+                )}
+                
                 {/* Distance Filter */}
                 <div>
                   <label className="text-xs font-medium text-gray-700 mb-1.5 block">Distance</label>

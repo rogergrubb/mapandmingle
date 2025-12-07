@@ -227,6 +227,12 @@ model Profile {
   location   String?
   languages  String? // JSON array
 
+  // Campus Layer - School Affiliation
+  primarySchool   String?   // School name
+  schoolRole      String?   // student, faculty, staff, alum, parent
+  gradYear        Int?      // Graduation year for students/alumni
+  schoolVerified  Boolean   @default(false) // True if verified via .edu email
+
   // Selective Visibility (Smart Invisibility)
   selectiveVisibilityEnabled Boolean @default(false)
   visibilityMinAge           Int?
@@ -365,6 +371,7 @@ model Event {
   startTime    DateTime
   endTime      DateTime?
   maxAttendees Int?
+  schoolAffiliation String?  // Campus events can be filtered by school
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 

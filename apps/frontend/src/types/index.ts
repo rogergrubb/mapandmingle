@@ -21,6 +21,11 @@ export interface User {
     latitude: number;
     longitude: number;
   };
+  // Campus Layer fields
+  primarySchool?: string;
+  schoolRole?: 'student' | 'faculty' | 'staff' | 'alum' | 'parent';
+  gradYear?: number;
+  schoolVerified?: boolean;
 }
 
 export interface Pin {
@@ -83,6 +88,7 @@ export interface Event {
   isAttending?: boolean;
   isPublic: boolean;
   image?: string;
+  schoolAffiliation?: string;  // Campus Layer
   createdAt: string;
 }
 
