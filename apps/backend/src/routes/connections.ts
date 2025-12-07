@@ -9,66 +9,62 @@ connections.use('*', authMiddleware);
 
 // Get all connections (friends) for current user
 connections.get('/', async (c) => {
-  const userId = c.get('userId');
+  const userId = c.get('userId') as string;
 
-  const connections = await prisma.connection.findMany({
+  const connectionsList = await prisma.connection.findMany({
     where: {
       OR: [
         { requesterId: userId, status: 'accepted' },
         { addresseeId: userId, status: 'accepted' },
       ],
     },
-    include: {
-      requester: {
-        select: {
-          id: true,
-          name: true,
-          displayName: true,
-          image: true,
-          bio: true,
-          lastActiveAt: true,
-        },
-      },
-      addressee: {
-        select: {
-          id: true,
-          name: true,
-          displayName: true,
-          image: true,
-          bio: true,
-          lastActiveAt: true,
-        },
-      },
-    },
     orderBy: { updatedAt: 'desc' },
   });
 
-  // Transform to return the "other" user in each connection
-  const friends = connections.map((conn) => {
-    const friend = conn.requesterId === userId ? conn.addressee : conn.requester;
-    return {
-      connectionId: conn.id,
-      metAt: conn.metAt,
-      metLocation: conn.metLocation,
-      connectedAt: conn.updatedAt,
-      user: friend,
-    };
-  });
+  // Fetch user details for each connection
+  const friends = await Promise.all(
+    connectionsList.map(async (conn) => {
+      const friendId = conn.requesterId === userId ? conn.addresseeId : conn.requesterId;
+      const friend = await prisma.user.findUnique({
+        where: { id: friendId },
+        select: {
+          id: true,
+          name: true,
+          displayName: true,
+          image: true,
+          bio: true,
+          lastActiveAt: true,
+        },
+      });
+      return {
+        connectionId: conn.id,
+        metAt: conn.metAt,
+        metLocation: conn.metLocation,
+        connectedAt: conn.updatedAt,
+        user: friend,
+      };
+    })
+  );
 
-  return c.json({ connections: friends });
+  return c.json({ connections: friends.filter(f => f.user) });
 });
 
 // Get pending connection requests (received)
 connections.get('/requests', async (c) => {
-  const userId = c.get('userId');
+  const userId = c.get('userId') as string;
 
-  const requests = await prisma.connection.findMany({
+  const requestsList = await prisma.connection.findMany({
     where: {
       addresseeId: userId,
       status: 'pending',
     },
-    include: {
-      requester: {
+    orderBy: { createdAt: 'desc' },
+  });
+
+  const requests = await Promise.all(
+    requestsList.map(async (r) => {
+      const requester = await prisma.user.findUnique({
+        where: { id: r.requesterId },
         select: {
           id: true,
           name: true,
@@ -76,33 +72,36 @@ connections.get('/requests', async (c) => {
           image: true,
           bio: true,
         },
-      },
-    },
-    orderBy: { createdAt: 'desc' },
-  });
+      });
+      return {
+        connectionId: r.id,
+        metAt: r.metAt,
+        metLocation: r.metLocation,
+        requestedAt: r.createdAt,
+        user: requester,
+      };
+    })
+  );
 
-  return c.json({
-    requests: requests.map((r) => ({
-      connectionId: r.id,
-      metAt: r.metAt,
-      metLocation: r.metLocation,
-      requestedAt: r.createdAt,
-      user: r.requester,
-    })),
-  });
+  return c.json({ requests: requests.filter(r => r.user) });
 });
 
 // Get sent connection requests (pending)
 connections.get('/sent', async (c) => {
-  const userId = c.get('userId');
+  const userId = c.get('userId') as string;
 
-  const sent = await prisma.connection.findMany({
+  const sentList = await prisma.connection.findMany({
     where: {
       requesterId: userId,
       status: 'pending',
     },
-    include: {
-      addressee: {
+    orderBy: { createdAt: 'desc' },
+  });
+
+  const sent = await Promise.all(
+    sentList.map(async (s) => {
+      const addressee = await prisma.user.findUnique({
+        where: { id: s.addresseeId },
         select: {
           id: true,
           name: true,
@@ -110,23 +109,21 @@ connections.get('/sent', async (c) => {
           image: true,
           bio: true,
         },
-      },
-    },
-    orderBy: { createdAt: 'desc' },
-  });
+      });
+      return {
+        connectionId: s.id,
+        requestedAt: s.createdAt,
+        user: addressee,
+      };
+    })
+  );
 
-  return c.json({
-    sent: sent.map((s) => ({
-      connectionId: s.id,
-      requestedAt: s.createdAt,
-      user: s.addressee,
-    })),
-  });
+  return c.json({ sent: sent.filter(s => s.user) });
 });
 
 // Check connection status with a specific user
 connections.get('/status/:userId', async (c) => {
-  const currentUserId = c.get('userId');
+  const currentUserId = c.get('userId') as string;
   const targetUserId = c.req.param('userId');
 
   const connection = await prisma.connection.findFirst({
@@ -155,7 +152,7 @@ connections.get('/status/:userId', async (c) => {
 
 // Send a connection request
 connections.post('/request', async (c) => {
-  const requesterId = c.get('userId');
+  const requesterId = c.get('userId') as string;
   const { addresseeId, metAt, metLocation } = await c.req.json();
 
   if (!addresseeId) {
@@ -196,12 +193,12 @@ connections.post('/request', async (c) => {
     }
   }
 
-  // Check if user is blocked
+  // Check if user is blocked (using Block model with blockedUserId field)
   const blocked = await prisma.block.findFirst({
     where: {
       OR: [
-        { blockerId: requesterId, blockedId: addresseeId },
-        { blockerId: addresseeId, blockedId: requesterId },
+        { blockerId: requesterId, blockedUserId: addresseeId },
+        { blockerId: addresseeId, blockedUserId: requesterId },
       ],
     },
   });
@@ -225,7 +222,7 @@ connections.post('/request', async (c) => {
 
 // Accept a connection request
 connections.post('/:id/accept', async (c) => {
-  const userId = c.get('userId');
+  const userId = c.get('userId') as string;
   const connectionId = c.req.param('id');
 
   const connection = await prisma.connection.findUnique({
@@ -254,7 +251,7 @@ connections.post('/:id/accept', async (c) => {
 
 // Decline a connection request
 connections.post('/:id/decline', async (c) => {
-  const userId = c.get('userId');
+  const userId = c.get('userId') as string;
   const connectionId = c.req.param('id');
 
   const connection = await prisma.connection.findUnique({
@@ -278,7 +275,7 @@ connections.post('/:id/decline', async (c) => {
 
 // Remove a connection (unfriend)
 connections.delete('/:id', async (c) => {
-  const userId = c.get('userId');
+  const userId = c.get('userId') as string;
   const connectionId = c.req.param('id');
 
   const connection = await prisma.connection.findUnique({
@@ -302,7 +299,7 @@ connections.delete('/:id', async (c) => {
 
 // Cancel a sent request
 connections.delete('/request/:id', async (c) => {
-  const userId = c.get('userId');
+  const userId = c.get('userId') as string;
   const connectionId = c.req.param('id');
 
   const connection = await prisma.connection.findUnique({
