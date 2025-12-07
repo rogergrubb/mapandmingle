@@ -9,6 +9,7 @@ interface PresenceBarProps {
   onHeadingThere: () => void;
   onCancelPlacement: () => void;
   hasGPS: boolean;
+  gpsAccuracyPoor?: boolean;
 }
 
 export function PresenceBar({
@@ -19,11 +20,12 @@ export function PresenceBar({
   onHeadingThere,
   onCancelPlacement,
   hasGPS,
+  gpsAccuracyPoor,
 }: PresenceBarProps) {
   const [isExpanded, setIsExpanded] = useState(false);
 
   const handleImHere = () => {
-    if (hasGPS) {
+    if (hasGPS && !gpsAccuracyPoor) {
       onImHere();
     } else {
       onImHereManual();
@@ -38,93 +40,119 @@ export function PresenceBar({
 
   // Placement mode - show cancel bar
   if (isPlacementMode) {
+    const isGPSFallback = placementType === 'here' && !hasGPS;
     return (
-      <div className="absolute top-36 left-4 right-4 z-[1000]">
+      <div className="absolute top-[124px] left-4 right-4 z-[1000]">
         {/* Instruction Banner */}
         <div 
-          className={`mb-3 text-white px-5 py-3 rounded-2xl shadow-xl text-center ${
+          className={`mb-2 text-white px-4 py-2.5 rounded-xl shadow-lg text-center text-sm ${
             placementType === 'here' ? 'bg-pink-600' : 'bg-purple-600'
           }`}
         >
-          <div className="font-semibold">Tap anywhere on the map</div>
-          <div className={`text-sm ${placementType === 'here' ? 'text-pink-200' : 'text-purple-200'}`}>
-            {placementType === 'here' ? 'to mark your current spot' : 'to mark where you\'re heading'}
+          <div className="font-semibold">
+            {isGPSFallback 
+              ? "We couldn't get your location" 
+              : placementType === 'here' 
+                ? 'Tap to mark your spot' 
+                : 'Tap anywhere on the map'}
+          </div>
+          <div className={`text-xs ${placementType === 'here' ? 'text-pink-200' : 'text-purple-200'}`}>
+            {isGPSFallback 
+              ? 'Tap the map to place your pin'
+              : placementType === 'here' 
+                ? 'Choose your location manually' 
+                : 'Mark where you\'re heading'}
           </div>
         </div>
 
         {/* Cancel Button */}
         <button
           onClick={onCancelPlacement}
-          className="w-full flex items-center justify-center gap-2 px-6 py-4 bg-gray-800 text-white font-semibold rounded-full shadow-lg hover:bg-gray-700 transition-all active:scale-[0.98]"
+          className="w-full flex items-center justify-center gap-2 px-5 py-3 bg-gray-700 text-white text-sm font-semibold rounded-full shadow-md hover:bg-gray-600 transition-all active:scale-[0.98]"
         >
-          <X size={20} />
-          <span>Cancel placement</span>
+          <X size={16} />
+          <span>Cancel</span>
         </button>
       </div>
     );
   }
 
   return (
-    <div className="absolute top-36 left-4 right-4 z-[1000]">
+    <div className="absolute top-[124px] left-4 right-4 z-[1000]">
       {/* Collapsed State - Main Presence Bar */}
       {!isExpanded ? (
         <button
           onClick={() => setIsExpanded(true)}
-          className="relative w-full flex items-center justify-center gap-3 px-6 py-4 rounded-full shadow-xl hover:shadow-2xl transition-all active:scale-[0.98] overflow-hidden"
+          className="presence-bar relative w-full flex items-center justify-between px-5 py-3 rounded-full shadow-xl transition-all active:scale-[0.98] hover:translate-y-[-1px] hover:shadow-2xl overflow-hidden group"
           style={{
-            background: 'linear-gradient(135deg, #ec4899 0%, #8b5cf6 100%)',
+            background: 'linear-gradient(135deg, #ec4899 0%, #a855f7 50%, #8b5cf6 100%)',
+            boxShadow: '0 8px 24px rgba(168, 85, 247, 0.35), 0 0 16px rgba(236, 72, 153, 0.08)',
           }}
         >
-          {/* Subtle pulse animation */}
+          {/* Ambient glow layer */}
           <div 
-            className="absolute inset-0 rounded-full pointer-events-none"
+            className="absolute inset-0 rounded-full pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity"
             style={{
-              background: 'linear-gradient(135deg, #ec4899 0%, #8b5cf6 100%)',
-              animation: 'presenceBarPulse 6s ease-in-out infinite',
+              background: 'linear-gradient(135deg, #f472b6 0%, #c084fc 50%, #a78bfa 100%)',
             }}
           />
           
-          <MapPin size={22} className="text-white relative z-10" />
-          <span className="text-white font-bold text-[16px] relative z-10">Drop Your Presence</span>
-          <ChevronDown size={18} className="text-white/80 relative z-10" />
+          {/* Pulse animation layer */}
+          <div 
+            className="absolute inset-0 rounded-full pointer-events-none"
+            style={{
+              background: 'linear-gradient(135deg, #ec4899 0%, #a855f7 50%, #8b5cf6 100%)',
+              animation: 'presenceBarPulse 8s ease-out infinite',
+            }}
+          />
+          
+          {/* Content */}
+          <div className="flex items-center gap-2.5 relative z-10 pl-1">
+            <MapPin size={20} className="text-white" />
+            <span className="text-white font-bold text-[15px] tracking-tight">Drop Your Presence</span>
+          </div>
+          <ChevronDown size={16} className="text-white/70 relative z-10 mr-1" />
         </button>
       ) : (
         /* Expanded State - Action Selection */
         <div 
-          className="bg-white/95 backdrop-blur-xl rounded-3xl shadow-2xl p-4"
+          className="bg-white rounded-2xl shadow-xl overflow-hidden"
           style={{
             animation: 'expandDown 0.2s ease-out forwards',
+            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.12)',
           }}
         >
-          {/* Header */}
+          {/* Header - Collapsed bar style */}
           <button
             onClick={() => setIsExpanded(false)}
-            className="w-full flex items-center justify-center gap-3 px-4 py-2 mb-3"
+            className="w-full flex items-center justify-between px-5 py-3 bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500"
           >
-            <MapPin size={20} className="text-purple-600" />
-            <span className="text-gray-800 font-bold">Drop Your Presence</span>
-            <ChevronDown size={18} className="text-gray-400 rotate-180" />
+            <div className="flex items-center gap-2.5 pl-1">
+              <MapPin size={18} className="text-white" />
+              <span className="text-white font-bold text-sm">Drop Your Presence</span>
+            </div>
+            <ChevronDown size={16} className="text-white/70 rotate-180 mr-1" />
           </button>
 
           {/* Action Chips */}
-          <div className="flex gap-3">
+          <div className="flex gap-2.5 p-3">
             {/* I'm Here */}
             <button
               onClick={handleImHere}
-              className="flex-1 flex items-center gap-3 p-4 bg-gradient-to-br from-pink-50 to-rose-50 rounded-2xl shadow-md hover:shadow-lg transition-all hover:scale-[1.02] active:scale-[0.98] border border-pink-100"
+              className="flex-1 flex items-center gap-2.5 p-3 bg-gradient-to-br from-pink-50 to-rose-50 rounded-2xl shadow-sm hover:shadow-md transition-all hover:scale-[1.02] active:scale-[0.98] border border-pink-100/50"
               style={{
-                animation: 'slideUp 0.2s ease-out forwards',
-                animationDelay: '50ms',
+                animation: 'chipSlideUp 0.18s ease-out forwards',
+                animationDelay: '60ms',
                 opacity: 0,
               }}
             >
-              <div className="w-12 h-12 bg-gradient-to-br from-pink-500 to-rose-500 rounded-full flex items-center justify-center shadow-lg flex-shrink-0">
-                <MapPin size={24} className="text-white" />
+              <div className="w-10 h-10 bg-gradient-to-br from-pink-500 to-rose-500 rounded-xl flex items-center justify-center shadow-md flex-shrink-0">
+                <MapPin size={20} className="text-white" />
               </div>
               <div className="text-left">
-                <div className="font-bold text-gray-900">I'm Here</div>
-                <div className="text-xs text-gray-500">
-                  {hasGPS ? 'Use my location' : 'Tap to place'}
+                <div className="font-bold text-gray-900 text-sm">I'm Here</div>
+                <div className="text-[11px] text-gray-500">
+                  {hasGPS && !gpsAccuracyPoor ? 'Use GPS' : 'Tap to place'}
                 </div>
               </div>
             </button>
@@ -132,19 +160,19 @@ export function PresenceBar({
             {/* I'm Heading There */}
             <button
               onClick={handleHeadingThere}
-              className="flex-1 flex items-center gap-3 p-4 bg-gradient-to-br from-purple-50 to-indigo-50 rounded-2xl shadow-md hover:shadow-lg transition-all hover:scale-[1.02] active:scale-[0.98] border border-purple-100"
+              className="flex-1 flex items-center gap-2.5 p-3 bg-gradient-to-br from-purple-50 to-indigo-50 rounded-2xl shadow-sm hover:shadow-md transition-all hover:scale-[1.02] active:scale-[0.98] border border-purple-100/50"
               style={{
-                animation: 'slideUp 0.2s ease-out forwards',
+                animation: 'chipSlideUp 0.18s ease-out forwards',
                 animationDelay: '100ms',
                 opacity: 0,
               }}
             >
-              <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-full flex items-center justify-center shadow-lg flex-shrink-0">
-                <Navigation size={24} className="text-white" />
+              <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-md flex-shrink-0">
+                <Navigation size={20} className="text-white" />
               </div>
               <div className="text-left">
-                <div className="font-bold text-gray-900">Heading There</div>
-                <div className="text-xs text-gray-500">Tap map to mark</div>
+                <div className="font-bold text-gray-900 text-sm">Heading There</div>
+                <div className="text-[11px] text-gray-500">Tap map</div>
               </div>
             </button>
           </div>
@@ -154,31 +182,32 @@ export function PresenceBar({
       {/* Animations */}
       <style>{`
         @keyframes presenceBarPulse {
-          0%, 100% {
-            opacity: 1;
+          0%, 90%, 100% {
             transform: scale(1);
+            opacity: 0;
           }
-          50% {
-            opacity: 0.85;
-            transform: scale(1.01);
+          95% {
+            transform: scale(1.025);
+            opacity: 0.15;
           }
         }
         
         @keyframes expandDown {
           from {
-            opacity: 0;
-            transform: translateY(-10px) scale(0.98);
+            opacity: 0.9;
+            transform: scaleY(0.95);
+            transform-origin: top;
           }
           to {
             opacity: 1;
-            transform: translateY(0) scale(1);
+            transform: scaleY(1);
           }
         }
         
-        @keyframes slideUp {
+        @keyframes chipSlideUp {
           from {
             opacity: 0;
-            transform: translateY(10px);
+            transform: translateY(8px);
           }
           to {
             opacity: 1;

@@ -20,37 +20,37 @@ const modeConfig = {
     icon: Globe, 
     label: 'Everybody', 
     shortLabel: 'All',
-    color: 'from-gray-600 to-gray-800',
+    color: 'from-gray-500 to-gray-700',
   },
   dating: { 
     icon: Heart, 
     label: 'Dating', 
     shortLabel: 'Dating',
-    color: 'from-pink-500 to-rose-500',
+    color: 'from-pink-400 to-rose-500',
   },
   friends: { 
     icon: Users, 
     label: 'Friends', 
     shortLabel: 'Friends',
-    color: 'from-purple-500 to-indigo-500',
+    color: 'from-purple-400 to-indigo-500',
   },
   networking: { 
     icon: Briefcase, 
     label: 'Networking', 
     shortLabel: 'Network',
-    color: 'from-blue-500 to-cyan-500',
+    color: 'from-blue-400 to-cyan-500',
   },
   events: { 
     icon: Calendar, 
     label: 'Events', 
     shortLabel: 'Events',
-    color: 'from-green-500 to-emerald-500',
+    color: 'from-green-400 to-emerald-500',
   },
   travel: { 
     icon: Plane, 
     label: 'Travel', 
     shortLabel: 'Travel',
-    color: 'from-orange-500 to-amber-500',
+    color: 'from-orange-400 to-amber-500',
   },
 };
 
@@ -74,44 +74,49 @@ export function MapControlBar({
         />
       )}
 
-      {/* ROW 1 - Top Controls: Mode + My Location + Profile */}
-      <div className="absolute top-4 left-4 right-4 z-[1000]">
+      {/* ROW 1 - Top Controls: My Location + Mode + Profile */}
+      <div className="absolute top-3 left-3 right-3 z-[1000]">
         <div className="flex items-center justify-between">
           
           {/* Left: My Location + Mode Selector */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             {/* My Location Button */}
             <button
               onClick={onMyLocation}
-              className="w-10 h-10 rounded-full bg-white/95 backdrop-blur-xl shadow-lg flex items-center justify-center hover:shadow-xl transition-all hover:scale-105 active:scale-95"
+              className="w-9 h-9 rounded-full bg-white/90 backdrop-blur-sm shadow-md flex items-center justify-center hover:shadow-lg transition-all hover:scale-105 active:scale-95"
             >
-              <Locate size={18} className="text-blue-600" />
+              <Locate size={16} className="text-blue-500" />
             </button>
 
             {/* Mode Selector */}
             <button
               onClick={() => setShowModeSelector(!showModeSelector)}
-              className={`flex items-center gap-2 px-3 py-2 rounded-full bg-gradient-to-r ${config.color} text-white font-semibold shadow-lg hover:shadow-xl transition-all hover:scale-[1.02] active:scale-[0.98]`}
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-gradient-to-r ${config.color} text-white text-xs font-semibold shadow-md hover:shadow-lg transition-all hover:scale-[1.02] active:scale-[0.98]`}
             >
-              <ModeIcon size={16} />
-              <span className="text-sm">{config.shortLabel}</span>
-              <ChevronDown size={14} className={`transition-transform ${showModeSelector ? 'rotate-180' : ''}`} />
+              <ModeIcon size={14} />
+              <span>{config.shortLabel}</span>
+              <ChevronDown size={12} className={`transition-transform opacity-70 ${showModeSelector ? 'rotate-180' : ''}`} />
             </button>
           </div>
 
           {/* Right: Profile */}
           <Link
             to="/profile"
-            className="w-10 h-10 rounded-full bg-white/95 backdrop-blur-xl shadow-lg flex items-center justify-center hover:shadow-xl transition-all hover:scale-105"
+            className="w-9 h-9 rounded-full bg-white/90 backdrop-blur-sm shadow-md flex items-center justify-center hover:shadow-lg transition-all hover:scale-105"
           >
-            <User size={18} className="text-gray-700" />
+            <User size={16} className="text-gray-600" />
           </Link>
         </div>
       </div>
 
       {/* Mode Selector Dropdown */}
       {showModeSelector && (
-        <div className="absolute top-14 left-14 z-[1002] bg-white rounded-2xl shadow-2xl p-2 min-w-[180px] animate-in fade-in slide-in-from-top-2 duration-200">
+        <div 
+          className="absolute top-12 left-12 z-[1002] bg-white rounded-xl shadow-xl p-1.5 min-w-[160px]"
+          style={{
+            animation: 'dropdownFade 0.15s ease-out forwards',
+          }}
+        >
           {(Object.keys(modeConfig) as MingleMode[]).map((mode) => {
             const cfg = modeConfig[mode];
             const Icon = cfg.icon;
@@ -124,19 +129,32 @@ export function MapControlBar({
                   onModeChange(mode);
                   setShowModeSelector(false);
                 }}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all ${
+                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg transition-all ${
                   isActive 
                     ? `bg-gradient-to-r ${cfg.color} text-white` 
                     : 'hover:bg-gray-50 text-gray-700'
                 }`}
               >
-                <Icon size={18} />
+                <Icon size={16} />
                 <span className="font-medium text-sm">{cfg.label}</span>
               </button>
             );
           })}
         </div>
       )}
+
+      <style>{`
+        @keyframes dropdownFade {
+          from {
+            opacity: 0;
+            transform: translateY(-4px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+      `}</style>
     </>
   );
 }
