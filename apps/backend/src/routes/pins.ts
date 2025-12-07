@@ -341,7 +341,10 @@ pinRoutes.get('/nearby', async (c) => {
       optimal: {
         radius: optimalRadius,
         zoom: optimalZoom,
-        ...optimal,
+        liveNow: optimal.liveNow,
+        activeToday: optimal.activeToday,
+        activeWeek: optimal.activeWeek,
+        total: optimal.total,
       },
       isEmpty: optimal.total === 0,
     });
