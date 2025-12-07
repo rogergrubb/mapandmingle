@@ -163,6 +163,34 @@ pinRoutes.get('/', async (c) => {
     // Get viewer ID from header
     const viewerId = c.req.header('X-User-Id') || null;
     
+    // Get viewer's connections if logged in
+    let viewerConnections: Map<string, { status: string; connectionId: string; isRequester: boolean }> = new Map();
+    if (viewerId) {
+      const connections = await prisma.connection.findMany({
+        where: {
+          OR: [
+            { requesterId: viewerId },
+            { addresseeId: viewerId },
+          ],
+        },
+        select: {
+          id: true,
+          requesterId: true,
+          addresseeId: true,
+          status: true,
+        },
+      });
+      
+      for (const conn of connections) {
+        const otherUserId = conn.requesterId === viewerId ? conn.addresseeId : conn.requesterId;
+        viewerConnections.set(otherUserId, {
+          status: conn.status,
+          connectionId: conn.id,
+          isRequester: conn.requesterId === viewerId,
+        });
+      }
+    }
+    
     // Filter based on visibility rules and lookingFor filter
     const visiblePins = [];
     const now = Date.now();
@@ -204,6 +232,10 @@ pinRoutes.get('/', async (c) => {
         const timeSinceActive = now - lastActiveTime;
         const isActive = timeSinceActive < oneDayMs;
         
+        // Get connection status for this pin's creator
+        const connectionInfo = viewerConnections.get(pin.user.id);
+        const isFriend = connectionInfo?.status === 'accepted';
+        
         visiblePins.push({
           id: pin.id,
           latitude: pin.latitude,
@@ -215,6 +247,10 @@ pinRoutes.get('/', async (c) => {
           updatedAt: pin.updatedAt.toISOString(),
           isActive, // true if logged in within 24h
           lastActiveAt: pin.user.profile?.lastActiveAt?.toISOString() || pin.createdAt.toISOString(),
+          isFriend, // true if connected
+          connectionStatus: connectionInfo?.status || 'none',
+          connectionId: connectionInfo?.connectionId || null,
+          isRequester: connectionInfo?.isRequester || false,
           createdBy: {
             id: pin.user.id,
             name: pin.user.profile?.displayName || pin.user.name,

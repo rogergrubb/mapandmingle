@@ -35,10 +35,15 @@ const modeColors = {
 };
 
 // Create animated pin icon based on mode
-function createPinIcon(mode: MingleMode, isActive: boolean = false, isGhost: boolean = false) {
+function createPinIcon(mode: MingleMode, isActive: boolean = false, isGhost: boolean = false, isFriend: boolean = false) {
   const colors = modeColors[mode];
   const size = isActive ? 48 : 40;
   const opacity = isGhost ? 0.5 : 1;
+  
+  // Friend pins get a special gold ring
+  const borderColor = isFriend ? '#FFD700' : 'white';
+  const borderWidth = isFriend ? 4 : 3;
+  const friendGlow = isFriend ? 'box-shadow: 0 0 12px #FFD70080, 0 4px 12px ' + colors.primary + '60;' : 'box-shadow: 0 4px 12px ' + colors.primary + (isGhost ? '30' : '60') + ';';
   
   return L.divIcon({
     html: `
@@ -53,8 +58,17 @@ function createPinIcon(mode: MingleMode, isActive: boolean = false, isGhost: boo
             position: absolute;
             inset: -4px;
             border-radius: 50%;
-            background: linear-gradient(135deg, ${colors.primary}40, ${colors.secondary}40);
+            background: linear-gradient(135deg, ${isFriend ? '#FFD70040' : colors.primary + '40'}, ${isFriend ? '#FFA50040' : colors.secondary + '40'});
             animation: pulse 2s ease-in-out infinite;
+          "></div>
+        ` : ''}
+        ${isFriend ? `
+          <div style="
+            position: absolute;
+            inset: -2px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #FFD700, #FFA500);
+            animation: friendGlow 1.5s ease-in-out infinite alternate;
           "></div>
         ` : ''}
         <div style="
@@ -62,19 +76,26 @@ function createPinIcon(mode: MingleMode, isActive: boolean = false, isGhost: boo
           inset: 0;
           border-radius: 50%;
           background: linear-gradient(135deg, ${colors.primary}, ${colors.secondary});
-          box-shadow: 0 4px 12px ${colors.primary}${isGhost ? '30' : '60'};
+          ${friendGlow}
           display: flex;
           align-items: center;
           justify-content: center;
-          border: 3px solid white;
+          border: ${borderWidth}px solid ${borderColor};
         ">
-          <div style="
-            width: ${size * 0.4}px;
-            height: ${size * 0.4}px;
-            background: white;
-            border-radius: 50%;
-            opacity: 0.9;
-          "></div>
+          ${isFriend ? `
+            <div style="
+              font-size: ${size * 0.4}px;
+              line-height: 1;
+            ">⭐</div>
+          ` : `
+            <div style="
+              width: ${size * 0.4}px;
+              height: ${size * 0.4}px;
+              background: white;
+              border-radius: 50%;
+              opacity: 0.9;
+            "></div>
+          `}
         </div>
         <div style="
           position: absolute;
@@ -83,7 +104,7 @@ function createPinIcon(mode: MingleMode, isActive: boolean = false, isGhost: boo
           transform: translateX(-50%);
           width: 10px;
           height: 10px;
-          background: linear-gradient(135deg, ${colors.primary}, ${colors.secondary});
+          background: linear-gradient(135deg, ${isFriend ? '#FFD700' : colors.primary}, ${isFriend ? '#FFA500' : colors.secondary});
           transform: translateX(-50%) rotate(45deg);
         "></div>
       </div>
@@ -171,8 +192,9 @@ function ClusteredMarkers({
       // Use isActive from API response (true = active in last 24h, false = ghost pin 1-30 days)
       const isActive = pin.isActive === true;
       const isGhost = pin.isActive === false;
+      const isFriend = pin.isFriend === true;
       const marker = L.marker([pin.latitude, pin.longitude], {
-        icon: createPinIcon(mode, isActive, isGhost),
+        icon: createPinIcon(mode, isActive, isGhost, isFriend),
       });
       
       // Create popup content
@@ -187,6 +209,99 @@ function ClusteredMarkers({
         ? `<img src="${avatarUrl}" alt="" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;" onerror="this.style.display='none'; this.nextSibling.style.display='flex';" /><span style="display:none; width:100%; height:100%; align-items:center; justify-content:center;">👤</span>`
         : '👤';
       
+      // Determine connection button HTML
+      let connectionBtnHtml = '';
+      const connectionStatus = pin.connectionStatus || 'none';
+      
+      if (isFriend) {
+        connectionBtnHtml = `
+          <div style="
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            padding: 8px;
+            background: linear-gradient(135deg, #FFD700, #FFA500);
+            color: white;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 8px;
+          ">
+            ⭐ Connected Friend
+          </div>
+        `;
+      } else if (connectionStatus === 'pending') {
+        if (pin.isRequester) {
+          connectionBtnHtml = `
+            <button 
+              class="connection-btn"
+              disabled
+              style="
+                width: 100%;
+                padding: 8px;
+                background: #e5e7eb;
+                color: #6b7280;
+                border: none;
+                border-radius: 8px;
+                font-size: 12px;
+                font-weight: 600;
+                margin-bottom: 8px;
+                cursor: not-allowed;
+              "
+            >
+              ⏳ Request Pending
+            </button>
+          `;
+        } else {
+          connectionBtnHtml = `
+            <button 
+              class="connection-btn accept-btn"
+              data-user-id="${pin.createdBy?.id}"
+              data-connection-id="${pin.connectionId}"
+              style="
+                width: 100%;
+                padding: 8px;
+                background: linear-gradient(135deg, #22c55e, #16a34a);
+                color: white;
+                border: none;
+                border-radius: 8px;
+                font-size: 12px;
+                font-weight: 600;
+                margin-bottom: 8px;
+                cursor: pointer;
+              "
+            >
+              ✓ Accept Connection
+            </button>
+          `;
+        }
+      } else {
+        connectionBtnHtml = `
+          <button 
+            class="connection-btn quick-connect-btn"
+            data-user-id="${pin.createdBy?.id}"
+            style="
+              width: 100%;
+              padding: 8px;
+              background: linear-gradient(135deg, #8b5cf6, #6366f1);
+              color: white;
+              border: none;
+              border-radius: 8px;
+              font-size: 12px;
+              font-weight: 600;
+              margin-bottom: 8px;
+              cursor: pointer;
+              transition: transform 0.1s;
+            "
+            onmouseover="this.style.transform='scale(1.02)';"
+            onmouseout="this.style.transform='scale(1)';"
+          >
+            🤝 Quick Connect
+          </button>
+        `;
+      }
+      
       popupContent.innerHTML = `
         <div style="padding: 12px;">
           <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
@@ -195,6 +310,7 @@ function ClusteredMarkers({
               height: 48px;
               border-radius: 50%;
               background: linear-gradient(135deg, ${colors.primary}, ${colors.secondary});
+              ${isFriend ? 'border: 3px solid #FFD700;' : ''}
               display: flex;
               align-items: center;
               justify-content: center;
@@ -205,8 +321,9 @@ function ClusteredMarkers({
               ${avatarHtml}
             </div>
             <div>
-              <div style="font-weight: 600; font-size: 16px; color: #111;">
+              <div style="font-weight: 600; font-size: 16px; color: #111; display: flex; align-items: center; gap: 6px;">
                 ${pin.createdBy?.name || 'Mingler'}
+                ${isFriend ? '<span style="color: #FFD700;">⭐</span>' : ''}
               </div>
               <div style="font-size: 12px; color: #666; display: flex; align-items: center; gap: 4px;">
                 ${isActive 
@@ -219,6 +336,7 @@ function ClusteredMarkers({
           <p style="font-size: 14px; color: #444; margin-bottom: 12px; line-height: 1.4;">
             ${pin.description || 'Mingling here!'}
           </p>
+          ${connectionBtnHtml}
           <button 
             class="view-profile-btn"
             style="
@@ -241,10 +359,82 @@ function ClusteredMarkers({
         </div>
       `;
       
-      // Add click handler to button
+      // Add click handler for View Profile
       const button = popupContent.querySelector('.view-profile-btn');
       if (button) {
         button.addEventListener('click', () => onPinClick(pin));
+      }
+      
+      // Add click handler for Quick Connect
+      const quickConnectBtn = popupContent.querySelector('.quick-connect-btn');
+      if (quickConnectBtn) {
+        quickConnectBtn.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          const userId = (quickConnectBtn as HTMLElement).dataset.userId;
+          if (!userId) return;
+          
+          try {
+            (quickConnectBtn as HTMLButtonElement).disabled = true;
+            (quickConnectBtn as HTMLButtonElement).innerHTML = '⏳ Sending...';
+            
+            const token = localStorage.getItem('token');
+            const response = await fetch(`${import.meta.env.VITE_API_URL}/api/connections/request`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`,
+              },
+              body: JSON.stringify({ addresseeId: userId }),
+            });
+            
+            if (response.ok) {
+              (quickConnectBtn as HTMLButtonElement).innerHTML = '✓ Request Sent!';
+              (quickConnectBtn as HTMLButtonElement).style.background = 'linear-gradient(135deg, #22c55e, #16a34a)';
+            } else {
+              const data = await response.json();
+              (quickConnectBtn as HTMLButtonElement).innerHTML = data.error || 'Failed';
+              (quickConnectBtn as HTMLButtonElement).style.background = '#ef4444';
+            }
+          } catch (err) {
+            (quickConnectBtn as HTMLButtonElement).innerHTML = '✗ Error';
+            (quickConnectBtn as HTMLButtonElement).style.background = '#ef4444';
+          }
+        });
+      }
+      
+      // Add click handler for Accept Connection
+      const acceptBtn = popupContent.querySelector('.accept-btn');
+      if (acceptBtn) {
+        acceptBtn.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          const connectionId = (acceptBtn as HTMLElement).dataset.connectionId;
+          if (!connectionId) return;
+          
+          try {
+            (acceptBtn as HTMLButtonElement).disabled = true;
+            (acceptBtn as HTMLButtonElement).innerHTML = '⏳ Accepting...';
+            
+            const token = localStorage.getItem('token');
+            const response = await fetch(`${import.meta.env.VITE_API_URL}/api/connections/${connectionId}/accept`, {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${token}`,
+              },
+            });
+            
+            if (response.ok) {
+              (acceptBtn as HTMLButtonElement).innerHTML = '⭐ Connected!';
+              (acceptBtn as HTMLButtonElement).style.background = 'linear-gradient(135deg, #FFD700, #FFA500)';
+            } else {
+              const data = await response.json();
+              (acceptBtn as HTMLButtonElement).innerHTML = data.error || 'Failed';
+              (acceptBtn as HTMLButtonElement).style.background = '#ef4444';
+            }
+          } catch (err) {
+            (acceptBtn as HTMLButtonElement).innerHTML = '✗ Error';
+            (acceptBtn as HTMLButtonElement).style.background = '#ef4444';
+          }
+        });
       }
       
       marker.bindPopup(popupContent, {
@@ -667,6 +857,10 @@ export default function MapPage() {
         @keyframes gentlePulse {
           0%, 100% { transform: scale(1); }
           50% { transform: scale(1.05); }
+        }
+        @keyframes friendGlow {
+          0% { opacity: 0.7; transform: scale(1); }
+          100% { opacity: 1; transform: scale(1.02); }
         }
       `}</style>
 

@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
   Send, Image, MapPin, Smile, MoreVertical, 
-  Trash2, ArrowLeft, Check, CheckCheck, Phone, Video, Download
+  Trash2, ArrowLeft, Check, CheckCheck, Phone, Video, Download, UserPlus, UserCheck, Clock, Star
 } from 'lucide-react';
 import { Button } from '../components/common/Button';
 import EmojiPicker from '../components/EmojiPicker';
@@ -65,6 +65,43 @@ export function Chat() {
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [isOtherUserOnline, setIsOtherUserOnline] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState<{
+    status: string;
+    connectionId: string | null;
+    isRequester: boolean;
+    canAccept: boolean;
+  }>({ status: 'none', connectionId: null, isRequester: false, canAccept: false });
+  const [connectionLoading, setConnectionLoading] = useState(false);
+
+  // Fetch connection status
+  useEffect(() => {
+    if (otherUserId) {
+      api.get(`/api/connections/status/${otherUserId}`)
+        .then((response: any) => {
+          setConnectionStatus(response.data || response);
+        })
+        .catch(() => {});
+    }
+  }, [otherUserId]);
+
+  const handleConnect = async () => {
+    if (!otherUserId || connectionLoading) return;
+    setConnectionLoading(true);
+    
+    try {
+      if (connectionStatus.status === 'none') {
+        await api.post('/api/connections/request', { addresseeId: otherUserId });
+        setConnectionStatus({ status: 'pending', connectionId: null, isRequester: true, canAccept: false });
+      } else if (connectionStatus.canAccept && connectionStatus.connectionId) {
+        await api.post(`/api/connections/${connectionStatus.connectionId}/accept`);
+        setConnectionStatus({ status: 'accepted', connectionId: connectionStatus.connectionId, isRequester: false, canAccept: false });
+      }
+    } catch (err) {
+      console.error('Connection failed:', err);
+    } finally {
+      setConnectionLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (otherUserId) {
@@ -480,6 +517,46 @@ export function Chat() {
         </div>
 
         <div className="flex items-center gap-1">
+          {/* Connection Status Button */}
+          {connectionStatus.status === 'none' && (
+            <button 
+              onClick={handleConnect}
+              disabled={connectionLoading}
+              className="p-2 hover:bg-purple-100 rounded-full transition-colors disabled:opacity-50"
+              title="Connect"
+            >
+              <UserPlus className="w-5 h-5 text-purple-600" />
+            </button>
+          )}
+          {connectionStatus.status === 'pending' && connectionStatus.canAccept && (
+            <button 
+              onClick={handleConnect}
+              disabled={connectionLoading}
+              className="p-2 hover:bg-green-100 rounded-full transition-colors disabled:opacity-50"
+              title="Accept connection"
+            >
+              <UserCheck className="w-5 h-5 text-green-600" />
+            </button>
+          )}
+          {connectionStatus.status === 'pending' && connectionStatus.isRequester && (
+            <button 
+              disabled
+              className="p-2 rounded-full opacity-50"
+              title="Request pending"
+            >
+              <Clock className="w-5 h-5 text-gray-400" />
+            </button>
+          )}
+          {connectionStatus.status === 'accepted' && (
+            <button 
+              disabled
+              className="p-2 rounded-full"
+              title="Connected friend"
+            >
+              <Star className="w-5 h-5 text-yellow-500" />
+            </button>
+          )}
+          
           <button 
             onClick={() => otherUser && callStatus === 'idle' && initiateCall(otherUser.id, otherUser.name, otherUser.avatar || null, false)}
             disabled={callStatus !== 'idle'}
