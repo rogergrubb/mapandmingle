@@ -5,6 +5,7 @@ import { Loader } from 'lucide-react';
 import { useMapStore } from '../stores/mapStore';
 import { useAuthStore } from '../stores/authStore';
 import { MapControlBar, type MingleMode, type DistanceFilter } from '../components/map/MapControlBar';
+import { PresenceButton } from '../components/map/PresenceButton';
 import WelcomeCard from '../components/WelcomeCard';
 import ProfileInterestsSetup from '../components/ProfileInterestsSetup';
 import api from '../lib/api';
@@ -296,6 +297,37 @@ function MapController() {
   return null;
 }
 
+// Component to handle map clicks in placement mode
+function PlacementModeHandler({ 
+  isActive, 
+  onLocationSelected 
+}: { 
+  isActive: boolean; 
+  onLocationSelected: (lat: number, lng: number) => void;
+}) {
+  const map = useMap();
+
+  useEffect(() => {
+    if (!isActive) return;
+
+    const handleClick = (e: L.LeafletMouseEvent) => {
+      onLocationSelected(e.latlng.lat, e.latlng.lng);
+    };
+
+    map.on('click', handleClick);
+    
+    // Change cursor to crosshair
+    map.getContainer().style.cursor = 'crosshair';
+
+    return () => {
+      map.off('click', handleClick);
+      map.getContainer().style.cursor = '';
+    };
+  }, [map, isActive, onLocationSelected]);
+
+  return null;
+}
+
 export default function MapPage() {
   const navigate = useNavigate();
   const { pins, setUserLocation, setLookingForFilter, fetchPins } = useMapStore();
@@ -322,6 +354,7 @@ export default function MapPage() {
   const [isVisible, setIsVisible] = useState(true);
   const [creatingPin, setCreatingPin] = useState(false);
   const [pinCreationSuccess, setPinCreationSuccess] = useState(false);
+  const [isPlacementMode, setIsPlacementMode] = useState(false);
   
   // Welcome/Onboarding state
   const [showWelcomeCard, setShowWelcomeCard] = useState(false);
@@ -477,6 +510,48 @@ export default function MapPage() {
     }
   };
 
+  // Handler for "I'm Heading There" - drop pin at selected location
+  const handlePlacementPinDrop = useCallback(async (lat: number, lng: number) => {
+    if (!isAuthenticated) {
+      navigate('/login');
+      return;
+    }
+
+    setIsPlacementMode(false);
+    setCreatingPin(true);
+    
+    try {
+      await api.post('/api/pins/auto-create', {
+        latitude: lat,
+        longitude: lng,
+      });
+      
+      setPinCreationSuccess(true);
+      setTimeout(() => setPinCreationSuccess(false), 3000);
+      
+      // Refresh pins
+      const bounds = mapRef.current?.getBounds();
+      if (bounds) {
+        useMapStore.getState().fetchPins({
+          north: bounds.getNorth(),
+          south: bounds.getSouth(),
+          east: bounds.getEast(),
+          west: bounds.getWest(),
+        });
+      }
+    } catch (err: any) {
+      const errorMsg = err.response?.data?.error || err.message;
+      if (errorMsg?.includes('already has a pin')) {
+        setPinCreationSuccess(true);
+        setTimeout(() => setPinCreationSuccess(false), 3000);
+      } else {
+        alert(errorMsg || 'Failed to create pin');
+      }
+    } finally {
+      setCreatingPin(false);
+    }
+  }, [isAuthenticated, navigate]);
+
   if (isLocating) {
     return (
       <div className="flex items-center justify-center w-full h-full bg-gradient-to-b from-purple-50 to-pink-50">
@@ -587,6 +662,12 @@ export default function MapPage() {
 
         <MapController />
         
+        {/* Placement Mode Handler - for "I'm Heading There" */}
+        <PlacementModeHandler 
+          isActive={isPlacementMode} 
+          onLocationSelected={handlePlacementPinDrop} 
+        />
+        
         {/* Clustered Pins with mode-aware styling */}
         <ClusteredMarkers pins={pins} mode={currentMode} onPinClick={handlePinClick} />
 
@@ -606,7 +687,7 @@ export default function MapPage() {
         )}
       </MapContainer>
 
-      {/* Control Bar - All navigation at top */}
+      {/* Control Bar - Top navigation */}
       <MapControlBar
         currentMode={currentMode}
         distanceFilter={distanceFilter}
@@ -614,10 +695,15 @@ export default function MapPage() {
         onModeChange={handleModeChange}
         onDistanceChange={setDistanceFilter}
         onVisibilityToggle={handleVisibilityToggle}
-        onSearch={() => {}}
-        onDropPin={handleDropPin}
-        onCreateEvent={() => navigate('/events/create')}
         onMyLocation={handleCenterOnUser}
+      />
+
+      {/* Big Central Presence Button */}
+      <PresenceButton
+        isPlacementMode={isPlacementMode}
+        onImHere={handleDropPin}
+        onHeadingThere={() => setIsPlacementMode(true)}
+        onCancelPlacement={() => setIsPlacementMode(false)}
       />
 
       {/* Success Toast */}

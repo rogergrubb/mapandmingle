@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { 
   Heart, Users, Briefcase, Calendar, Plane, 
-  ChevronDown, Globe, User, Plus, X, MapPin, Navigation, Locate
+  ChevronDown, Globe, User, Locate
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -16,9 +16,6 @@ interface MapControlBarProps {
   onModeChange: (mode: MingleMode) => void;
   onDistanceChange: (distance: DistanceFilter) => void;
   onVisibilityToggle: () => void;
-  onSearch: () => void;
-  onDropPin: () => void;
-  onCreateEvent: () => void;
   onMyLocation: () => void;
 }
 
@@ -66,79 +63,47 @@ export function MapControlBar({
   isVisible,
   onModeChange,
   onVisibilityToggle,
-  onDropPin,
-  onCreateEvent,
   onMyLocation,
 }: MapControlBarProps) {
   const [showModeSelector, setShowModeSelector] = useState(false);
-  const [showActions, setShowActions] = useState(false);
 
   const config = modeConfig[currentMode];
   const ModeIcon = config.icon;
 
-  const actions = [
-    { 
-      icon: Locate, 
-      label: 'My Location', 
-      color: 'bg-blue-500',
-      onClick: () => { onMyLocation(); setShowActions(false); }
-    },
-    { 
-      icon: MapPin, 
-      label: 'Drop a Pin', 
-      color: 'bg-purple-500',
-      onClick: () => { onDropPin(); setShowActions(false); }
-    },
-    { 
-      icon: Users, 
-      label: 'Quick Meet-Up', 
-      color: 'bg-pink-500',
-      sublabel: 'Coming Soon',
-      disabled: true,
-      onClick: () => { setShowActions(false); }
-    },
-    { 
-      icon: Calendar, 
-      label: 'Create Event', 
-      color: 'bg-green-500',
-      onClick: () => { onCreateEvent(); setShowActions(false); }
-    },
-    { 
-      icon: Navigation, 
-      label: 'Heading Here', 
-      color: 'bg-orange-500',
-      sublabel: 'Coming Soon',
-      disabled: true,
-      onClick: () => { setShowActions(false); }
-    },
-  ];
-
   return (
     <>
-      {/* Backdrop for dropdowns */}
-      {(showModeSelector || showActions) && (
+      {/* Backdrop for dropdown */}
+      {showModeSelector && (
         <div 
           className="fixed inset-0 z-[1001]"
-          onClick={() => {
-            setShowModeSelector(false);
-            setShowActions(false);
-          }}
+          onClick={() => setShowModeSelector(false)}
         />
       )}
 
-      {/* Single Consolidated Top Bar */}
+      {/* Top Control Bar */}
       <div className="absolute top-4 left-4 right-4 z-[1000]">
         <div className="flex items-center justify-between gap-2">
           
-          {/* Left: Mode Selector */}
-          <button
-            onClick={() => { setShowModeSelector(!showModeSelector); setShowActions(false); }}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-full bg-gradient-to-r ${config.color} text-white font-semibold shadow-lg hover:shadow-xl transition-all hover:scale-[1.02] active:scale-[0.98]`}
-          >
-            <ModeIcon size={18} />
-            <span className="hidden sm:inline">{config.shortLabel}</span>
-            <ChevronDown size={14} className={`transition-transform ${showModeSelector ? 'rotate-180' : ''}`} />
-          </button>
+          {/* Left: My Location + Mode Selector */}
+          <div className="flex items-center gap-2">
+            {/* My Location Button */}
+            <button
+              onClick={onMyLocation}
+              className="w-11 h-11 rounded-full bg-white/95 backdrop-blur-xl shadow-lg flex items-center justify-center hover:shadow-xl transition-all hover:scale-105 active:scale-95"
+            >
+              <Locate size={20} className="text-blue-600" />
+            </button>
+
+            {/* Mode Selector */}
+            <button
+              onClick={() => setShowModeSelector(!showModeSelector)}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-full bg-gradient-to-r ${config.color} text-white font-semibold shadow-lg hover:shadow-xl transition-all hover:scale-[1.02] active:scale-[0.98]`}
+            >
+              <ModeIcon size={18} />
+              <span className="hidden sm:inline">{config.shortLabel}</span>
+              <ChevronDown size={14} className={`transition-transform ${showModeSelector ? 'rotate-180' : ''}`} />
+            </button>
+          </div>
 
           {/* Center: Visibility Toggle */}
           <button
@@ -158,38 +123,19 @@ export function MapControlBar({
             <span className="text-sm">{isVisible ? 'Visible' : 'Hidden'}</span>
           </button>
 
-          {/* Right: Actions + and Profile */}
-          <div className="flex items-center gap-2">
-            {/* + Button */}
-            <button
-              onClick={() => { setShowActions(!showActions); setShowModeSelector(false); }}
-              className={`w-11 h-11 rounded-full shadow-lg flex items-center justify-center transition-all hover:scale-105 active:scale-95 ${
-                showActions 
-                  ? 'bg-gray-800 rotate-45' 
-                  : 'bg-gradient-to-br from-pink-500 to-purple-600'
-              }`}
-            >
-              {showActions ? (
-                <X size={20} className="text-white" />
-              ) : (
-                <Plus size={20} className="text-white" />
-              )}
-            </button>
-
-            {/* Profile */}
-            <Link
-              to="/profile"
-              className="w-11 h-11 rounded-full bg-white/95 backdrop-blur-xl shadow-lg flex items-center justify-center hover:shadow-xl transition-all hover:scale-105"
-            >
-              <User size={20} className="text-gray-700" />
-            </Link>
-          </div>
+          {/* Right: Profile */}
+          <Link
+            to="/profile"
+            className="w-11 h-11 rounded-full bg-white/95 backdrop-blur-xl shadow-lg flex items-center justify-center hover:shadow-xl transition-all hover:scale-105"
+          >
+            <User size={20} className="text-gray-700" />
+          </Link>
         </div>
       </div>
 
       {/* Mode Selector Dropdown */}
       {showModeSelector && (
-        <div className="absolute top-16 left-4 z-[1002] bg-white rounded-2xl shadow-2xl p-2 min-w-[200px] animate-in fade-in slide-in-from-top-2 duration-200">
+        <div className="absolute top-16 left-16 z-[1002] bg-white rounded-2xl shadow-2xl p-2 min-w-[200px] animate-in fade-in slide-in-from-top-2 duration-200">
           {(Object.keys(modeConfig) as MingleMode[]).map((mode) => {
             const cfg = modeConfig[mode];
             const Icon = cfg.icon;
@@ -218,53 +164,6 @@ export function MapControlBar({
           })}
         </div>
       )}
-
-      {/* Actions Dropdown */}
-      {showActions && (
-        <div className="absolute top-16 right-4 z-[1002] bg-white rounded-2xl shadow-2xl p-2 min-w-[220px] animate-in fade-in slide-in-from-top-2 duration-200">
-          {actions.map((action, index) => (
-            <button
-              key={action.label}
-              onClick={action.onClick}
-              disabled={action.disabled}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
-                action.disabled 
-                  ? 'opacity-50 cursor-not-allowed' 
-                  : 'hover:bg-gray-50 active:bg-gray-100'
-              }`}
-              style={{
-                animation: `slideIn 0.15s ease-out forwards`,
-                animationDelay: `${index * 30}ms`,
-                opacity: 0,
-              }}
-            >
-              <div className={`w-10 h-10 ${action.color} rounded-full flex items-center justify-center shadow-md`}>
-                <action.icon size={18} className="text-white" />
-              </div>
-              <div className="text-left">
-                <span className="font-semibold text-gray-800 block">{action.label}</span>
-                {action.sublabel && (
-                  <span className="text-xs text-gray-400">{action.sublabel}</span>
-                )}
-              </div>
-            </button>
-          ))}
-        </div>
-      )}
-
-      {/* Animation */}
-      <style>{`
-        @keyframes slideIn {
-          from {
-            opacity: 0;
-            transform: translateY(-8px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-      `}</style>
     </>
   );
 }
