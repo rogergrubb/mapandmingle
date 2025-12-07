@@ -65,6 +65,7 @@ export const useCallStore = create<CallState>((set, get) => ({
   initiateCall: async (userId, userName, userImage, isVideo) => {
     if (!userId) {
       console.error('Cannot initiate call: userId is required');
+      alert('Cannot start call: User not found');
       return;
     }
     
@@ -83,7 +84,14 @@ export const useCallStore = create<CallState>((set, get) => ({
         isVideo,
       });
 
-      const { callId, channelName, token, appId, uid } = response.data;
+      // Handle both response.data and direct response formats
+      const data = response.data || response;
+      
+      if (!data || !data.callId) {
+        throw new Error('Invalid response from server');
+      }
+
+      const { callId, channelName, token, appId, uid } = data;
 
       set({
         callId,
