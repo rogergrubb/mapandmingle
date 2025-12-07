@@ -189,9 +189,15 @@ export function MapFAB({
           )}
         </button>
 
-        {/* Pulse ring when closed */}
+        {/* Subtle glow pulse when closed */}
         {!isOpen && !showModeRadial && (
-          <div className={`absolute inset-0 rounded-full bg-gradient-to-br ${config.color} animate-ping opacity-30`} />
+          <div 
+            className={`absolute inset-0 rounded-full bg-gradient-to-br ${config.color}`}
+            style={{
+              animation: 'subtlePulse 2s ease-in-out infinite',
+              opacity: 0.4,
+            }}
+          />
         )}
       </div>
 
@@ -205,6 +211,16 @@ export function MapFAB({
           to {
             opacity: 1;
             transform: translateX(0);
+          }
+        }
+        @keyframes subtlePulse {
+          0%, 100% {
+            transform: scale(1);
+            opacity: 0;
+          }
+          50% {
+            transform: scale(1.15);
+            opacity: 0.3;
           }
         }
       `}</style>
