@@ -3,12 +3,13 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import {
   MapPin, Calendar, Heart, MessageCircle, UserPlus, UserMinus,
   Shield, Award, Flame, Users, Camera, Flag, ArrowLeft,
-  Sparkles, Briefcase, Plane, UserCheck, Clock
+  Sparkles, Briefcase, Plane, UserCheck, Clock, Video, Phone
 } from 'lucide-react';
 import { Button } from '../components/common/Button';
 import { useAuthStore } from '../stores/authStore';
 import api from '../lib/api';
 import { PhotoGallery } from '../components/profile/PhotoGallery';
+import { useCallStore } from '../stores/callStore';
 
 interface ConnectionStatus {
   status: 'none' | 'pending' | 'accepted' | 'blocked';
@@ -89,6 +90,7 @@ export function UserProfile() {
   const params = useParams<{ userId: string }>();
   const navigate = useNavigate();
   const currentUser = useAuthStore((state) => state.user);
+  const { initiateCall, status: callStatus } = useCallStore();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [showFollowers, setShowFollowers] = useState(false);
@@ -190,6 +192,24 @@ export function UserProfile() {
     if (!profile) return;
     // Navigate directly to chat with user ID
     navigate(`/chat/${profile.id}`);
+  };
+
+  const handleVideoCall = async () => {
+    if (!profile || callStatus !== 'idle') return;
+    try {
+      await initiateCall(profile.id, profile.name, profile.avatar, true);
+    } catch (error) {
+      console.error('Failed to start video call:', error);
+    }
+  };
+
+  const handleVoiceCall = async () => {
+    if (!profile || callStatus !== 'idle') return;
+    try {
+      await initiateCall(profile.id, profile.name, profile.avatar, false);
+    } catch (error) {
+      console.error('Failed to start voice call:', error);
+    }
   };
 
   const handleConnect = async () => {
@@ -390,6 +410,25 @@ export function UserProfile() {
                       <MessageCircle className="w-4 h-4 mr-2" />
                       Message
                     </Button>
+                    
+                    {/* Call Buttons */}
+                    <button
+                      onClick={handleVoiceCall}
+                      disabled={callStatus !== 'idle'}
+                      className="p-2 text-gray-600 hover:text-green-600 hover:bg-green-50 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      title="Voice call"
+                    >
+                      <Phone className="w-5 h-5" />
+                    </button>
+                    <button
+                      onClick={handleVideoCall}
+                      disabled={callStatus !== 'idle'}
+                      className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      title="Video call"
+                    >
+                      <Video className="w-5 h-5" />
+                    </button>
+                    
                     <button
                       onClick={handleReport}
                       className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg"

@@ -41,6 +41,7 @@ import PrivacyPolicyPage from './pages/legal/PrivacyPolicy';
 import { AdminReports } from './pages/admin/AdminReports';
 import ProfileInterestsSetup from './components/ProfileInterestsSetup';
 import { useProfileSetup } from './hooks/useProfileSetup';
+import { VideoCall, CallNotificationChecker } from './components/VideoCall';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
@@ -67,6 +68,8 @@ function App() {
   return (
     <BrowserRouter>
       <ProfileInterestsSetup isOpen={showInterestsSetup} onComplete={closeInterestsSetup} />
+      <VideoCall />
+      <CallNotificationChecker />
       <Routes>
         <Route element={<AuthLayout />}>
           <Route path="/login" element={<Login />} />
