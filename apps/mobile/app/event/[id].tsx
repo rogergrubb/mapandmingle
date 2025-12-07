@@ -453,6 +453,31 @@ export default function EventDetailScreen() {
             <Text className="text-gray-700 font-semibold text-lg mb-3">
               Location
             </Text>
+            
+            {/* Map Thumbnail */}
+            {event.latitude !== 0 && event.longitude !== 0 && (
+              <TouchableOpacity
+                onPress={handleOpenMaps}
+                className="rounded-xl overflow-hidden mb-3"
+                activeOpacity={0.9}
+              >
+                <Image
+                  source={{
+                    uri: `https://api.mapbox.com/styles/v1/mapbox/light-v11/static/pin-l-marker+FF6B9D(${event.longitude},${event.latitude})/${event.longitude},${event.latitude},14,0/600x200@2x?access_token=pk.eyJ1IjoibWFwYW5kbWluZ2xlIiwiYSI6ImNtNTBqMDBmbjBkZjAyanB6dzN5bzVod2wifQ.w1eWLfiEf-P7ldko9z8WdQ`
+                  }}
+                  className="w-full h-44"
+                  resizeMode="cover"
+                />
+                {/* Overlay with "Open in Maps" hint */}
+                <View className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-3">
+                  <View className="flex-row items-center justify-center">
+                    <Ionicons name="navigate" size={16} color="white" />
+                    <Text className="text-white font-medium ml-2">Tap to open in Maps</Text>
+                  </View>
+                </View>
+              </TouchableOpacity>
+            )}
+            
             <TouchableOpacity
               onPress={handleOpenMaps}
               className="bg-gray-50 rounded-xl p-4"
@@ -463,7 +488,11 @@ export default function EventDetailScreen() {
                   <Ionicons name="location" size={20} color="#FF6B9D" />
                 </View>
                 <View className="ml-3 flex-1">
-                  <Text className="text-gray-900 font-medium">{event.venueName}</Text>
+                  <Text className="text-gray-900 font-medium">
+                    {event.venueName && event.venueName !== 'TBD' 
+                      ? event.venueName 
+                      : 'Location to be announced'}
+                  </Text>
                   {event.venueAddress && (
                     <Text className="text-gray-500">{event.venueAddress}</Text>
                   )}
