@@ -1,12 +1,11 @@
 import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { MapContainer, TileLayer, Circle, useMap, Marker, Popup } from 'react-leaflet';
 import { useNavigate } from 'react-router-dom';
-import { Locate, Loader } from 'lucide-react';
+import { Loader } from 'lucide-react';
 import { useMapStore } from '../stores/mapStore';
 import { useAuthStore } from '../stores/authStore';
 import { MapControlBar, type MingleMode, type DistanceFilter } from '../components/map/MapControlBar';
 import { MapFAB } from '../components/map/MapFAB';
-import { HotspotOverlay, mockHotspots } from '../components/map/HotspotOverlay';
 import WelcomeCard from '../components/WelcomeCard';
 import ProfileInterestsSetup from '../components/ProfileInterestsSetup';
 import api from '../lib/api';
@@ -300,7 +299,7 @@ function MapController() {
 
 export default function MapPage() {
   const navigate = useNavigate();
-  const { pins, hotspots, showHotspots, setShowHotspots, setUserLocation, setLookingForFilter, fetchPins } = useMapStore();
+  const { pins, setUserLocation, setLookingForFilter, fetchPins } = useMapStore();
   const { user, isAuthenticated } = useAuthStore();
   
   // Map state
@@ -479,12 +478,6 @@ export default function MapPage() {
     }
   };
 
-  const handleHotspotClick = useCallback((hotspot: any) => {
-    if (mapRef.current) {
-      mapRef.current.setView([hotspot.latitude, hotspot.longitude], 15);
-    }
-  }, []);
-
   if (isLocating) {
     return (
       <div className="flex items-center justify-center w-full h-full bg-gradient-to-b from-purple-50 to-pink-50">
@@ -598,24 +591,6 @@ export default function MapPage() {
         {/* Clustered Pins with mode-aware styling */}
         <ClusteredMarkers pins={pins} mode={currentMode} onPinClick={handlePinClick} />
 
-        {/* Hotspot Circles */}
-        {showHotspots &&
-          mockHotspots.map((hotspot) => (
-            <Circle
-              key={`hotspot-${hotspot.id}`}
-              center={[hotspot.latitude, hotspot.longitude]}
-              radius={300}
-              pathOptions={{
-                color: modeColors[currentMode].primary,
-                weight: 2,
-                opacity: 0.3,
-                fill: true,
-                fillColor: modeColors[currentMode].primary,
-                fillOpacity: 0.1,
-              }}
-            />
-          ))}
-
         {/* User location marker */}
         {userPosition && (
           <Circle
@@ -643,29 +618,11 @@ export default function MapPage() {
         onSearch={() => {}}
       />
 
-      {/* Hotspot Overlay */}
-      <HotspotOverlay
-        hotspots={mockHotspots}
-        isVisible={showHotspots}
-        onToggle={() => setShowHotspots(!showHotspots)}
-        onHotspotClick={handleHotspotClick}
-      />
-
-      {/* Location Button */}
-      <button
-        onClick={handleCenterOnUser}
-        className="absolute bottom-32 left-4 z-[900] w-12 h-12 bg-white rounded-full shadow-lg flex items-center justify-center hover:bg-gray-50 transition-all hover:shadow-xl active:scale-95"
-      >
-        <Locate size={22} className="text-gray-700" />
-      </button>
-
-      {/* FAB */}
+      {/* FAB - Expanding Actions */}
       <MapFAB
-        currentMode={currentMode}
-        onModeChange={handleModeChange}
         onDropPin={handleDropPin}
         onCreateEvent={() => navigate('/events/create')}
-        onBroadcast={() => {}}
+        onMyLocation={handleCenterOnUser}
       />
 
       {/* Success Toast */}
