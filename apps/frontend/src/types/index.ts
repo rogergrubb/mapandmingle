@@ -44,6 +44,8 @@ export interface Pin {
   comments: number;
   isLiked?: boolean;
   isSaved?: boolean;
+  isActive?: boolean;      // true if user active within 24h
+  lastActiveAt?: string;   // ISO timestamp of last activity
   createdAt: string;
   expiresAt?: string;
 }
