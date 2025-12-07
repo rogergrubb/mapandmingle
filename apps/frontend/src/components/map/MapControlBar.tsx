@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { 
   Heart, Users, Briefcase, Calendar, Plane, 
-  MapPin, Filter, X, ChevronDown, Sparkles,
-  Eye, EyeOff, Search, Globe
+  Filter, X, ChevronDown, Sparkles,
+  Eye, EyeOff, Search, Globe, Bell, User
 } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 export type MingleMode = 'everybody' | 'dating' | 'friends' | 'networking' | 'events' | 'travel';
 export type DistanceFilter = 'nearby' | 'walking' | 'city' | 'anywhere';
@@ -23,6 +24,7 @@ const modeConfig = {
   everybody: { 
     icon: Globe, 
     label: 'Everybody', 
+    shortLabel: 'All',
     color: 'from-gray-600 to-gray-800',
     bgColor: 'bg-gray-600',
     lightBg: 'bg-gray-50',
@@ -32,6 +34,7 @@ const modeConfig = {
   dating: { 
     icon: Heart, 
     label: 'Dating', 
+    shortLabel: 'Dating',
     color: 'from-pink-500 to-rose-500',
     bgColor: 'bg-pink-500',
     lightBg: 'bg-pink-50',
@@ -41,6 +44,7 @@ const modeConfig = {
   friends: { 
     icon: Users, 
     label: 'Friends', 
+    shortLabel: 'Friends',
     color: 'from-purple-500 to-indigo-500',
     bgColor: 'bg-purple-500',
     lightBg: 'bg-purple-50',
@@ -50,6 +54,7 @@ const modeConfig = {
   networking: { 
     icon: Briefcase, 
     label: 'Networking', 
+    shortLabel: 'Network',
     color: 'from-blue-500 to-cyan-500',
     bgColor: 'bg-blue-500',
     lightBg: 'bg-blue-50',
@@ -59,6 +64,7 @@ const modeConfig = {
   events: { 
     icon: Calendar, 
     label: 'Events', 
+    shortLabel: 'Events',
     color: 'from-green-500 to-emerald-500',
     bgColor: 'bg-green-500',
     lightBg: 'bg-green-50',
@@ -68,6 +74,7 @@ const modeConfig = {
   travel: { 
     icon: Plane, 
     label: 'Travel', 
+    shortLabel: 'Travel',
     color: 'from-orange-500 to-amber-500',
     bgColor: 'bg-orange-500',
     lightBg: 'bg-orange-50',
@@ -94,105 +101,108 @@ export function MapControlBar({
   onSearch,
 }: MapControlBarProps) {
   const [showModeSelector, setShowModeSelector] = useState(false);
-  const [showDistanceSelector, setShowDistanceSelector] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
 
   const config = modeConfig[currentMode];
   const ModeIcon = config.icon;
-  const currentDistance = distanceOptions.find(d => d.value === distanceFilter);
 
   return (
     <>
-      {/* Main Control Bar */}
-      <div className="absolute top-4 left-4 right-4 z-[1000]">
-        <div className="bg-white/95 backdrop-blur-xl rounded-2xl shadow-lg shadow-black/10 border border-white/50 overflow-hidden">
-          {/* Top Row - Mode & Quick Stats */}
-          <div className="flex items-center gap-2 p-3">
-            {/* Mode Selector Button */}
-            <button
-              onClick={() => setShowModeSelector(!showModeSelector)}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r ${config.color} text-white font-semibold shadow-md hover:shadow-lg transition-all hover:scale-[1.02] active:scale-[0.98]`}
-            >
-              <ModeIcon size={18} className="flex-shrink-0" />
-              <span className="hidden sm:inline">{config.label}</span>
-              <ChevronDown size={16} className={`transition-transform ${showModeSelector ? 'rotate-180' : ''}`} />
-            </button>
+      {/* Floating Controls - Centered at Top */}
+      <div className="absolute top-4 left-0 right-0 z-[1000] pointer-events-none">
+        <div className="flex items-center justify-center gap-2 sm:gap-3 px-4">
+          
+          {/* Mode Selector Pill */}
+          <button
+            onClick={() => setShowModeSelector(!showModeSelector)}
+            className={`pointer-events-auto flex items-center gap-2 px-3 sm:px-4 py-2.5 rounded-full bg-gradient-to-r ${config.color} text-white font-semibold shadow-lg hover:shadow-xl transition-all hover:scale-[1.02] active:scale-[0.98]`}
+          >
+            <ModeIcon size={18} className="flex-shrink-0" />
+            <span className="hidden sm:inline">{config.shortLabel}</span>
+            <ChevronDown size={14} className={`transition-transform ${showModeSelector ? 'rotate-180' : ''}`} />
+          </button>
 
-            {/* Distance Filter */}
-            <button
-              onClick={() => setShowDistanceSelector(!showDistanceSelector)}
-              className="flex items-center gap-2 px-3 py-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 transition-all text-gray-700 font-medium"
-            >
-              <MapPin size={16} className="text-gray-500" />
-              <span className="text-sm">{currentDistance?.label}</span>
-              <ChevronDown size={14} className={`transition-transform text-gray-400 ${showDistanceSelector ? 'rotate-180' : ''}`} />
-            </button>
-
-            {/* Spacer */}
-            <div className="flex-1" />
-
-            {/* People Count - Animated */}
-            <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-gradient-to-r from-pink-50 to-purple-50">
-              <div className="relative">
-                <Sparkles size={16} className="text-pink-500" />
-                <span className="absolute -top-1 -right-1 w-2 h-2 bg-green-400 rounded-full animate-pulse" />
-              </div>
-              <span className="text-sm font-bold bg-gradient-to-r from-pink-600 to-purple-600 bg-clip-text text-transparent">
-                {peopleCount}
-              </span>
-              <span className="text-xs text-gray-500 hidden sm:inline">active</span>
+          {/* Active Count Pill */}
+          <div className="pointer-events-auto flex items-center gap-2 px-3 sm:px-4 py-2.5 rounded-full bg-white/95 backdrop-blur-xl shadow-lg">
+            <div className="relative">
+              <Sparkles size={16} className="text-pink-500" />
+              <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-green-400 rounded-full animate-pulse" />
             </div>
-
-            {/* Visibility Toggle */}
-            <button
-              onClick={onVisibilityToggle}
-              className={`p-2.5 rounded-xl transition-all ${
-                isVisible 
-                  ? 'bg-green-100 text-green-600 hover:bg-green-200' 
-                  : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
-              }`}
-              title={isVisible ? 'You are visible' : 'You are hidden'}
-            >
-              {isVisible ? <Eye size={18} /> : <EyeOff size={18} />}
-            </button>
-
-            {/* Search Button */}
-            <button
-              onClick={onSearch}
-              className="p-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 transition-all text-gray-600"
-            >
-              <Search size={18} />
-            </button>
-
-            {/* Filter Button */}
-            <button
-              onClick={() => setShowFilters(!showFilters)}
-              className={`p-2.5 rounded-xl transition-all ${
-                showFilters 
-                  ? 'bg-purple-100 text-purple-600' 
-                  : 'bg-gray-100 hover:bg-gray-200 text-gray-600'
-              }`}
-            >
-              <Filter size={18} />
-            </button>
+            <span className="text-sm font-bold bg-gradient-to-r from-pink-600 to-purple-600 bg-clip-text text-transparent">
+              {peopleCount}
+            </span>
+            <span className="text-xs text-gray-500 hidden sm:inline">active</span>
           </div>
+
+          {/* Visibility Status Pill */}
+          <button
+            onClick={onVisibilityToggle}
+            className={`pointer-events-auto flex items-center gap-2 px-3 sm:px-4 py-2.5 rounded-full font-semibold shadow-lg transition-all hover:scale-[1.02] active:scale-[0.98] ${
+              isVisible 
+                ? 'bg-gradient-to-r from-green-400 to-emerald-500 text-white' 
+                : 'bg-gray-800 text-gray-300'
+            }`}
+          >
+            <span className="relative flex h-2.5 w-2.5">
+              {isVisible && (
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
+              )}
+              <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${isVisible ? 'bg-white' : 'bg-gray-500'}`}></span>
+            </span>
+            <span className="text-sm hidden sm:inline">{isVisible ? 'Visible' : 'Hidden'}</span>
+          </button>
         </div>
       </div>
 
-      {/* Mode Selector Dropdown */}
+      {/* Top Right - Notifications & Profile */}
+      <div className="absolute top-4 right-4 z-[1000] flex items-center gap-2">
+        <Link
+          to="/messages"
+          className="w-10 h-10 rounded-full bg-white/95 backdrop-blur-xl shadow-lg flex items-center justify-center hover:shadow-xl transition-all hover:scale-105"
+        >
+          <Bell size={18} className="text-gray-700" />
+        </Link>
+        <Link
+          to="/profile"
+          className="w-10 h-10 rounded-full bg-white/95 backdrop-blur-xl shadow-lg flex items-center justify-center hover:shadow-xl transition-all hover:scale-105"
+        >
+          <User size={18} className="text-gray-700" />
+        </Link>
+      </div>
+
+      {/* Top Left - Filter & Search */}
+      <div className="absolute top-4 left-4 z-[1000] flex items-center gap-2">
+        <button
+          onClick={onSearch}
+          className="w-10 h-10 rounded-full bg-white/95 backdrop-blur-xl shadow-lg flex items-center justify-center hover:shadow-xl transition-all hover:scale-105"
+        >
+          <Search size={18} className="text-gray-700" />
+        </button>
+        <button
+          onClick={() => setShowFilters(!showFilters)}
+          className={`w-10 h-10 rounded-full shadow-lg flex items-center justify-center transition-all hover:scale-105 ${
+            showFilters 
+              ? 'bg-purple-500 text-white' 
+              : 'bg-white/95 backdrop-blur-xl text-gray-700 hover:shadow-xl'
+          }`}
+        >
+          <Filter size={18} />
+        </button>
+      </div>
+
+      {/* Mode Selector Dropdown - Centered */}
       {showModeSelector && (
         <>
           <div 
             className="fixed inset-0 z-[1001]" 
             onClick={() => setShowModeSelector(false)} 
           />
-          <div className="absolute top-20 left-4 right-4 z-[1002] animate-in fade-in slide-in-from-top-2 duration-200">
-            <div className="bg-white rounded-2xl shadow-xl shadow-black/15 border border-gray-100 overflow-hidden max-w-md mx-auto">
-              <div className="p-4 border-b border-gray-100">
-                <h3 className="font-bold text-gray-900">What are you looking for?</h3>
-                <p className="text-sm text-gray-500">Choose your connection mode</p>
+          <div className="absolute top-16 left-1/2 -translate-x-1/2 z-[1002] w-80 max-w-[calc(100%-2rem)] animate-in fade-in slide-in-from-top-2 duration-200">
+            <div className="bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/50 overflow-hidden">
+              <div className="p-3 border-b border-gray-100">
+                <h3 className="font-bold text-gray-900 text-center text-sm">What are you looking for?</h3>
               </div>
-              <div className="p-2 space-y-1">
+              <div className="p-2 space-y-1 max-h-80 overflow-y-auto">
                 {(Object.keys(modeConfig) as MingleMode[]).map((mode) => {
                   const cfg = modeConfig[mode];
                   const Icon = cfg.icon;
@@ -204,21 +214,21 @@ export function MapControlBar({
                         onModeChange(mode);
                         setShowModeSelector(false);
                       }}
-                      className={`w-full flex items-center gap-3 p-3 rounded-xl transition-all ${
+                      className={`w-full flex items-center gap-3 p-2.5 rounded-xl transition-all ${
                         isActive 
                           ? `${cfg.lightBg} ${cfg.textColor}` 
                           : 'hover:bg-gray-50 text-gray-700'
                       }`}
                     >
-                      <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${cfg.color} flex items-center justify-center shadow-md`}>
-                        <Icon size={20} className="text-white" />
+                      <div className={`w-9 h-9 rounded-xl bg-gradient-to-br ${cfg.color} flex items-center justify-center shadow-md flex-shrink-0`}>
+                        <Icon size={18} className="text-white" />
                       </div>
-                      <div className="flex-1 text-left">
-                        <div className="font-semibold">{cfg.label}</div>
-                        <div className="text-xs text-gray-500">{cfg.description}</div>
+                      <div className="flex-1 text-left min-w-0">
+                        <div className="font-semibold text-sm">{cfg.label}</div>
+                        <div className="text-xs text-gray-500 truncate">{cfg.description}</div>
                       </div>
                       {isActive && (
-                        <div className={`w-6 h-6 rounded-full ${cfg.bgColor} flex items-center justify-center`}>
+                        <div className={`w-5 h-5 rounded-full ${cfg.bgColor} flex items-center justify-center flex-shrink-0`}>
                           <span className="text-white text-xs">✓</span>
                         </div>
                       )}
@@ -231,90 +241,57 @@ export function MapControlBar({
         </>
       )}
 
-      {/* Distance Selector Dropdown */}
-      {showDistanceSelector && (
-        <>
-          <div 
-            className="fixed inset-0 z-[1001]" 
-            onClick={() => setShowDistanceSelector(false)} 
-          />
-          <div className="absolute top-20 left-4 z-[1002] animate-in fade-in slide-in-from-top-2 duration-200">
-            <div className="bg-white rounded-2xl shadow-xl shadow-black/15 border border-gray-100 overflow-hidden w-48">
-              <div className="p-1">
-                {distanceOptions.map((option) => {
-                  const isActive = option.value === distanceFilter;
-                  return (
-                    <button
-                      key={option.value}
-                      onClick={() => {
-                        onDistanceChange(option.value);
-                        setShowDistanceSelector(false);
-                      }}
-                      className={`w-full flex items-center justify-between p-3 rounded-xl transition-all ${
-                        isActive 
-                          ? 'bg-purple-50 text-purple-600' 
-                          : 'hover:bg-gray-50 text-gray-700'
-                      }`}
-                    >
-                      <span className="font-medium">{option.label}</span>
-                      <span className="text-xs text-gray-400">{option.sublabel}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        </>
-      )}
-
-      {/* Quick Filters Drawer */}
+      {/* Quick Filters Popup */}
       {showFilters && (
         <>
           <div 
-            className="fixed inset-0 z-[1001] bg-black/20" 
+            className="fixed inset-0 z-[1001] bg-black/10" 
             onClick={() => setShowFilters(false)} 
           />
-          <div className="absolute top-20 left-4 right-4 z-[1002] animate-in fade-in slide-in-from-top-2 duration-200">
-            <div className="bg-white rounded-2xl shadow-xl shadow-black/15 border border-gray-100 overflow-hidden max-w-md mx-auto">
-              <div className="p-4 border-b border-gray-100 flex items-center justify-between">
-                <div>
-                  <h3 className="font-bold text-gray-900">Quick Filters</h3>
-                  <p className="text-sm text-gray-500">Refine your search</p>
-                </div>
+          <div className="absolute top-16 left-4 z-[1002] w-72 animate-in fade-in slide-in-from-top-2 duration-200">
+            <div className="bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/50 overflow-hidden">
+              <div className="p-3 border-b border-gray-100 flex items-center justify-between">
+                <h3 className="font-bold text-gray-900 text-sm">Filters</h3>
                 <button 
                   onClick={() => setShowFilters(false)}
-                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                  className="p-1 hover:bg-gray-100 rounded-lg transition-colors"
                 >
-                  <X size={18} className="text-gray-500" />
+                  <X size={16} className="text-gray-500" />
                 </button>
               </div>
               
-              <div className="p-4 space-y-4">
-                {/* Age Range - For Dating/Friends */}
-                {(currentMode === 'dating' || currentMode === 'friends') && (
-                  <div>
-                    <label className="text-sm font-medium text-gray-700 mb-2 block">Age Range</label>
-                    <div className="flex gap-2">
-                      {['18-25', '25-35', '35-45', '45+'].map((range) => (
+              <div className="p-3 space-y-3">
+                {/* Distance Filter */}
+                <div>
+                  <label className="text-xs font-medium text-gray-700 mb-1.5 block">Distance</label>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {distanceOptions.map((option) => {
+                      const isActive = option.value === distanceFilter;
+                      return (
                         <button
-                          key={range}
-                          className="flex-1 py-2 px-3 rounded-lg bg-gray-100 hover:bg-purple-100 hover:text-purple-600 text-sm font-medium transition-all"
+                          key={option.value}
+                          onClick={() => onDistanceChange(option.value)}
+                          className={`py-2 px-2 rounded-lg text-xs font-medium transition-all ${
+                            isActive 
+                              ? `bg-gradient-to-r ${config.color} text-white shadow-md` 
+                              : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+                          }`}
                         >
-                          {range}
+                          {option.label}
                         </button>
-                      ))}
-                    </div>
+                      );
+                    })}
                   </div>
-                )}
+                </div>
 
                 {/* Interests */}
                 <div>
-                  <label className="text-sm font-medium text-gray-700 mb-2 block">Interests</label>
-                  <div className="flex flex-wrap gap-2">
-                    {['Coffee', 'Hiking', 'Music', 'Tech', 'Art', 'Sports', 'Food', 'Travel'].map((interest) => (
+                  <label className="text-xs font-medium text-gray-700 mb-1.5 block">Interests</label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {['Coffee', 'Hiking', 'Music', 'Tech', 'Art', 'Sports'].map((interest) => (
                       <button
                         key={interest}
-                        className="py-1.5 px-3 rounded-full bg-gray-100 hover:bg-purple-100 hover:text-purple-600 text-sm transition-all"
+                        className="py-1 px-2.5 rounded-full bg-gray-100 hover:bg-purple-100 hover:text-purple-600 text-xs transition-all"
                       >
                         {interest}
                       </button>
@@ -322,28 +299,12 @@ export function MapControlBar({
                   </div>
                 </div>
 
-                {/* Activity Level */}
-                <div>
-                  <label className="text-sm font-medium text-gray-700 mb-2 block">Show me</label>
-                  <div className="flex gap-2">
-                    <button className="flex-1 py-2 px-3 rounded-lg bg-green-100 text-green-600 text-sm font-medium">
-                      Online Now
-                    </button>
-                    <button className="flex-1 py-2 px-3 rounded-lg bg-gray-100 hover:bg-gray-200 text-sm font-medium transition-all">
-                      Active Today
-                    </button>
-                    <button className="flex-1 py-2 px-3 rounded-lg bg-gray-100 hover:bg-gray-200 text-sm font-medium transition-all">
-                      All
-                    </button>
-                  </div>
-                </div>
-
                 {/* Apply Button */}
                 <button
                   onClick={() => setShowFilters(false)}
-                  className={`w-full py-3 rounded-xl bg-gradient-to-r ${config.color} text-white font-semibold shadow-md hover:shadow-lg transition-all`}
+                  className={`w-full py-2.5 rounded-xl bg-gradient-to-r ${config.color} text-white font-semibold text-sm shadow-md hover:shadow-lg transition-all`}
                 >
-                  Apply Filters
+                  Apply
                 </button>
               </div>
             </div>
