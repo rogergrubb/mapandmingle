@@ -46,7 +46,7 @@ export function VideoCall() {
     audio: IMicrophoneAudioTrack | null;
     video: ICameraVideoTrack | null;
   }>({ audio: null, video: null });
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Initialize Agora client
   const initializeClient = useCallback(async () => {

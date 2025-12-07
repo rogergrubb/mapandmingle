@@ -499,7 +499,7 @@ export function UserProfile() {
         {/* Photo Gallery */}
         <div className="mb-6">
           <PhotoGallery 
-            userId={profileId || ''} 
+            userId={profile.id || ''} 
             isOwner={profile.isOwnProfile} 
           />
         </div>
