@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import {
   MapPin, Calendar, Heart, MessageCircle, UserPlus, UserMinus,
-  Shield, Award, Flame, Users, Camera, Flag, ArrowLeft
+  Shield, Award, Flame, Users, Camera, Flag, ArrowLeft,
+  Sparkles, Briefcase, Plane
 } from 'lucide-react';
 import { Button } from '../components/common/Button';
 import { useAuthStore } from '../stores/authStore';
@@ -17,6 +18,7 @@ interface UserProfile {
   location: string;
   joinedAt: Date;
   interests: string[];
+  lookingFor: string[];
   trustScore: number;
   isVerified: boolean;
   streak: number;
@@ -36,6 +38,45 @@ interface UserProfile {
   isOwnProfile: boolean;
 }
 
+// Looking For config with colors and icons
+const lookingForConfig: Record<string, { emoji: string; label: string; color: string; bgColor: string; description: string }> = {
+  dating: { 
+    emoji: '💕', 
+    label: 'Dating', 
+    color: 'text-pink-700',
+    bgColor: 'bg-gradient-to-r from-pink-100 to-rose-100 border-pink-200',
+    description: 'Open to romantic connections'
+  },
+  friends: { 
+    emoji: '👯', 
+    label: 'Friends', 
+    color: 'text-purple-700',
+    bgColor: 'bg-gradient-to-r from-purple-100 to-indigo-100 border-purple-200',
+    description: 'Looking to make new friends'
+  },
+  networking: { 
+    emoji: '💼', 
+    label: 'Networking', 
+    color: 'text-blue-700',
+    bgColor: 'bg-gradient-to-r from-blue-100 to-cyan-100 border-blue-200',
+    description: 'Professional connections welcome'
+  },
+  events: { 
+    emoji: '🎉', 
+    label: 'Events', 
+    color: 'text-green-700',
+    bgColor: 'bg-gradient-to-r from-green-100 to-emerald-100 border-green-200',
+    description: 'Interested in local events'
+  },
+  travel: { 
+    emoji: '✈️', 
+    label: 'Travel', 
+    color: 'text-orange-700',
+    bgColor: 'bg-gradient-to-r from-orange-100 to-amber-100 border-orange-200',
+    description: 'Open to meeting fellow travelers'
+  },
+};
+
 export function UserProfile() {
   const params = useParams<{ userId: string }>();
   const navigate = useNavigate();
@@ -53,8 +94,35 @@ export function UserProfile() {
 
   const fetchProfile = async () => {
     try {
-      const data: UserProfile = await api.get(`/api/users/${params.userId}`);
-      setProfile(data);
+      const response: any = await api.get(`/api/users/${params.userId}`);
+      const userData = response.user || response;
+      
+      // Map API response to UserProfile interface
+      const mappedProfile: UserProfile = {
+        id: userData.id,
+        name: userData.displayName || userData.name || 'Anonymous',
+        avatar: userData.avatar || '/default-avatar.png',
+        coverPhoto: userData.coverPhoto,
+        bio: userData.bio || '',
+        location: userData.location || 'Somewhere on Earth',
+        joinedAt: new Date(userData.memberSince || userData.createdAt || Date.now()),
+        interests: userData.interests || [],
+        lookingFor: userData.lookingFor || [],
+        trustScore: userData.trustScore || 50,
+        isVerified: userData.isVerified || false,
+        streak: userData.streak || 0,
+        badges: userData.badges || [],
+        stats: {
+          pinsCreated: userData.pinsCreated || 0,
+          eventsAttended: userData.eventsAttended || 0,
+          followersCount: userData.followersCount || 0,
+          followingCount: userData.followingCount || 0,
+        },
+        isFollowing: userData.isFollowing || false,
+        isOwnProfile: currentUser?.id === userData.id,
+      };
+      
+      setProfile(mappedProfile);
     } catch (error) {
       console.error('Failed to fetch profile:', error);
     } finally {
@@ -299,6 +367,34 @@ export function UserProfile() {
                   {interest}
                 </span>
               ))}
+            </div>
+          </div>
+        )}
+
+        {/* Looking For */}
+        {profile.lookingFor && profile.lookingFor.length > 0 && (
+          <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+            <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center">
+              <Sparkles className="w-5 h-5 mr-2 text-purple-600" />
+              Open To
+            </h2>
+            <div className="space-y-3">
+              {profile.lookingFor.map((item) => {
+                const cfg = lookingForConfig[item];
+                if (!cfg) return null;
+                return (
+                  <div
+                    key={item}
+                    className={`flex items-center gap-4 p-4 rounded-xl border ${cfg.bgColor}`}
+                  >
+                    <div className="text-3xl">{cfg.emoji}</div>
+                    <div className="flex-1">
+                      <div className={`font-semibold ${cfg.color}`}>{cfg.label}</div>
+                      <div className="text-sm text-gray-600">{cfg.description}</div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
