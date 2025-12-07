@@ -232,6 +232,125 @@ pinRoutes.get('/', async (c) => {
   }
 });
 
+// GET /api/pins/nearby - Get pins within radius for auto-zoom algorithm
+// Returns counts at different radii to help frontend determine optimal zoom
+pinRoutes.get('/nearby', async (c) => {
+  try {
+    const lat = parseFloat(c.req.query('lat') || '0');
+    const lng = parseFloat(c.req.query('lng') || '0');
+    
+    if (!lat || !lng) {
+      return c.json({ error: 'lat and lng required' }, 400);
+    }
+    
+    // Define search radii in km (2km, 5km, 10km, 25km)
+    const radii = [2, 5, 10, 25];
+    const now = Date.now();
+    const oneDayMs = 24 * 60 * 60 * 1000;
+    const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
+    const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
+    
+    // Helper to calculate distance in km using Haversine formula
+    const haversineDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+      const R = 6371; // Earth's radius in km
+      const dLat = (lat2 - lat1) * Math.PI / 180;
+      const dLon = (lon2 - lon1) * Math.PI / 180;
+      const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                Math.sin(dLon/2) * Math.sin(dLon/2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+      return R * c;
+    };
+    
+    // Get all pins within the largest radius (25km ≈ 0.25 degrees)
+    const maxRadiusDegrees = 0.3; // Slightly larger than 25km to be safe
+    const pins = await prisma.pin.findMany({
+      where: {
+        latitude: { gte: lat - maxRadiusDegrees, lte: lat + maxRadiusDegrees },
+        longitude: { gte: lng - maxRadiusDegrees, lte: lng + maxRadiusDegrees },
+      },
+      include: {
+        user: {
+          select: {
+            profile: {
+              select: { lastActiveAt: true, ghostMode: true },
+            },
+          },
+        },
+      },
+    });
+    
+    // Calculate counts for each radius
+    const radiusCounts = radii.map(radius => {
+      let liveNow = 0;      // Active within 24h
+      let activeToday = 0;  // Active within 24h (same as liveNow for now)
+      let activeWeek = 0;   // Active within 7 days
+      let total = 0;        // Active within 30 days
+      
+      pins.forEach(pin => {
+        // Skip ghost mode users
+        if (pin.user.profile?.ghostMode) return;
+        
+        const distance = haversineDistance(lat, lng, pin.latitude, pin.longitude);
+        if (distance > radius) return;
+        
+        const lastActive = pin.user.profile?.lastActiveAt 
+          ? new Date(pin.user.profile.lastActiveAt).getTime()
+          : new Date(pin.createdAt).getTime();
+        const timeSince = now - lastActive;
+        
+        if (timeSince > thirtyDaysMs) return; // Skip 30+ day old pins
+        
+        total++;
+        if (timeSince <= sevenDaysMs) activeWeek++;
+        if (timeSince <= oneDayMs) {
+          liveNow++;
+          activeToday++;
+        }
+      });
+      
+      return { radius, liveNow, activeToday, activeWeek, total };
+    });
+    
+    // Find optimal radius (smallest with at least 5 pins)
+    const minClusterSize = 5;
+    let optimalRadius = radii[radii.length - 1]; // Default to largest
+    let optimalZoom = 11; // Default zoom for 25km
+    
+    // Radius to zoom level mapping
+    const radiusToZoom: Record<number, number> = {
+      2: 15,   // ~2km view
+      5: 14,   // ~5km view
+      10: 13,  // ~10km view
+      25: 11,  // ~25km view
+    };
+    
+    for (const rc of radiusCounts) {
+      if (rc.total >= minClusterSize) {
+        optimalRadius = rc.radius;
+        optimalZoom = radiusToZoom[rc.radius];
+        break;
+      }
+    }
+    
+    // Get the counts for the optimal radius
+    const optimal = radiusCounts.find(r => r.radius === optimalRadius) || radiusCounts[radiusCounts.length - 1];
+    
+    return c.json({
+      radiusCounts,
+      optimal: {
+        radius: optimalRadius,
+        zoom: optimalZoom,
+        ...optimal,
+      },
+      isEmpty: optimal.total === 0,
+    });
+  } catch (error) {
+    console.error('Error fetching nearby pins:', error);
+    return c.json({ error: 'Failed to fetch nearby pins' }, 500);
+  }
+});
+
 // POST /api/pins/auto-create - Auto-create a pin at user's current location
 pinRoutes.post('/auto-create', async (c) => {
   try {

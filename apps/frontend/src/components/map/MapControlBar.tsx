@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { 
   Heart, Users, Briefcase, Calendar, Plane, 
-  Filter, X, ChevronDown, Sparkles,
+  Filter, X, ChevronDown,
   Eye, EyeOff, Search, Globe, Bell, User, GraduationCap
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -16,7 +16,7 @@ interface MapControlBarProps {
   campusFilter?: CampusFilter;
   userSchool?: string;
   isVisible: boolean;
-  peopleCount: number;
+  peopleCount?: number; // Now optional - activity strip shows this instead
   onModeChange: (mode: MingleMode) => void;
   onDistanceChange: (distance: DistanceFilter) => void;
   onCampusChange?: (campus: CampusFilter) => void;
@@ -100,7 +100,6 @@ export function MapControlBar({
   campusFilter = 'all',
   userSchool,
   isVisible,
-  peopleCount,
   onModeChange,
   onDistanceChange,
   onCampusChange,
@@ -134,18 +133,6 @@ export function MapControlBar({
             <span className="hidden sm:inline">{config.shortLabel}</span>
             <ChevronDown size={14} className={`transition-transform ${showModeSelector ? 'rotate-180' : ''}`} />
           </button>
-
-          {/* Active Count Pill */}
-          <div className="pointer-events-auto flex items-center gap-2 px-3 sm:px-4 py-2.5 rounded-full bg-white/95 backdrop-blur-xl shadow-lg">
-            <div className="relative">
-              <Sparkles size={16} className="text-pink-500" />
-              <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-green-400 rounded-full animate-pulse" />
-            </div>
-            <span className="text-sm font-bold bg-gradient-to-r from-pink-600 to-purple-600 bg-clip-text text-transparent">
-              {peopleCount}
-            </span>
-            <span className="text-xs text-gray-500 hidden sm:inline">active</span>
-          </div>
 
           {/* Visibility Status Pill */}
           <button

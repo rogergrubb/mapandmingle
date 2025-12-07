@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useCallback } from 'react';
+import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { MapContainer, TileLayer, Circle, useMap, Marker, Popup } from 'react-leaflet';
 import { useNavigate } from 'react-router-dom';
 import { Locate, Loader } from 'lucide-react';
@@ -306,7 +306,17 @@ export default function MapPage() {
   // Map state
   const [userPosition, setUserPosition] = useState<[number, number] | null>(null);
   const [isLocating, setIsLocating] = useState(true);
+  const [optimalZoom, setOptimalZoom] = useState(13); // Default zoom
   const mapRef = useRef<L.Map>(null);
+  
+  // Activity counts for the strip
+  const [activityStats, setActivityStats] = useState({
+    liveNow: 0,
+    activeToday: 0,
+    activeWeek: 0,
+    total: 0,
+    isEmpty: true,
+  });
   
   // UI state
   const [currentMode, setCurrentMode] = useState<MingleMode>('everybody');
@@ -318,6 +328,13 @@ export default function MapPage() {
   // Welcome/Onboarding state
   const [showWelcomeCard, setShowWelcomeCard] = useState(false);
   const [showInterestsSetup, setShowInterestsSetup] = useState(false);
+
+  // Calculate viewport activity counts from pins
+  const viewportStats = useMemo(() => {
+    const liveNow = pins.filter(p => p.isActive === true).length;
+    const activeToday = pins.length; // All pins returned are within 30 days, active ones are "today"
+    return { liveNow, activeToday };
+  }, [pins]);
 
   // Handle mode change - update store and refetch pins
   const handleModeChange = (mode: MingleMode) => {
@@ -360,13 +377,31 @@ export default function MapPage() {
     }
   }, []);
 
-  // Get geolocation
+  // Get geolocation and fetch optimal zoom
   useEffect(() => {
     navigator.geolocation.getCurrentPosition(
-      (position) => {
+      async (position) => {
         const pos: [number, number] = [position.coords.latitude, position.coords.longitude];
         setUserPosition(pos);
         setUserLocation({ latitude: pos[0], longitude: pos[1] });
+        
+        // Fetch nearby stats for auto-zoom
+        try {
+          const response = await api.get(`/api/pins/nearby?lat=${pos[0]}&lng=${pos[1]}`);
+          if (response.data?.optimal) {
+            setOptimalZoom(response.data.optimal.zoom);
+            setActivityStats({
+              liveNow: response.data.optimal.liveNow || 0,
+              activeToday: response.data.optimal.activeToday || 0,
+              activeWeek: response.data.optimal.activeWeek || 0,
+              total: response.data.optimal.total || 0,
+              isEmpty: response.data.isEmpty || false,
+            });
+          }
+        } catch (err) {
+          console.error('Failed to fetch nearby stats:', err);
+        }
+        
         setIsLocating(false);
       },
       () => {
@@ -499,11 +534,57 @@ export default function MapPage() {
         }
       `}</style>
 
+      {/* Activity Strip - Shows community presence */}
+      <div className="absolute top-20 left-1/2 -translate-x-1/2 z-[900] max-w-md w-full px-4">
+        <div className="bg-white/95 backdrop-blur-xl rounded-2xl shadow-lg px-4 py-3 border border-white/20">
+          {/* Counts */}
+          <div className="flex items-center justify-center gap-4 text-sm">
+            <div className="flex items-center gap-2">
+              <span className="relative flex h-2.5 w-2.5">
+                <span className={`absolute inline-flex h-full w-full rounded-full ${viewportStats.liveNow > 0 ? 'bg-green-400 animate-ping opacity-75' : 'bg-gray-300'}`}></span>
+                <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${viewportStats.liveNow > 0 ? 'bg-green-500' : 'bg-gray-400'}`}></span>
+              </span>
+              <span className="font-semibold text-gray-800">{viewportStats.liveNow}</span>
+              <span className="text-gray-500">live now</span>
+            </div>
+            <div className="w-px h-4 bg-gray-200" />
+            <div className="flex items-center gap-2">
+              <span className="text-blue-500">●</span>
+              <span className="font-semibold text-gray-800">{viewportStats.activeToday}</span>
+              <span className="text-gray-500">in view</span>
+            </div>
+            {activityStats.activeWeek > 0 && (
+              <>
+                <div className="w-px h-4 bg-gray-200" />
+                <div className="flex items-center gap-2">
+                  <span className="text-purple-400">●</span>
+                  <span className="font-semibold text-gray-800">{activityStats.activeWeek}</span>
+                  <span className="text-gray-500">this week</span>
+                </div>
+              </>
+            )}
+          </div>
+          
+          {/* Motivational micro-copy */}
+          <div className="text-center mt-2 text-xs text-gray-500">
+            {viewportStats.liveNow >= 1 ? (
+              <span className="text-green-600">People are around you right now. Zoom in and say hi! 👋</span>
+            ) : viewportStats.activeToday >= 5 ? (
+              <span>People have been active here today. Drop a pin and be the first one back!</span>
+            ) : activityStats.isEmpty ? (
+              <span className="text-purple-600">You're early! Be the first to put your area on the map. 🚀</span>
+            ) : (
+              <span>Explore the map to find your people nearby.</span>
+            )}
+          </div>
+        </div>
+      </div>
+
       {/* Map Container */}
       <MapContainer
         ref={mapRef}
         center={userPosition || [37.7749, -122.4194]}
-        zoom={13}
+        zoom={optimalZoom}
         className="w-full h-full"
         zoomControl={false}
       >
@@ -556,7 +637,6 @@ export default function MapPage() {
         currentMode={currentMode}
         distanceFilter={distanceFilter}
         isVisible={isVisible}
-        peopleCount={pins.length}
         onModeChange={handleModeChange}
         onDistanceChange={setDistanceFilter}
         onVisibilityToggle={handleVisibilityToggle}
