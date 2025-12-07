@@ -35,9 +35,10 @@ const modeColors = {
 };
 
 // Create animated pin icon based on mode
-function createPinIcon(mode: MingleMode, isActive: boolean = false) {
+function createPinIcon(mode: MingleMode, isActive: boolean = false, isGhost: boolean = false) {
   const colors = modeColors[mode];
   const size = isActive ? 48 : 40;
+  const opacity = isGhost ? 0.5 : 1;
   
   return L.divIcon({
     html: `
@@ -45,8 +46,9 @@ function createPinIcon(mode: MingleMode, isActive: boolean = false) {
         position: relative;
         width: ${size}px;
         height: ${size}px;
+        opacity: ${opacity};
       ">
-        ${isActive ? `
+        ${isActive && !isGhost ? `
           <div style="
             position: absolute;
             inset: -4px;
@@ -60,7 +62,7 @@ function createPinIcon(mode: MingleMode, isActive: boolean = false) {
           inset: 0;
           border-radius: 50%;
           background: linear-gradient(135deg, ${colors.primary}, ${colors.secondary});
-          box-shadow: 0 4px 12px ${colors.primary}60;
+          box-shadow: 0 4px 12px ${colors.primary}${isGhost ? '30' : '60'};
           display: flex;
           align-items: center;
           justify-content: center;
@@ -166,9 +168,11 @@ function ClusteredMarkers({
 
     // Add markers for each pin
     pins.forEach((pin) => {
-      const isOnline = Math.random() > 0.5; // Simulated online status
+      // Use isActive from API response (true = active in last 24h, false = ghost pin 1-30 days)
+      const isActive = pin.isActive === true;
+      const isGhost = pin.isActive === false;
       const marker = L.marker([pin.latitude, pin.longitude], {
-        icon: createPinIcon(mode, isOnline),
+        icon: createPinIcon(mode, isActive, isGhost),
       });
       
       // Create popup content

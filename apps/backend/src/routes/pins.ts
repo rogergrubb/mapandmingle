@@ -130,6 +130,9 @@ pinRoutes.get('/', async (c) => {
     }
     
     // Get pins within viewport bounds only (limit to 1000 most recent)
+    // Include pins from users active within the last 30 days
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    
     const pins = await prisma.pin.findMany({
       where: {
         latitude: { gte: south, lte: north },
@@ -147,6 +150,7 @@ pinRoutes.get('/', async (c) => {
                 avatar: true,
                 lookingFor: true,
                 displayName: true,
+                lastActiveAt: true, // For ghost pin opacity
               },
             },
           },
@@ -161,7 +165,20 @@ pinRoutes.get('/', async (c) => {
     
     // Filter based on visibility rules and lookingFor filter
     const visiblePins = [];
+    const now = Date.now();
+    const oneDayMs = 24 * 60 * 60 * 1000;
+    const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
+    
     for (const pin of pins) {
+      // Check if user has been active within 30 days
+      const lastActive = pin.user.profile?.lastActiveAt;
+      if (lastActive) {
+        const timeSinceActive = now - new Date(lastActive).getTime();
+        if (timeSinceActive > thirtyDaysMs) {
+          continue; // Skip pins from users inactive for 30+ days
+        }
+      }
+      
       // Check lookingFor filter if specified (skip 'everybody' mode)
       if (lookingFor && lookingFor !== 'everybody') {
         const userLookingFor = pin.user.profile?.lookingFor;
@@ -180,6 +197,13 @@ pinRoutes.get('/', async (c) => {
       }
       
       if (await canViewPin(pin, viewerId)) {
+        // Calculate if user is "active" (within 24h) or "ghost" (1-30 days)
+        const lastActiveTime = pin.user.profile?.lastActiveAt 
+          ? new Date(pin.user.profile.lastActiveAt).getTime() 
+          : new Date(pin.createdAt).getTime();
+        const timeSinceActive = now - lastActiveTime;
+        const isActive = timeSinceActive < oneDayMs;
+        
         visiblePins.push({
           id: pin.id,
           latitude: pin.latitude,
@@ -189,6 +213,8 @@ pinRoutes.get('/', async (c) => {
           likesCount: pin.likesCount,
           createdAt: pin.createdAt.toISOString(),
           updatedAt: pin.updatedAt.toISOString(),
+          isActive, // true if logged in within 24h
+          lastActiveAt: pin.user.profile?.lastActiveAt?.toISOString() || pin.createdAt.toISOString(),
           createdBy: {
             id: pin.user.id,
             name: pin.user.profile?.displayName || pin.user.name,
