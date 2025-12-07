@@ -387,7 +387,7 @@ model Event {
   hostId       String
   title        String    @db.VarChar(100)
   description  String?   @db.Text
-  category     String    @default("social") // social, dating, networking, activity, other
+  categories   String[]  @default(["social"]) // Can belong to multiple categories: social, dating, networking, activity, other
   image        String?
   venueName    String
   venueAddress String?
