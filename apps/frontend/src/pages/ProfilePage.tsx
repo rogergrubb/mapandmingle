@@ -155,6 +155,29 @@ export default function ProfilePage() {
         </div>
       )}
 
+      {user.lookingFor && user.lookingFor.length > 0 && (
+        <div className="bg-white mx-4 rounded-2xl shadow-sm p-4 mb-4">
+          <h2 className="font-semibold text-gray-900 mb-3">Looking For</h2>
+          <div className="flex flex-wrap gap-2">
+            {user.lookingFor.map((item: string) => {
+              const config: Record<string, { emoji: string; color: string }> = {
+                dating: { emoji: '💕', color: 'bg-pink-100 text-pink-700' },
+                friends: { emoji: '👯', color: 'bg-purple-100 text-purple-700' },
+                networking: { emoji: '💼', color: 'bg-blue-100 text-blue-700' },
+                events: { emoji: '🎉', color: 'bg-green-100 text-green-700' },
+                travel: { emoji: '✈️', color: 'bg-orange-100 text-orange-700' },
+              };
+              const cfg = config[item] || { emoji: '🔹', color: 'bg-gray-100 text-gray-700' };
+              return (
+                <span key={item} className={`px-3 py-1.5 rounded-full text-sm font-medium ${cfg.color}`}>
+                  {cfg.emoji} {item.charAt(0).toUpperCase() + item.slice(1)}
+                </span>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       <div className="bg-white mx-4 rounded-2xl shadow-sm mb-4 overflow-hidden">
         {menuItems.map((item, index) => {
           const isLast = index === menuItems.length - 1;
