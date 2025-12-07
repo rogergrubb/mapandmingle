@@ -545,6 +545,14 @@ userRoutes.get('/:id', async (c) => {
       } catch {}
     }
 
+    // Parse lookingFor
+    let lookingFor: string[] = [];
+    if (user.profile?.lookingFor) {
+      try {
+        lookingFor = JSON.parse(user.profile.lookingFor);
+      } catch {}
+    }
+
     // Check if current user follows/has waved at this user
     let hasWaved = false;
     let hasReceivedWave = false;
@@ -573,7 +581,7 @@ userRoutes.get('/:id', async (c) => {
         trustScore: user.profile?.trustScore || 50,
         trustLevel: user.profile?.trustLevel || 'new',
         interests,
-        lookingFor: user.profile?.lookingFor,
+        lookingFor,
         isVerified: (user.profile?.trustLevel === 'verified' || user.profile?.trustLevel === 'vip'),
         hasWaved,
         hasReceivedWave,
