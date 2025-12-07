@@ -40,7 +40,7 @@ export function InviteFriends({ isOpen, onClose }: InviteFriendsProps) {
     try {
       await navigator.clipboard.writeText(shareUrl);
       setCopied(true);
-      haptic.success();
+      haptic.confirm();
       setTimeout(() => setCopied(false), 2000);
     } catch (error) {
       console.error('Failed to copy:', error);

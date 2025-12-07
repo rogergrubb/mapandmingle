@@ -53,7 +53,8 @@ export default function AuthCallback() {
           
           // Check if user has completed onboarding
           const userData = await api.get('/api/users/me');
-          const onboardingComplete = userData.data?.onboardingComplete || userData.onboardingComplete;
+          const userDataResponse = userData.data || userData;
+          const onboardingComplete = userDataResponse?.profile?.onboardingComplete || userDataResponse?.onboardingComplete || false;
           
           console.log('AuthCallback: User fetched, onboardingComplete:', onboardingComplete);
           setStatus('success');
