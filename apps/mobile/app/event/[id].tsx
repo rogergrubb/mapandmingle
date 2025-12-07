@@ -51,7 +51,7 @@ interface EventDetail {
   id: string;
   title: string;
   description: string | null;
-  category: keyof typeof CATEGORY_CONFIG;
+  categories: string[]; // Changed to array
   image: string | null;
   venueName: string;
   venueAddress: string | null;
@@ -262,7 +262,7 @@ export default function EventDetailScreen() {
     );
   }
 
-  const config = CATEGORY_CONFIG[event.category] || CATEGORY_CONFIG.other;
+  const config = CATEGORY_CONFIG[event.categories[0] as keyof typeof CATEGORY_CONFIG] || CATEGORY_CONFIG.other;
 
   return (
     <View className="flex-1 bg-white">
@@ -310,15 +310,30 @@ export default function EventDetailScreen() {
             className="absolute bottom-0 left-0 right-0 h-32"
           />
 
-          {/* Category Badge */}
-          <View
-            className="absolute top-14 left-4 px-3 py-1.5 rounded-full flex-row items-center"
-            style={{ backgroundColor: config.color }}
-          >
-            <Ionicons name={config.icon as any} size={14} color="white" />
-            <Text className="text-white text-xs font-medium ml-1 capitalize">
-              {event.category}
-            </Text>
+          {/* Category Badges */}
+          <View className="absolute top-14 left-4 flex-row flex-wrap gap-2">
+            {event.categories.slice(0, 3).map((cat) => {
+              const catConfig = CATEGORY_CONFIG[cat as keyof typeof CATEGORY_CONFIG] || CATEGORY_CONFIG.other;
+              return (
+                <View
+                  key={cat}
+                  className="px-3 py-1.5 rounded-full flex-row items-center"
+                  style={{ backgroundColor: catConfig.color }}
+                >
+                  <Ionicons name={catConfig.icon as any} size={14} color="white" />
+                  <Text className="text-white text-xs font-medium ml-1 capitalize">
+                    {cat}
+                  </Text>
+                </View>
+              );
+            })}
+            {event.categories.length > 3 && (
+              <View className="px-3 py-1.5 rounded-full bg-gray-700">
+                <Text className="text-white text-xs font-medium">
+                  +{event.categories.length - 3}
+                </Text>
+              </View>
+            )}
           </View>
 
           {/* Date Badge */}
