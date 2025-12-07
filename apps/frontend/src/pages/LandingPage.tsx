@@ -314,23 +314,6 @@ export default function LandingPage() {
               </div>
             </div>
           </div>
-
-          {/* Mini Features */}
-          <div className="grid md:grid-cols-3 gap-6 mt-20">
-            {[
-              { icon: Eye, title: 'See Who\'s Around', desc: 'Real-time map of nearby people' },
-              { icon: Zap, title: 'Choose Your Mode', desc: 'Dating, friends, networking, events, travel' },
-              { icon: MessageCircle, title: 'Connect Instantly', desc: 'Profiles, chat, and meetups' },
-            ].map((feature, i) => (
-              <div key={i} className="group p-6 bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl hover:bg-white/10 transition-all hover:scale-105">
-                <div className="w-12 h-12 bg-gradient-to-br from-pink-500/20 to-purple-500/20 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                  <feature.icon className="w-6 h-6 text-pink-400" />
-                </div>
-                <h3 className="font-bold text-lg mb-2">{feature.title}</h3>
-                <p className="text-white/60">{feature.desc}</p>
-              </div>
-            ))}
-          </div>
         </div>
       </section>
 
