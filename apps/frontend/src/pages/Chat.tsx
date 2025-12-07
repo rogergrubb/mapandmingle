@@ -8,6 +8,7 @@ import { Button } from '../components/common/Button';
 import EmojiPicker from '../components/EmojiPicker';
 import { useWebSocket } from '../lib/websocket';
 import { useAuthStore } from '../stores/authStore';
+import { useCallStore } from '../stores/callStore';
 import api from '../lib/api';
 
 interface Message {
@@ -45,6 +46,7 @@ export function Chat() {
   const { id: otherUserId } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
+  const { initiateCall, status: callStatus } = useCallStore();
   const { socket, isConnected } = useWebSocket();
   const [otherUser, setOtherUser] = useState<UserProfile | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -478,12 +480,19 @@ export function Chat() {
         </div>
 
         <div className="flex items-center gap-1">
-          <button className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+          <button 
+            onClick={() => otherUser && callStatus === 'idle' && initiateCall(otherUser.id, otherUser.name, otherUser.avatar || null, false)}
+            disabled={callStatus !== 'idle'}
+            className="p-2 hover:bg-gray-100 rounded-full transition-colors disabled:opacity-50"
+            title="Voice call"
+          >
             <Phone className="w-5 h-5 text-gray-600" />
           </button>
           <button 
-            onClick={() => navigate(`/video-call/${otherUserId}`)}
-            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+            onClick={() => otherUser && callStatus === 'idle' && initiateCall(otherUser.id, otherUser.name, otherUser.avatar || null, true)}
+            disabled={callStatus !== 'idle'}
+            className="p-2 hover:bg-gray-100 rounded-full transition-colors disabled:opacity-50"
+            title="Video call"
           >
             <Video className="w-5 h-5 text-gray-600" />
           </button>
