@@ -11,7 +11,7 @@ interface Event {
   id: string;
   title: string;
   description: string;
-  category: 'social' | 'dating' | 'networking' | 'activity' | 'other';
+  categories: string[]; // Changed to array
   image: string | null;
   venueName: string;
   venueAddress: string | null;
@@ -211,7 +211,7 @@ export default function EventsScreen() {
             </View>
           ) : (
             events.map((event) => {
-              const config = CATEGORY_CONFIG[event.category];
+              const config = CATEGORY_CONFIG[event.categories[0] as keyof typeof CATEGORY_CONFIG] || CATEGORY_CONFIG.other;
               const attendeeCount = getAttendeeCount(event);
 
               return (
@@ -234,15 +234,24 @@ export default function EventsScreen() {
                     </View>
                   )}
 
-                  {/* Category Badge */}
-                  <View
-                    className="absolute top-3 left-3 px-3 py-1 rounded-full flex-row items-center"
-                    style={{ backgroundColor: config.color }}
-                  >
-                    <Ionicons name={config.icon as any} size={14} color="white" />
-                    <Text className="text-white text-xs font-medium ml-1 capitalize">
-                      {event.category}
-                    </Text>
+                  {/* Category Badges */}
+                  <View className="absolute top-3 left-3 flex-row gap-2">
+                    <View
+                      className="px-3 py-1 rounded-full flex-row items-center"
+                      style={{ backgroundColor: config.color }}
+                    >
+                      <Ionicons name={config.icon as any} size={14} color="white" />
+                      <Text className="text-white text-xs font-medium ml-1 capitalize">
+                        {event.categories[0]}
+                      </Text>
+                    </View>
+                    {event.categories.length > 1 && (
+                      <View className="px-2 py-1 rounded-full bg-gray-700">
+                        <Text className="text-white text-xs font-medium">
+                          +{event.categories.length - 1}
+                        </Text>
+                      </View>
+                    )}
                   </View>
 
                   {/* Content */}
