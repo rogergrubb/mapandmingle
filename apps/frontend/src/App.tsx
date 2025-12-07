@@ -20,7 +20,7 @@ import { EventDetail } from './pages/EventDetail';
 import { EditEvent } from './pages/EditEvent';
 import { MyEvents } from './pages/MyEvents';
 import MessagesPage from './pages/MessagesPage';
-import ActivityPage from './pages/ActivityPage';
+import ConnectionsPage from './pages/ConnectionsPage';
 import { Chat } from './pages/Chat';
 import { Mingles } from './pages/Mingles';
 import MingleDetail from './pages/MingleDetail';
@@ -96,7 +96,7 @@ function App() {
           <Route path="/events/:id/edit" element={<EditEvent />} />
           <Route path="/my-events" element={<MyEvents />} />
           <Route path="/messages" element={<MessagesPage />} />
-                      <Route path="/activity" element={<ActivityPage />} />
+                      <Route path="/activity" element={<ConnectionsPage />} />
           <Route path="/chat/:id" element={<Chat />} />
           <Route path="/mingles" element={<Mingles />} />
           <Route path="/mingles/create" element={<CreateMinglePage />} />

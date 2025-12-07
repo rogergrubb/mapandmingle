@@ -92,6 +92,8 @@ model User {
   blocksReceived        Block[]               @relation("BlockTarget")
   reportsInitiated      Report[]              @relation("ReportInitiator")
   reportsReceived       Report[]              @relation("ReportTarget")
+  connectionsSent       Connection[]          @relation("ConnectionRequester")
+  connectionsReceived   Connection[]          @relation("ConnectionAddressee")
   proximityAlerts       ProximityAlert[]
   proximityAlertMatches ProximityAlertMatch[]
   hotspotActivities     HotspotActivity[]
@@ -957,4 +959,24 @@ model BlockedUser {
   @@unique([blockerId, blockedId])
   @@index([blockerId])
   @@index([blockedId])
+}
+
+// Connection between users (friendships)
+model Connection {
+  id          String   @id @default(cuid())
+  requesterId String   // User who sent the request
+  addresseeId String   // User who received the request
+  status      String   @default("pending") // pending, accepted, blocked
+  metAt       String?  // Where they met: "event:123", "pin:456", "map"
+  metLocation String?  // Human readable location name
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  requester   User     @relation("ConnectionRequester", fields: [requesterId], references: [id])
+  addressee   User     @relation("ConnectionAddressee", fields: [addresseeId], references: [id])
+
+  @@unique([requesterId, addresseeId])
+  @@index([requesterId])
+  @@index([addresseeId])
+  @@index([status])
 }

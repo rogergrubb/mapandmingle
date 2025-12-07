@@ -52,6 +52,7 @@ import { analytics } from './routes/analytics';
 import { push } from './routes/push';
 import admin from './routes/admin';
 import { settingsRoutes } from './routes/settings';
+import connections from './routes/connections';
 
 // Import trial & usage middleware
 import { rateLimitMiddleware as trialRateLimitMiddleware } from './middleware/rateLimit';
@@ -306,6 +307,7 @@ app.route('/api/analytics', analytics);
 app.route('/api/push', push);
 app.route('/api/settings', settingsRoutes);
 app.route('/api/admin', admin);
+app.route('/api/connections', connections);
 app.route('/webhook', stripeWebhookRoutes);
 
 // Start server

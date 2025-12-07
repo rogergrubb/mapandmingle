@@ -3,11 +3,18 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import {
   MapPin, Calendar, Heart, MessageCircle, UserPlus, UserMinus,
   Shield, Award, Flame, Users, Camera, Flag, ArrowLeft,
-  Sparkles, Briefcase, Plane
+  Sparkles, Briefcase, Plane, UserCheck, Clock
 } from 'lucide-react';
 import { Button } from '../components/common/Button';
 import { useAuthStore } from '../stores/authStore';
 import api from '../lib/api';
+
+interface ConnectionStatus {
+  status: 'none' | 'pending' | 'accepted' | 'blocked';
+  connectionId: string | null;
+  isRequester: boolean;
+  canAccept: boolean;
+}
 
 interface UserProfile {
   id: string;
@@ -85,12 +92,30 @@ export function UserProfile() {
   const [loading, setLoading] = useState(true);
   const [showFollowers, setShowFollowers] = useState(false);
   const [showFollowing, setShowFollowing] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>({
+    status: 'none',
+    connectionId: null,
+    isRequester: false,
+    canAccept: false,
+  });
+  const [connectionLoading, setConnectionLoading] = useState(false);
 
   useEffect(() => {
     if (params.userId) {
       fetchProfile();
+      fetchConnectionStatus();
     }
   }, [params.userId]);
+
+  const fetchConnectionStatus = async () => {
+    if (!currentUser || currentUser.id === params.userId) return;
+    try {
+      const response = await api.get(`/api/connections/status/${params.userId}`);
+      setConnectionStatus(response.data);
+    } catch (err) {
+      console.error('Failed to fetch connection status:', err);
+    }
+  };
 
   const fetchProfile = async () => {
     try {
@@ -164,6 +189,61 @@ export function UserProfile() {
     if (!profile) return;
     // Navigate directly to chat with user ID
     navigate(`/chat/${profile.id}`);
+  };
+
+  const handleConnect = async () => {
+    if (!profile || connectionLoading) return;
+    setConnectionLoading(true);
+    
+    try {
+      if (connectionStatus.status === 'none') {
+        // Send connection request
+        await api.post('/api/connections/request', { 
+          addresseeId: profile.id,
+          metAt: 'profile',
+          metLocation: 'User Profile',
+        });
+        setConnectionStatus({
+          status: 'pending',
+          connectionId: null,
+          isRequester: true,
+          canAccept: false,
+        });
+      } else if (connectionStatus.canAccept && connectionStatus.connectionId) {
+        // Accept incoming request
+        await api.post(`/api/connections/${connectionStatus.connectionId}/accept`);
+        setConnectionStatus({
+          ...connectionStatus,
+          status: 'accepted',
+          canAccept: false,
+        });
+      }
+    } catch (err: any) {
+      console.error('Connection action failed:', err);
+      alert(err.response?.data?.error || 'Failed to connect');
+    } finally {
+      setConnectionLoading(false);
+    }
+  };
+
+  const handleRemoveConnection = async () => {
+    if (!connectionStatus.connectionId || connectionLoading) return;
+    if (!confirm('Remove this connection?')) return;
+    
+    setConnectionLoading(true);
+    try {
+      await api.delete(`/api/connections/${connectionStatus.connectionId}`);
+      setConnectionStatus({
+        status: 'none',
+        connectionId: null,
+        isRequester: false,
+        canAccept: false,
+      });
+    } catch (err) {
+      console.error('Failed to remove connection:', err);
+    } finally {
+      setConnectionLoading(false);
+    }
   };
 
   const handleReport = async () => {
@@ -264,22 +344,47 @@ export function UserProfile() {
 
                 {!profile.isOwnProfile && (
                   <div className="flex gap-2">
-                    <Button
-                      variant={profile.isFollowing ? 'outline' : 'primary'}
-                      onClick={handleFollow}
-                    >
-                      {profile.isFollowing ? (
-                        <>
-                          <UserMinus className="w-4 h-4 mr-2" />
-                          Unfollow
-                        </>
-                      ) : (
-                        <>
-                          <UserPlus className="w-4 h-4 mr-2" />
-                          Follow
-                        </>
-                      )}
-                    </Button>
+                    {/* Connect Button */}
+                    {connectionStatus.status === 'none' && (
+                      <Button
+                        variant="primary"
+                        onClick={handleConnect}
+                        disabled={connectionLoading}
+                      >
+                        <UserPlus className="w-4 h-4 mr-2" />
+                        Connect
+                      </Button>
+                    )}
+                    {connectionStatus.status === 'pending' && connectionStatus.canAccept && (
+                      <Button
+                        variant="primary"
+                        onClick={handleConnect}
+                        disabled={connectionLoading}
+                      >
+                        <UserCheck className="w-4 h-4 mr-2" />
+                        Accept
+                      </Button>
+                    )}
+                    {connectionStatus.status === 'pending' && connectionStatus.isRequester && (
+                      <Button
+                        variant="outline"
+                        disabled
+                      >
+                        <Clock className="w-4 h-4 mr-2" />
+                        Pending
+                      </Button>
+                    )}
+                    {connectionStatus.status === 'accepted' && (
+                      <Button
+                        variant="outline"
+                        onClick={handleRemoveConnection}
+                        disabled={connectionLoading}
+                      >
+                        <UserCheck className="w-4 h-4 mr-2 text-green-600" />
+                        Connected
+                      </Button>
+                    )}
+
                     <Button variant="outline" onClick={handleMessage}>
                       <MessageCircle className="w-4 h-4 mr-2" />
                       Message
