@@ -9,7 +9,7 @@ export const eventRoutes = new Hono();
 const createEventSchema = z.object({
   title: z.string().min(1).max(100),
   description: z.string().max(1000).optional(),
-  category: z.string().min(1),
+  categories: z.array(z.string()).min(1).max(5), // 1-5 categories
   image: z.string().optional(),
   // Support both venueName and address
   venueName: z.string().optional(),
@@ -53,8 +53,9 @@ eventRoutes.get('/', async (c) => {
       startTime: { gte: now },
     };
     
+    // Filter by category: show event if ANY of its categories match
     if (category && category !== 'all') {
-      where.category = category;
+      where.categories = { has: category };
     }
     
     // Campus filter: show only events from user's school
@@ -78,7 +79,7 @@ eventRoutes.get('/', async (c) => {
       id: e.id,
       title: e.title,
       description: e.description,
-      category: e.category,
+      categories: e.categories,
       image: e.image,
       venueName: e.venueName,
       venueAddress: e.venueAddress,
@@ -118,7 +119,7 @@ eventRoutes.post('/', authMiddleware, async (c) => {
         hostId: userId,
         title: data.title,
         description: data.description,
-        category: data.category?.toLowerCase() || 'social',
+        categories: data.categories.map(c => c.toLowerCase()),
         image: data.image,
         venueName: data.venueName || data.address || 'TBD',
         venueAddress: data.venueAddress || data.address,
@@ -147,7 +148,7 @@ eventRoutes.post('/', authMiddleware, async (c) => {
       id: event.id,
       title: event.title,
       description: event.description,
-      category: event.category,
+      categories: event.categories,
       venueName: event.venueName,
       latitude: event.latitude,
       longitude: event.longitude,
@@ -190,7 +191,7 @@ eventRoutes.get('/:id', async (c) => {
       id: event.id,
       title: event.title,
       description: event.description,
-      category: event.category,
+      categories: event.categories,
       image: event.image,
       venueName: event.venueName,
       venueAddress: event.venueAddress,
@@ -322,7 +323,7 @@ eventRoutes.put('/:id', authMiddleware, async (c) => {
       data: {
         title: body.title,
         description: body.description,
-        category: body.category?.toLowerCase(),
+        categories: body.categories?.map((c: string) => c.toLowerCase()),
         image: body.image,
         venueName: body.venueName || body.address,
         venueAddress: body.venueAddress || body.address,
@@ -342,7 +343,7 @@ eventRoutes.put('/:id', authMiddleware, async (c) => {
       id: updated.id,
       title: updated.title,
       description: updated.description,
-      category: updated.category,
+      categories: updated.categories,
       venueName: updated.venueName,
       startTime: updated.startTime.toISOString(),
       host: updated.host,
