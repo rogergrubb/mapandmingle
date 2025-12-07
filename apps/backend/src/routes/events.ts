@@ -114,6 +114,12 @@ eventRoutes.post('/', authMiddleware, async (c) => {
     
     const data = parsed.data;
     
+    // Ensure we have a proper venue name
+    let venueName = data.venueName?.trim() || data.address?.trim() || '';
+    if (!venueName || venueName === 'TBD') {
+      venueName = 'Location to be announced';
+    }
+    
     const event = await prisma.event.create({
       data: {
         hostId: userId,
@@ -121,7 +127,7 @@ eventRoutes.post('/', authMiddleware, async (c) => {
         description: data.description,
         categories: data.categories.map(c => c.toLowerCase()),
         image: data.image,
-        venueName: data.venueName || data.address || 'TBD',
+        venueName,
         venueAddress: data.venueAddress || data.address,
         latitude: data.latitude || 0,
         longitude: data.longitude || 0,
