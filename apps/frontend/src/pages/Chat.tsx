@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
   Send, Image, MapPin, Smile, MoreVertical, 
-  Trash2, ArrowLeft, Check, CheckCheck, Phone, Video
+  Trash2, ArrowLeft, Check, CheckCheck, Phone, Video, Download
 } from 'lucide-react';
 import { Button } from '../components/common/Button';
 import EmojiPicker from '../components/EmojiPicker';
@@ -54,6 +54,8 @@ export function Chat() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSending, setIsSending] = useState(false);
   const [viewingImage, setViewingImage] = useState<string | null>(null);
+  const [viewingImageMsg, setViewingImageMsg] = useState<Message | null>(null);
+  const [savingImage, setSavingImage] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<number | undefined>(undefined);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -296,6 +298,24 @@ export function Chat() {
   const handleEmojiSelect = (emoji: string) => {
     setNewMessage(prev => prev + emoji);
     inputRef.current?.focus();
+  };
+
+  const handleSaveImageToGallery = async () => {
+    if (!viewingImage || !viewingImageMsg) return;
+    
+    setSavingImage(true);
+    try {
+      await api.post('/api/photos/save-from-chat', {
+        messageId: viewingImageMsg.id,
+        imageUrl: viewingImage,
+      });
+      alert('Photo saved to your gallery!');
+    } catch (error: any) {
+      console.error('Failed to save image:', error);
+      alert(error.response?.data?.error || 'Failed to save photo');
+    } finally {
+      setSavingImage(false);
+    }
   };
 
   const handleSendMessage = async (e: React.FormEvent) => {
@@ -562,7 +582,10 @@ export function Chat() {
                           return (
                             <div 
                               className="cursor-pointer"
-                              onClick={() => setViewingImage(imageUrl)}
+                              onClick={() => {
+                                setViewingImage(imageUrl);
+                                setViewingImageMsg(message);
+                              }}
                             >
                               <img 
                                 src={imageUrl} 
@@ -723,14 +746,36 @@ export function Chat() {
       {viewingImage && (
         <div 
           className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4"
-          onClick={() => setViewingImage(null)}
+          onClick={() => {
+            setViewingImage(null);
+            setViewingImageMsg(null);
+          }}
         >
           <button
-            onClick={() => setViewingImage(null)}
+            onClick={() => {
+              setViewingImage(null);
+              setViewingImageMsg(null);
+            }}
             className="absolute top-4 right-4 text-white text-4xl hover:text-gray-300 z-50"
           >
             &times;
           </button>
+          
+          {/* Save button for received images */}
+          {viewingImageMsg && viewingImageMsg.senderId !== user?.id && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleSaveImageToGallery();
+              }}
+              disabled={savingImage}
+              className="absolute top-4 left-4 flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-pink-500 to-purple-500 text-white rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50 z-50"
+            >
+              <Download size={18} />
+              {savingImage ? 'Saving...' : 'Save to Gallery'}
+            </button>
+          )}
+          
           <img 
             src={viewingImage}
             alt="Full size"

@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Settings, Crown, Award, Flame, MapPin, Calendar, Heart, MessageCircle, LogOut } from "lucide-react";
 import { useAuthStore } from "../stores/authStore";
 import MyPinsManager from "../components/profile/MyPinsManager";
+import { PhotoGallery } from "../components/profile/PhotoGallery";
 import api from "../lib/api";
 
 interface UserStats {
@@ -136,6 +137,11 @@ export default function ProfilePage() {
             </div>
           ))}
         </div>
+      </div>
+
+      {/* Photo Gallery */}
+      <div className="mx-4 mb-4">
+        <PhotoGallery userId={user.id} isOwner={true} />
       </div>
 
       <div className="bg-white mx-4 rounded-2xl shadow-lg p-6 mb-4">

@@ -53,6 +53,7 @@ import { push } from './routes/push';
 import admin from './routes/admin';
 import { settingsRoutes } from './routes/settings';
 import connections from './routes/connections';
+import photos from './routes/photos';
 
 // Import trial & usage middleware
 import { rateLimitMiddleware as trialRateLimitMiddleware } from './middleware/rateLimit';
@@ -308,6 +309,7 @@ app.route('/api/push', push);
 app.route('/api/settings', settingsRoutes);
 app.route('/api/admin', admin);
 app.route('/api/connections', connections);
+app.route('/api/photos', photos);
 app.route('/webhook', stripeWebhookRoutes);
 
 // Start server
@@ -659,6 +661,45 @@ async function runMigrations() {
     
     await prisma.$executeRawUnsafe(`
       CREATE INDEX IF NOT EXISTS "Connection_status_idx" ON "Connection"("status");
+    `).catch(() => {});
+    
+    // ========== USER PHOTOS GALLERY MIGRATIONS ==========
+    // Create UserPhoto table for user photo gallery (up to 25 photos)
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "UserPhoto" (
+        "id" TEXT NOT NULL,
+        "userId" TEXT NOT NULL,
+        "url" TEXT NOT NULL,
+        "caption" TEXT,
+        "order" INTEGER NOT NULL DEFAULT 0,
+        "isProfilePic" BOOLEAN NOT NULL DEFAULT false,
+        "width" INTEGER,
+        "height" INTEGER,
+        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT "UserPhoto_pkey" PRIMARY KEY ("id"),
+        CONSTRAINT "UserPhoto_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE
+      );
+    `).catch(() => {});
+    
+    await prisma.$executeRawUnsafe(`
+      CREATE INDEX IF NOT EXISTS "UserPhoto_userId_idx" ON "UserPhoto"("userId");
+    `).catch(() => {});
+    
+    await prisma.$executeRawUnsafe(`
+      CREATE INDEX IF NOT EXISTS "UserPhoto_userId_order_idx" ON "UserPhoto"("userId", "order");
+    `).catch(() => {});
+    
+    // ========== MESSAGE IMAGE SUPPORT MIGRATIONS ==========
+    // Add type and imageUrl columns to Message table for image/video messages
+    await prisma.$executeRawUnsafe(`
+      ALTER TABLE "Message" 
+      ADD COLUMN IF NOT EXISTS "type" TEXT NOT NULL DEFAULT 'text';
+    `).catch(() => {});
+    
+    await prisma.$executeRawUnsafe(`
+      ALTER TABLE "Message" 
+      ADD COLUMN IF NOT EXISTS "imageUrl" TEXT;
     `).catch(() => {});
     
     console.log('✅ Database migrations complete');

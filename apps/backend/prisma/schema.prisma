@@ -112,6 +112,7 @@ model User {
   notificationsFrom Notification[] @relation("NotificationsFrom")
   blockedUsers      BlockedUser[] @relation("BlockedBy")
   blockingUsers     BlockedUser[] @relation("Blocks")
+  photos            UserPhoto[]   @relation("UserPhotos")
 }
 
   // Messaging and call relations
@@ -895,6 +896,8 @@ model Message {
   receiver  User     @relation("MessageReceiver", fields: [receiverId], references: [id], onDelete: Cascade)
   
   content   String
+  type      String   @default("text") // text, image, audio, video
+  imageUrl  String?  // S3 URL for image messages
   isRead    Boolean  @default(false)
   readAt    DateTime?
   editedAt  DateTime?
@@ -979,4 +982,23 @@ model Connection {
   @@index([requesterId])
   @@index([addresseeId])
   @@index([status])
+}
+
+// User Photo Gallery (up to 25 photos per user)
+model UserPhoto {
+  id          String   @id @default(cuid())
+  userId      String
+  url         String   // S3 URL
+  caption     String?
+  order       Int      @default(0) // For ordering photos in gallery
+  isProfilePic Boolean @default(false) // If true, this is the main profile picture
+  width       Int?
+  height      Int?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user        User     @relation("UserPhotos", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, order])
 }

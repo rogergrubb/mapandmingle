@@ -8,6 +8,7 @@ import {
 import { Button } from '../components/common/Button';
 import { useAuthStore } from '../stores/authStore';
 import api from '../lib/api';
+import { PhotoGallery } from '../components/profile/PhotoGallery';
 
 interface ConnectionStatus {
   status: 'none' | 'pending' | 'accepted' | 'blocked';
@@ -455,6 +456,14 @@ export function UserProfile() {
             <p className="text-gray-700 whitespace-pre-wrap">{profile.bio}</p>
           </div>
         )}
+
+        {/* Photo Gallery */}
+        <div className="mb-6">
+          <PhotoGallery 
+            userId={profileId || ''} 
+            isOwner={profile.isOwnProfile} 
+          />
+        </div>
 
         {/* Interests */}
         {profile.interests.length > 0 && (
