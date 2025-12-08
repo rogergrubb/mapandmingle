@@ -73,10 +73,14 @@ export function getUserId(c: Context): string | null {
 }
 
 // Helper to require user ID
+// Note: This should only be called in routes protected by authMiddleware
 export function requireUserId(c: Context): string {
   const userId = getUserId(c);
   if (!userId) {
-    throw new Error('Unauthorized');
+    console.error('requireUserId called but no userId in context - authMiddleware may not be applied');
+    console.error('Request path:', c.req.path);
+    console.error('Request method:', c.req.method);
+    throw new Error('Unauthorized - authMiddleware required');
   }
   return userId;
 }
