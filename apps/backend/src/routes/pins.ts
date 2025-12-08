@@ -246,6 +246,8 @@ pinRoutes.get('/', async (c) => {
           likesCount: pin.likesCount,
           createdAt: pin.createdAt.toISOString(),
           updatedAt: pin.updatedAt.toISOString(),
+          arrivalTime: pin.arrivalTime?.toISOString() || null, // When user will arrive
+          pinType: pin.pinType || 'current', // "current" or "future"
           isActive, // true if logged in within 24h
           lastActiveAt: pin.user.profile?.lastActiveAt?.toISOString() || pin.createdAt.toISOString(),
           isFriend, // true if connected
@@ -403,7 +405,7 @@ pinRoutes.post('/auto-create', async (c) => {
       return c.json({ error: 'Unauthorized' }, 401);
     }
     
-    const { latitude, longitude } = await c.req.json();
+    const { latitude, longitude, arrivalTime, pinType } = await c.req.json();
     
     if (latitude === undefined || longitude === undefined) {
       return c.json({ error: 'latitude and longitude required' }, 400);
@@ -424,6 +426,8 @@ pinRoutes.post('/auto-create', async (c) => {
         data: {
           latitude,
           longitude,
+          arrivalTime: arrivalTime ? new Date(arrivalTime) : null,
+          pinType: pinType || 'current',
         },
         include: {
           user: {
@@ -447,6 +451,8 @@ pinRoutes.post('/auto-create', async (c) => {
           latitude,
           longitude,
           description: 'Mingling here!',
+          arrivalTime: arrivalTime ? new Date(arrivalTime) : null,
+          pinType: pinType || 'current',
         },
         include: {
           user: {
@@ -478,6 +484,8 @@ pinRoutes.post('/auto-create', async (c) => {
         longitude: pin.longitude,
         description: pin.description,
         likesCount: pin.likesCount,
+        arrivalTime: pin.arrivalTime?.toISOString() || null,
+        pinType: pin.pinType || 'current',
         createdAt: pin.createdAt.toISOString(),
         createdBy: {
           id: pin.user.id,
