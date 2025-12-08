@@ -46,8 +46,15 @@ export interface Pin {
   isSaved?: boolean;
   isActive?: boolean;      // true if user active within 24h
   lastActiveAt?: string;   // ISO timestamp of last activity
+  arrivalTime?: string;    // ISO timestamp for "Where I'll Be" pins
+  pinType?: 'current' | 'future';  // current = "Where I'm At", future = "Where I'll Be"
   createdAt: string;
   expiresAt?: string;
+  createdBy?: {            // Populated user info for pin creator
+    id: string;
+    name: string;
+    avatar?: string;
+  };
 }
 
 export type PinCategory = 
