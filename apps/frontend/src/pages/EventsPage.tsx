@@ -4,10 +4,11 @@ import {
   Calendar, MapPin, Users, Plus, Search, 
   ChevronRight, Bookmark, BookmarkCheck, Share2,
   SlidersHorizontal, CalendarDays, Sparkles, TrendingUp,
-  MapPinned, Ticket, Crown, Check, Heart, Star
+  MapPinned, Ticket, Crown, Check, Heart, Star, Clock
 } from 'lucide-react';
 import api from '../lib/api';
 import { useAuthStore } from '../stores/authStore';
+import { formatCountdown, getCountdownColor } from '../utils/countdown';
 
 interface Event {
   id: string;
@@ -449,6 +450,23 @@ export default function EventsPage() {
                           <span className="text-xs font-medium text-white">Premium</span>
                         </div>
                       )}
+
+                      {/* Countdown Timer Badge */}
+                      <div 
+                        className="absolute bottom-3 left-3 flex items-center gap-1 px-3 py-1.5 rounded-full backdrop-blur-md shadow-lg"
+                        style={{ 
+                          backgroundColor: getCountdownColor(event.startTime) + '20',
+                          borderLeft: `3px solid ${getCountdownColor(event.startTime)}`
+                        }}
+                      >
+                        <Clock className="w-3.5 h-3.5" style={{ color: getCountdownColor(event.startTime) }} />
+                        <span 
+                          className="text-xs font-bold"
+                          style={{ color: getCountdownColor(event.startTime) }}
+                        >
+                          {formatCountdown(event.startTime)}
+                        </span>
+                      </div>
 
                       <div className="absolute bottom-3 right-3 px-3 py-1 bg-white/90 backdrop-blur-sm 
                                       rounded-full text-sm font-semibold text-gray-900">
