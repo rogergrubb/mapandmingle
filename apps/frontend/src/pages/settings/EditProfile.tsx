@@ -44,6 +44,11 @@ export default function EditProfile() {
     bio: user?.bio || '',
     interests: user?.interests || [],
     avatar: user?.avatar || '',
+    // Extended profile fields
+    occupation: (user as any)?.occupation || '',
+    education: (user as any)?.education || '',
+    location: (user as any)?.location || '',
+    languages: (user as any)?.languages || '',
     // Campus fields
     primarySchool: (user as any)?.primarySchool || '',
     schoolRole: (user as any)?.schoolRole || '',
@@ -281,6 +286,58 @@ export default function EditProfile() {
                   placeholder="Tell us about yourself..."
                 />
                 <p className="text-xs text-gray-400 text-right">{formData.bio.length}/500</p>
+              </div>
+
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-600">Work</label>
+                <input
+                  type="text"
+                  value={formData.occupation}
+                  onChange={(e) => setFormData(prev => ({ ...prev, occupation: e.target.value }))}
+                  className="w-full px-4 py-3 bg-gray-50/80 border border-gray-200/80 rounded-xl 
+                             focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-400
+                             focus:bg-white transition-all duration-300 text-gray-900 placeholder-gray-400"
+                  placeholder="Software Engineer at Company"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-600">Education</label>
+                <input
+                  type="text"
+                  value={formData.education}
+                  onChange={(e) => setFormData(prev => ({ ...prev, education: e.target.value }))}
+                  className="w-full px-4 py-3 bg-gray-50/80 border border-gray-200/80 rounded-xl 
+                             focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-400
+                             focus:bg-white transition-all duration-300 text-gray-900 placeholder-gray-400"
+                  placeholder="University Name, Degree"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-600">Location</label>
+                <input
+                  type="text"
+                  value={formData.location}
+                  onChange={(e) => setFormData(prev => ({ ...prev, location: e.target.value }))}
+                  className="w-full px-4 py-3 bg-gray-50/80 border border-gray-200/80 rounded-xl 
+                             focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-400
+                             focus:bg-white transition-all duration-300 text-gray-900 placeholder-gray-400"
+                  placeholder="City, State/Country"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-600">Languages</label>
+                <input
+                  type="text"
+                  value={formData.languages}
+                  onChange={(e) => setFormData(prev => ({ ...prev, languages: e.target.value }))}
+                  className="w-full px-4 py-3 bg-gray-50/80 border border-gray-200/80 rounded-xl 
+                             focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-400
+                             focus:bg-white transition-all duration-300 text-gray-900 placeholder-gray-400"
+                  placeholder="English, Spanish, etc."
+                />
               </div>
             </div>
           </div>
