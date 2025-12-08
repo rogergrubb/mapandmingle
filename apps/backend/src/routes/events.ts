@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { prisma } from '../lib/prisma';
-import { authMiddleware } from '../middleware/auth';
+import { authMiddleware, requireUserId } from '../middleware/auth';
 
 const events = new Hono();
 
@@ -28,7 +28,7 @@ function safeParseInt(value: any): number | null {
 // POST /api/events - Create new event
 events.post('/', authMiddleware, async (c) => {
   try {
-    const userId = c.get('userId');
+    const userId = requireUserId(c);
     const body = await c.req.json();
     
     console.log('📝 Event creation request:', JSON.stringify(body, null, 2));
@@ -90,18 +90,17 @@ events.post('/', authMiddleware, async (c) => {
     // Create event with fully validated data
     const event = await prisma.event.create({
       data: {
-        userId,
+        hostId: userId,
         title: title.trim(),
         description: description.trim(),
         categories,
         latitude,
         longitude,
         venueName,
-        address,
+        venueAddress: address || null,
         startTime,
         endTime,
         maxAttendees,
-        isPublic,
         image,
         schoolAffiliation,
       },
@@ -110,10 +109,15 @@ events.post('/', authMiddleware, async (c) => {
           select: {
             id: true,
             name: true,
-            displayName: true,
-            avatar: true,
-            isPremium: true,
-            isVerified: true,
+            image: true,
+            profile: {
+              select: {
+                displayName: true,
+                avatar: true,
+                isPremium: true,
+                isVerified: true,
+              },
+            },
           },
         },
         attendees: {
@@ -122,8 +126,13 @@ events.post('/', authMiddleware, async (c) => {
               select: {
                 id: true,
                 name: true,
-                displayName: true,
-                avatar: true,
+                image: true,
+                profile: {
+                  select: {
+                    displayName: true,
+                    avatar: true,
+                  },
+                },
               },
             },
           },
@@ -138,8 +147,13 @@ events.post('/', authMiddleware, async (c) => {
               select: {
                 id: true,
                 name: true,
-                displayName: true,
-                avatar: true,
+                image: true,
+                profile: {
+                  select: {
+                    displayName: true,
+                    avatar: true,
+                  },
+                },
               },
             },
           },
@@ -197,10 +211,15 @@ events.get('/', async (c) => {
           select: {
             id: true,
             name: true,
-            displayName: true,
-            avatar: true,
-            isPremium: true,
-            isVerified: true,
+            image: true,
+            profile: {
+              select: {
+                displayName: true,
+                avatar: true,
+                isPremium: true,
+                isVerified: true,
+              },
+            },
           },
         },
         attendees: {
@@ -209,8 +228,13 @@ events.get('/', async (c) => {
               select: {
                 id: true,
                 name: true,
-                displayName: true,
-                avatar: true,
+                image: true,
+                profile: {
+                  select: {
+                    displayName: true,
+                    avatar: true,
+                  },
+                },
               },
             },
           },
@@ -227,7 +251,7 @@ events.get('/', async (c) => {
     // Add attendeeCount to each event
     const eventsWithCount = events.map(event => ({
       ...event,
-      attendeeCount: event._count.attendees,
+      attendeeCount: (event as any)._count?.attendees || 0,
     }));
     
     return c.json(eventsWithCount);
@@ -237,4 +261,4 @@ events.get('/', async (c) => {
   }
 });
 
-export default events;
+export const eventRoutes = events;
