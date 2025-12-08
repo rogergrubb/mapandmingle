@@ -20,6 +20,7 @@ import { rateLimitMiddleware } from './middleware/auth';
 import { authRoutes } from './routes/auth';
 import { profileRoutes } from './routes/profile';
 import { pinRoutes } from './routes/pins';
+import { migrationRoutes } from './routes/migrations';
 import { eventRoutes } from './routes/events';
 import { forumRoutes } from './routes/forums';
 import { mingleRoutes } from './routes/mingles';
@@ -276,6 +277,7 @@ app.get('/privacy', async (c) => {
 app.route('/api/auth', authRoutes);
 app.route('/api/profile', profileRoutes);
 app.route('/api/pins', pinRoutes);
+app.route('/api/migrations', migrationRoutes);
 // app.route('/api/conversations', conversationRoutes); // Disabled - using new messages API
 app.route('/api/events', eventRoutes);
 app.route('/api/forums', forumRoutes);
