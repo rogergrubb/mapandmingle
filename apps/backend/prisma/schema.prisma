@@ -315,6 +315,8 @@ model Pin {
   description String   @db.VarChar(500)
   image       String?
   likesCount  Int      @default(0)
+  arrivalTime DateTime? // When user will arrive at this location (for "Where I'll Be" pins)
+  pinType     String   @default("current") // "current" or "future"
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -324,6 +326,7 @@ model Pin {
 
   @@index([latitude, longitude])
   @@index([createdAt])
+  @@index([arrivalTime])
 }
 
 model PinLike {
