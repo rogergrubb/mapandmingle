@@ -223,11 +223,15 @@ function createPinIcon(
 function ClusteredMarkers({ 
   pins, 
   mode,
-  onPinClick 
+  onPinClick,
+  currentUserId,
+  onDeletePin,
 }: { 
   pins: any[]; 
   mode: MingleMode;
   onPinClick: (pin: any) => void;
+  currentUserId: string | undefined;
+  onDeletePin: (pinId: string, pinType: 'current' | 'future') => void;
 }) {
   const map = useMap();
   const clusterGroupRef = useRef<L.MarkerClusterGroup | null>(null);
@@ -406,7 +410,7 @@ function ClusteredMarkers({
       }
       
       // Check if this is the current user's pin
-      const isOwnPin = pin.userId === user?.id;
+      const isOwnPin = pin.userId === currentUserId;
       
       popupContent.innerHTML = `
         <div style="padding: 12px;">
@@ -603,11 +607,7 @@ function ClusteredMarkers({
           e.stopPropagation();
           haptic.softTick();
           
-          setDeleteDialog({
-            isOpen: true,
-            pinId: pin.id,
-            pinType: pin.pinType as 'current' | 'future',
-          });
+          onDeletePin(pin.id, pin.pinType as 'current' | 'future');
         });
       }
       
@@ -880,6 +880,15 @@ export default function MapPage() {
     }
   }, [navigate, user?.id]);
 
+  const handleOpenDeleteDialog = useCallback((pinId: string, pinType: 'current' | 'future') => {
+    haptic.softTick();
+    setDeleteDialog({
+      isOpen: true,
+      pinId,
+      pinType,
+    });
+  }, []);
+
   const handleVisibilityToggle = async () => {
     try {
       await api.patch('/api/users/me', {
@@ -1066,15 +1075,12 @@ export default function MapPage() {
     setIsDeleting(true);
     
     try {
-      haptic.mediumImpact();
+      haptic.confirm();
       
-      // Optimistic update - remove pin from UI
-      setPins(prev => prev.filter(p => p.id !== deleteDialog.pinId));
-      
-      // Call API
+      // Call API to delete
       await api.delete(`/api/pins/${deleteDialog.pinId}`);
       
-      haptic.success();
+      haptic.confirm();
       
       // Close dialog
       setDeleteDialog({ isOpen: false, pinId: null, pinType: null });
@@ -1092,9 +1098,9 @@ export default function MapPage() {
       
     } catch (error) {
       console.error('Error deleting pin:', error);
-      haptic.error();
+      haptic.softTick();
       
-      // Revert optimistic update on error
+      // Refresh to ensure consistency
       const bounds = mapRef.current?.getBounds();
       if (bounds) {
         useMapStore.getState().fetchPins({
@@ -1251,7 +1257,13 @@ export default function MapPage() {
         />
         
         {/* Clustered Pins with mode-aware styling */}
-        <ClusteredMarkers pins={pins} mode={currentMode} onPinClick={handlePinClick} />
+        <ClusteredMarkers 
+          pins={pins} 
+          mode={currentMode} 
+          onPinClick={handlePinClick}
+          currentUserId={user?.id}
+          onDeletePin={handleOpenDeleteDialog}
+        />
 
         {/* User location marker */}
         {userPosition && (
