@@ -105,7 +105,7 @@ events.post('/', authMiddleware, async (c) => {
         schoolAffiliation,
       },
       include: {
-        user: {
+        host: {
           select: {
             id: true,
             name: true,
@@ -207,7 +207,7 @@ events.get('/', async (c) => {
         startTime: 'asc',
       },
       include: {
-        user: {
+        host: {
           select: {
             id: true,
             name: true,
