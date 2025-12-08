@@ -114,8 +114,6 @@ events.post('/', authMiddleware, async (c) => {
               select: {
                 displayName: true,
                 avatar: true,
-                isPremium: true,
-                isVerified: true,
               },
             },
           },
@@ -216,8 +214,6 @@ events.get('/', async (c) => {
               select: {
                 displayName: true,
                 avatar: true,
-                isPremium: true,
-                isVerified: true,
               },
             },
           },
