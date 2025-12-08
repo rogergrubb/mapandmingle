@@ -28,8 +28,8 @@ export function PhotoGallery({ userId, isOwner, onPhotoCountChange }: PhotoGalle
     try {
       const endpoint = isOwner ? '/api/photos' : `/api/photos/user/${userId}`;
       const response = await api.get(endpoint);
-      setPhotos(response.data.photos || []);
-      onPhotoCountChange?.(response.data.photos?.length || 0);
+      setPhotos(response.photos || []);  // Interceptor already unwraps .data
+      onPhotoCountChange?.(response.photos?.length || 0);
     } catch (err) {
       console.error('Failed to fetch photos:', err);
     } finally {
@@ -65,7 +65,7 @@ export function PhotoGallery({ userId, isOwner, onPhotoCountChange }: PhotoGalle
 
     try {
       // Get presigned upload URL
-      const { data: uploadData } = await api.get('/api/photos/upload-url', {
+      const uploadData = await api.get('/api/photos/upload-url', {
         params: {
           contentType: file.type,
           filename: file.name,
