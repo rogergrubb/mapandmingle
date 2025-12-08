@@ -1,11 +1,24 @@
-import axios from 'axios';
+import axios, { AxiosRequestConfig } from 'axios';
 
 const API_URL = import.meta.env.VITE_API_URL || 'https://mapandmingle-api-492171901610.us-west1.run.app';
 
-export const api = axios.create({
+// Create axios instance
+const axiosInstance = axios.create({
   baseURL: API_URL,
   timeout: 30000,
 });
+
+// Custom API interface that reflects the interceptor's unwrapping
+interface ApiClient {
+  get<T = any>(url: string, config?: AxiosRequestConfig): Promise<T>;
+  post<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T>;
+  put<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T>;
+  patch<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T>;
+  delete<T = any>(url: string, config?: AxiosRequestConfig): Promise<T>;
+}
+
+// Export typed API client
+export const api = axiosInstance as unknown as ApiClient;
 
 // Track refresh state
 let isRefreshing = false;
@@ -90,7 +103,7 @@ const refreshTokenIfNeeded = async (): Promise<string | null> => {
 };
 
 // Request interceptor
-api.interceptors.request.use(
+axiosInstance.interceptors.request.use(
   async (config) => {
     // Proactively refresh token if expiring soon
     let token = await refreshTokenIfNeeded();
@@ -118,7 +131,7 @@ api.interceptors.request.use(
 );
 
 // Response interceptor
-api.interceptors.response.use(
+axiosInstance.interceptors.response.use(
   (response) => response.data as any,
   async (error) => {
     const originalRequest = error.config;
@@ -179,13 +192,13 @@ api.interceptors.response.use(
             localStorage.setItem('refreshToken', newRefreshToken);
           }
           
-          api.defaults.headers.common.Authorization = `Bearer ${newToken}`;
+          axiosInstance.defaults.headers.common.Authorization = `Bearer ${newToken}`;
           originalRequest.headers.Authorization = `Bearer ${newToken}`;
           
           processQueue(null, newToken);
           isRefreshing = false;
           
-          return axios(originalRequest);
+          return axiosInstance(originalRequest);
         } else {
           throw new Error('No token in refresh response');
         }
