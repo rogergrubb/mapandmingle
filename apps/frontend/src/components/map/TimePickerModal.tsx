@@ -1,5 +1,6 @@
 import { X } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 
 interface TimePickerModalProps {
   isOpen: boolean;
@@ -10,10 +11,22 @@ interface TimePickerModalProps {
 export function TimePickerModal({ isOpen, onClose, onConfirm }: TimePickerModalProps) {
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [customDate, setCustomDate] = useState<Date>(new Date());
+  const [portalRoot, setPortalRoot] = useState<HTMLElement | null>(null);
+
+  useEffect(() => {
+    // Create or get portal root
+    let root = document.getElementById('time-picker-portal');
+    if (!root) {
+      root = document.createElement('div');
+      root.id = 'time-picker-portal';
+      document.body.appendChild(root);
+    }
+    setPortalRoot(root);
+  }, []);
 
   console.log('🎯 TimePickerModal render:', { isOpen });
 
-  if (!isOpen) return null;
+  if (!isOpen || !portalRoot) return null;
 
   console.log('✅ TimePickerModal is rendering (isOpen = true)');
 
@@ -74,16 +87,19 @@ export function TimePickerModal({ isOpen, onClose, onConfirm }: TimePickerModalP
     });
   };
 
-  return (
+  const modalContent = (
     <>
       {/* Backdrop */}
       <div 
         style={{
           position: 'fixed',
-          inset: 0,
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
           backgroundColor: 'rgba(0, 0, 0, 0.5)',
           backdropFilter: 'blur(4px)',
-          zIndex: 9999,
+          zIndex: 999999,
         }}
         onClick={onClose}
       />
@@ -94,9 +110,10 @@ export function TimePickerModal({ isOpen, onClose, onConfirm }: TimePickerModalP
         left: 0,
         right: 0,
         bottom: 0,
-        zIndex: 10000,
+        zIndex: 1000000,
         maxWidth: '512px',
         margin: '0 auto',
+        pointerEvents: 'none',
       }}>
         <div style={{
           backgroundColor: 'white',
@@ -104,6 +121,7 @@ export function TimePickerModal({ isOpen, onClose, onConfirm }: TimePickerModalP
           borderTopRightRadius: '24px',
           boxShadow: '0 -10px 50px rgba(0, 0, 0, 0.3)',
           animation: 'slideUp 0.3s ease-out',
+          pointerEvents: 'auto',
         }}>
           {/* Header */}
           <div style={{
@@ -280,4 +298,6 @@ export function TimePickerModal({ isOpen, onClose, onConfirm }: TimePickerModalP
       `}</style>
     </>
   );
+
+  return createPortal(modalContent, portalRoot);
 }
