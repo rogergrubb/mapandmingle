@@ -796,18 +796,33 @@ async function runMigrations() {
 }
 
 // Run migrations then start server
-runMigrations().then(() => {
-  server.listen(PORT, '0.0.0.0', () => {
-    console.log(`
+// TEMPORARILY DISABLED: Auto-migrations causing SIGSEGV crash
+// runMigrations().then(() => {
+//   server.listen(PORT, '0.0.0.0', () => {
+//     console.log(`
+// ╔═══════════════════════════════════════════════════════════╗
+// ║                    🗺️  MAP MINGLE API                      ║
+// ╠═══════════════════════════════════════════════════════════╣
+// ║  Server running on port ${PORT}                              ║
+// ║  WebSocket ready for real-time connections                ║
+// ║  Database: PostgreSQL via Prisma                          ║
+// ╚═══════════════════════════════════════════════════════════╝
+//     `);
+//   });
+// });
+
+// Start server immediately without auto-migrations
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(`
 ╔═══════════════════════════════════════════════════════════╗
 ║                    🗺️  MAP MINGLE API                      ║
 ╠═══════════════════════════════════════════════════════════╣
 ║  Server running on port ${PORT}                              ║
 ║  WebSocket ready for real-time connections                ║
 ║  Database: PostgreSQL via Prisma                          ║
+║  ⚠️  Auto-migrations disabled (manual migration required)  ║
 ╚═══════════════════════════════════════════════════════════╝
-    `);
-  });
+  `);
 });
 
 // Graceful shutdown
