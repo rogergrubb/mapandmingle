@@ -3,6 +3,95 @@ import { prisma, broadcastToAll } from '../index';
 import { z } from 'zod';
 import { notifyAboutNewPin, notifyAboutPinLike } from '../services/notificationService';
 
+// Pin lifecycle status
+type PinStatus = 'active' | 'recently_arrived' | 'ghost' | 'old_ghost';
+
+// Calculate pin status based on age and type
+function calculatePinStatus(pin: { 
+  pinType: string; 
+  arrivalTime: Date | null; 
+  createdAt: Date;
+}): { status: PinStatus; opacity: number; ageHours: number } {
+  const now = new Date();
+  
+  // Future pin with countdown
+  if (pin.pinType === 'future' && pin.arrivalTime) {
+    const arrival = new Date(pin.arrivalTime);
+    
+    // Before arrival - active with full opacity
+    if (arrival > now) {
+      return { status: 'active', opacity: 1.0, ageHours: 0 };
+    }
+    
+    // After arrival - calculate time since arrival
+    const hoursSinceArrival = (now.getTime() - arrival.getTime()) / (1000 * 60 * 60);
+    
+    if (hoursSinceArrival < 6) {
+      return { status: 'recently_arrived', opacity: 0.6, ageHours: hoursSinceArrival };
+    }
+    
+    if (hoursSinceArrival < 24) {
+      return { status: 'ghost', opacity: 0.4, ageHours: hoursSinceArrival };
+    }
+    
+    const daysSinceArrival = hoursSinceArrival / 24;
+    if (daysSinceArrival < 3) {
+      return { status: 'ghost', opacity: 0.4, ageHours: hoursSinceArrival };
+    }
+    
+    if (daysSinceArrival < 7) {
+      return { status: 'old_ghost', opacity: 0.2, ageHours: hoursSinceArrival };
+    }
+    
+    // 7+ days - should be cleaned up
+    return { status: 'old_ghost', opacity: 0.1, ageHours: hoursSinceArrival };
+  }
+  
+  // Current location pin - based on creation time
+  const hoursSinceCreated = (now.getTime() - pin.createdAt.getTime()) / (1000 * 60 * 60);
+  
+  if (hoursSinceCreated < 4) {
+    return { status: 'active', opacity: 1.0, ageHours: hoursSinceCreated };
+  }
+  
+  if (hoursSinceCreated < 12) {
+    return { status: 'active', opacity: 0.8, ageHours: hoursSinceCreated };
+  }
+  
+  if (hoursSinceCreated < 24) {
+    return { status: 'active', opacity: 0.6, ageHours: hoursSinceCreated };
+  }
+  
+  const daysSinceCreated = hoursSinceCreated / 24;
+  if (daysSinceCreated < 3) {
+    return { status: 'ghost', opacity: 0.4, ageHours: hoursSinceCreated };
+  }
+  
+  if (daysSinceCreated < 7) {
+    return { status: 'old_ghost', opacity: 0.25, ageHours: hoursSinceCreated };
+  }
+  
+  // 7+ days old
+  return { status: 'old_ghost', opacity: 0.15, ageHours: hoursSinceCreated };
+}
+
+// Check if pin should be auto-deleted (7+ days old)
+function shouldDeletePin(pin: { 
+  pinType: string; 
+  arrivalTime: Date | null; 
+  createdAt: Date;
+}): boolean {
+  const now = new Date();
+  const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
+  
+  if (pin.pinType === 'future' && pin.arrivalTime) {
+    const arrival = new Date(pin.arrivalTime);
+    return (now.getTime() - arrival.getTime()) > sevenDaysMs;
+  }
+  
+  return (now.getTime() - pin.createdAt.getTime()) > sevenDaysMs;
+}
+
 
 // Helper to extract userId from JWT token
 function extractUserIdFromToken(authHeader: string | undefined): string | undefined {
@@ -199,6 +288,15 @@ pinRoutes.get('/', async (c) => {
     const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
     
     for (const pin of pins) {
+      // Skip pins that are 7+ days old (should be auto-deleted)
+      if (shouldDeletePin({ 
+        pinType: pin.pinType || 'current', 
+        arrivalTime: pin.arrivalTime, 
+        createdAt: pin.createdAt 
+      })) {
+        continue; // Skip expired pins
+      }
+      
       // Check if user has been active within 30 days
       const lastActive = pin.user.profile?.lastActiveAt;
       if (lastActive) {
@@ -233,6 +331,13 @@ pinRoutes.get('/', async (c) => {
         const timeSinceActive = now - lastActiveTime;
         const isActive = timeSinceActive < oneDayMs;
         
+        // Calculate pin lifecycle status and opacity
+        const pinLifecycle = calculatePinStatus({
+          pinType: pin.pinType || 'current',
+          arrivalTime: pin.arrivalTime,
+          createdAt: pin.createdAt,
+        });
+        
         // Get connection status for this pin's creator
         const connectionInfo = viewerConnections.get(pin.user.id);
         const isFriend = connectionInfo?.status === 'accepted';
@@ -254,6 +359,10 @@ pinRoutes.get('/', async (c) => {
           connectionStatus: connectionInfo?.status || 'none',
           connectionId: connectionInfo?.connectionId || null,
           isRequester: connectionInfo?.isRequester || false,
+          // Pin lifecycle status
+          pinStatus: pinLifecycle.status,
+          pinOpacity: pinLifecycle.opacity,
+          pinAgeHours: pinLifecycle.ageHours,
           createdBy: {
             id: pin.user.id,
             name: pin.user.profile?.displayName || pin.user.name,
@@ -913,5 +1022,51 @@ pinRoutes.delete('/:id', async (c) => {
   } catch (error) {
     console.error('Error deleting pin:', error);
     return c.json({ error: 'Failed to delete pin' }, 500);
+  }
+});
+
+// POST /api/pins/cleanup - Auto-delete pins older than 7 days
+// This can be called by a cron job or manually
+pinRoutes.post('/cleanup', async (c) => {
+  try {
+    const now = new Date();
+    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    
+    // Find all pins to delete
+    const pinsToDelete = await prisma.pin.findMany({
+      where: {
+        OR: [
+          // Delete old current location pins
+          {
+            pinType: 'current',
+            createdAt: { lt: sevenDaysAgo }
+          },
+          // Delete future pins where arrival time was 7+ days ago
+          {
+            pinType: 'future',
+            arrivalTime: { lt: sevenDaysAgo }
+          }
+        ]
+      },
+      select: { id: true, pinType: true, createdAt: true, arrivalTime: true }
+    });
+    
+    // Delete them
+    const deleteResult = await prisma.pin.deleteMany({
+      where: {
+        id: { in: pinsToDelete.map(p => p.id) }
+      }
+    });
+    
+    console.log(`Cleaned up ${deleteResult.count} expired pins`);
+    
+    return c.json({ 
+      success: true, 
+      deletedCount: deleteResult.count,
+      pins: pinsToDelete
+    });
+  } catch (error) {
+    console.error('Error cleaning up pins:', error);
+    return c.json({ error: 'Failed to cleanup pins' }, 500);
   }
 });
