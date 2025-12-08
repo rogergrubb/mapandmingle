@@ -11,7 +11,11 @@ export function TimePickerModal({ isOpen, onClose, onConfirm }: TimePickerModalP
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [customDate, setCustomDate] = useState<Date>(new Date());
 
+  console.log('🎯 TimePickerModal render:', { isOpen });
+
   if (!isOpen) return null;
+
+  console.log('✅ TimePickerModal is rendering (isOpen = true)');
 
   const quickOptions = [
     { label: 'In 5 minutes', value: 5 },
