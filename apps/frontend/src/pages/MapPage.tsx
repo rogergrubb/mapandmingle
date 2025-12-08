@@ -9,6 +9,7 @@ import { PresenceButtonRow } from '../components/map/PresenceButtonRow';
 import { TimePickerModal } from '../components/map/TimePickerModal';
 import { LegendModal } from '../components/map/LegendModal';
 import { ConfirmDialog } from '../components/map/ConfirmDialog';
+import { PinLegend } from '../components/map/PinLegend';
 import WelcomeCard from '../components/WelcomeCard';
 import haptic from '../lib/haptics';
 import ProfileInterestsSetup from '../components/ProfileInterestsSetup';
@@ -62,21 +63,27 @@ function createPinIcon(
   isActive: boolean = false, 
   isGhost: boolean = false, 
   isFriend: boolean = false,
-  arrivalTime?: string  // For "Where I'll Be" pins
+  arrivalTime?: string,  // For "Where I'll Be" pins
+  pinOpacity: number = 1.0,  // From API lifecycle calculation
+  pinStatus: string = 'active'  // 'active', 'recently_arrived', 'ghost', 'old_ghost'
 ) {
-  // If this is a "Where I'll Be" pin, use YELLOW colors
+  // If this is a "Where I'll Be" pin, use YELLOW colors (unless it's expired/ghost)
   const isDestination = !!arrivalTime;
-  const colors = isDestination 
-    ? { primary: '#eab308', secondary: '#f59e0b' } // YELLOW for "Where I'll Be"
-    : modeColors[mode]; // Regular mode colors for "Where I'm At"
+  const isExpiredPin = pinStatus === 'ghost' || pinStatus === 'old_ghost' || pinStatus === 'recently_arrived';
+  
+  // Use gray for expired pins, yellow for future, mode colors for current
+  const colors = isExpiredPin 
+    ? { primary: '#9ca3af', secondary: '#6b7280' } // Gray for expired
+    : isDestination 
+      ? { primary: '#eab308', secondary: '#f59e0b' } // Yellow for "Where I'll Be"
+      : modeColors[mode]; // Regular mode colors for "Where I'm At"
   
   const size = isActive ? 48 : 40;
-  const opacity = isGhost ? 0.5 : 1;
   
   // Friend pins get a special gold ring
   const borderColor = isFriend ? '#FFD700' : 'white';
   const borderWidth = isFriend ? 4 : 3;
-  const friendGlow = isFriend ? 'box-shadow: 0 0 12px #FFD70080, 0 4px 12px ' + colors.primary + '60;' : 'box-shadow: 0 4px 12px ' + colors.primary + (isGhost ? '30' : '60') + ';';
+  const friendGlow = isFriend ? 'box-shadow: 0 0 12px #FFD70080, 0 4px 12px ' + colors.primary + '60;' : 'box-shadow: 0 4px 12px ' + colors.primary + (isExpiredPin ? '30' : '60') + ';';
   
   // Calculate countdown for arrival time - BIGGER AND MORE VISIBLE
   const countdownBadge = arrivalTime ? (() => {
@@ -84,7 +91,50 @@ function createPinIcon(
     const arrival = new Date(arrivalTime);
     const diff = arrival.getTime() - now.getTime();
     
-    if (diff < 0) return null; // Already arrived
+    if (diff < 0) {
+      // Show "Was here" on expired pins
+      const hoursSince = Math.floor(-diff / (1000 * 60 * 60));
+      const daysSince = Math.floor(hoursSince / 24);
+      
+      if (daysSince > 0) {
+        return `
+          <div style="
+            position: absolute;
+            top: -12px;
+            right: -12px;
+            background: #6b7280;
+            color: white;
+            font-size: 11px;
+            font-weight: 700;
+            padding: 4px 8px;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px #6b728080;
+            border: 2px solid white;
+            white-space: nowrap;
+            z-index: 10;
+          ">📍 ${daysSince}d ago</div>
+        `;
+      } else if (hoursSince > 0) {
+        return `
+          <div style="
+            position: absolute;
+            top: -12px;
+            right: -12px;
+            background: #9ca3af;
+            color: white;
+            font-size: 11px;
+            font-weight: 700;
+            padding: 4px 8px;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px #9ca3af80;
+            border: 2px solid white;
+            white-space: nowrap;
+            z-index: 10;
+          ">📍 ${hoursSince}h ago</div>
+        `;
+      }
+      return null;
+    }
     
     const minutes = Math.floor(diff / (1000 * 60));
     const hours = Math.floor(minutes / 60);
@@ -133,10 +183,10 @@ function createPinIcon(
         position: relative;
         width: ${size}px;
         height: ${size}px;
-        opacity: ${opacity};
+        opacity: ${pinOpacity};
       ">
         ${countdownBadge || ''}
-        ${isActive && !isGhost ? `
+        ${isActive && !isExpiredPin ? `
           <div style="
             position: absolute;
             inset: -4px;
@@ -145,7 +195,7 @@ function createPinIcon(
             animation: pulse 2s ease-in-out infinite;
           "></div>
         ` : ''}
-        ${isDestination && !isGhost ? `
+        ${isDestination && !isExpiredPin ? `
           <div style="
             position: absolute;
             inset: -4px;
@@ -300,8 +350,11 @@ function ClusteredMarkers({
       const isActive = pin.isActive === true;
       const isGhost = pin.isActive === false;
       const isFriend = pin.isFriend === true;
+      const pinOpacity = pin.pinOpacity || 1.0; // From API lifecycle calculation
+      const pinStatus = pin.pinStatus || 'active'; // From API
+      
       const marker = L.marker([pin.latitude, pin.longitude], {
-        icon: createPinIcon(mode, isActive, isGhost, isFriend, pin.arrivalTime),
+        icon: createPinIcon(mode, isActive, isGhost, isFriend, pin.arrivalTime, pinOpacity, pinStatus),
       });
       
       // Create popup content
@@ -1167,6 +1220,9 @@ export default function MapPage() {
           100% { opacity: 1; transform: scale(1.02); }
         }
       `}</style>
+
+      {/* Permanent Pin Legend - Left Side */}
+      <PinLegend />
 
       {/* Top Control Bar with Visibility + Stats */}
       <MapControlBar
