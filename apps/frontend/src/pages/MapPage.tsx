@@ -11,6 +11,7 @@ import WelcomeCard from '../components/WelcomeCard';
 import haptic from '../lib/haptics';
 import ProfileInterestsSetup from '../components/ProfileInterestsSetup';
 import api from '../lib/api';
+import { formatCountdown } from '../utils/countdown';
 import 'leaflet/dist/leaflet.css';
 import 'leaflet.markercluster/dist/MarkerCluster.css';
 import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
@@ -35,8 +36,32 @@ const modeColors = {
   travel: { primary: '#f97316', secondary: '#f59e0b' },
 };
 
+// Format countdown for pin popups
+function formatCountdownForPin(arrivalTime: string): string {
+  const now = new Date();
+  const arrival = new Date(arrivalTime);
+  const diff = arrival.getTime() - now.getTime();
+  
+  if (diff < 0) return 'Arrived!';
+  
+  const minutes = Math.floor(diff / (1000 * 60));
+  const hours = Math.floor(minutes / 60);
+  const days = Math.floor(hours / 24);
+  
+  if (days > 0) return `Arriving in ${days} day${days > 1 ? 's' : ''}`;
+  if (hours > 0) return `Arriving in ${hours} hour${hours > 1 ? 's' : ''}`;
+  if (minutes > 0) return `Arriving in ${minutes} minute${minutes > 1 ? 's' : ''}`;
+  return 'Arriving now!';
+}
+
 // Create animated pin icon based on mode
-function createPinIcon(mode: MingleMode, isActive: boolean = false, isGhost: boolean = false, isFriend: boolean = false) {
+function createPinIcon(
+  mode: MingleMode, 
+  isActive: boolean = false, 
+  isGhost: boolean = false, 
+  isFriend: boolean = false,
+  arrivalTime?: string  // For "Where I'll Be" pins
+) {
   const colors = modeColors[mode];
   const size = isActive ? 48 : 40;
   const opacity = isGhost ? 0.5 : 1;
@@ -46,6 +71,55 @@ function createPinIcon(mode: MingleMode, isActive: boolean = false, isGhost: boo
   const borderWidth = isFriend ? 4 : 3;
   const friendGlow = isFriend ? 'box-shadow: 0 0 12px #FFD70080, 0 4px 12px ' + colors.primary + '60;' : 'box-shadow: 0 4px 12px ' + colors.primary + (isGhost ? '30' : '60') + ';';
   
+  // Calculate countdown for arrival time
+  const countdownBadge = arrivalTime ? (() => {
+    const now = new Date();
+    const arrival = new Date(arrivalTime);
+    const diff = arrival.getTime() - now.getTime();
+    
+    if (diff < 0) return null; // Already arrived
+    
+    const minutes = Math.floor(diff / (1000 * 60));
+    const hours = Math.floor(minutes / 60);
+    const days = Math.floor(hours / 24);
+    
+    let text = '';
+    let color = '#a855f7'; // purple
+    
+    if (days > 0) {
+      text = `${days}d`;
+      color = '#3b82f6'; // blue
+    } else if (hours > 0) {
+      text = `${hours}h`;
+      color = hours < 4 ? '#eab308' : '#3b82f6'; // yellow if <4h, blue otherwise
+    } else if (minutes > 5) {
+      text = `${minutes}m`;
+      color = minutes < 30 ? '#f97316' : '#eab308'; // orange if <30m, yellow otherwise
+    } else {
+      text = 'Now!';
+      color = '#ef4444'; // red
+    }
+    
+    return `
+      <div style="
+        position: absolute;
+        top: -8px;
+        right: -8px;
+        background: ${color};
+        color: white;
+        font-size: 10px;
+        font-weight: 700;
+        padding: 3px 6px;
+        border-radius: 10px;
+        box-shadow: 0 2px 8px ${color}60;
+        border: 2px solid white;
+        white-space: nowrap;
+        z-index: 10;
+        animation: countdownPulse 2s ease-in-out infinite;
+      ">🕐 ${text}</div>
+    `;
+  })() : '';
+  
   return L.divIcon({
     html: `
       <div style="
@@ -54,6 +128,7 @@ function createPinIcon(mode: MingleMode, isActive: boolean = false, isGhost: boo
         height: ${size}px;
         opacity: ${opacity};
       ">
+        ${countdownBadge || ''}
         ${isActive && !isGhost ? `
           <div style="
             position: absolute;
@@ -108,6 +183,12 @@ function createPinIcon(mode: MingleMode, isActive: boolean = false, isGhost: boo
           background: linear-gradient(135deg, ${isFriend ? '#FFD700' : colors.primary}, ${isFriend ? '#FFA500' : colors.secondary});
           transform: translateX(-50%) rotate(45deg);
         "></div>
+        <style>
+          @keyframes countdownPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+          }
+        </style>
       </div>
     `,
     className: 'custom-pin-icon',
@@ -195,7 +276,7 @@ function ClusteredMarkers({
       const isGhost = pin.isActive === false;
       const isFriend = pin.isFriend === true;
       const marker = L.marker([pin.latitude, pin.longitude], {
-        icon: createPinIcon(mode, isActive, isGhost, isFriend),
+        icon: createPinIcon(mode, isActive, isGhost, isFriend, pin.arrivalTime),
       });
       
       // Create popup content
@@ -335,8 +416,33 @@ function ClusteredMarkers({
             </div>
           </div>
           <p style="font-size: 14px; color: #444; margin-bottom: 12px; line-height: 1.4;">
-            ${pin.description || 'Mingling here!'}
+            ${pin.description || (pin.pinType === 'future' ? 'Heading there!' : 'Mingling here!')}
           </p>
+          ${pin.arrivalTime && pin.pinType === 'future' ? `
+            <div style="
+              margin-bottom: 12px;
+              padding: 10px 12px;
+              background: linear-gradient(135deg, #a855f720, #ec489920);
+              border-left: 3px solid #a855f7;
+              border-radius: 8px;
+            ">
+              <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 4px;">
+                <span style="font-size: 16px;">🕐</span>
+                <span style="font-size: 12px; font-weight: 600; color: #7c3aed;">ARRIVING</span>
+              </div>
+              <div style="font-size: 14px; font-weight: 700; color: #6b21a8;">
+                ${formatCountdownForPin(pin.arrivalTime)}
+              </div>
+              <div style="font-size: 11px; color: #9333ea; margin-top: 2px;">
+                ${new Date(pin.arrivalTime).toLocaleString('en-US', { 
+                  month: 'short', 
+                  day: 'numeric', 
+                  hour: 'numeric', 
+                  minute: '2-digit' 
+                })}
+              </div>
+            </div>
+          ` : ''}
           ${connectionBtnHtml}
           <button 
             class="view-profile-btn"
