@@ -793,8 +793,7 @@ export default function MapPage() {
       });
       
       haptic.confirm(); // Haptic on pin drop
-      // Different message based on placement type
-      setPinSuccessMessage(wasPlacementType === 'there' ? "You're checked in there." : "You're checked in here.");
+      setPinSuccessMessage("You're checked in here.");
       setPinCreationSuccess(true);
       haptic.microPulse(); // Haptic for toast
       setTimeout(() => setPinCreationSuccess(false), 3000);
@@ -813,7 +812,7 @@ export default function MapPage() {
       const errorMsg = err.response?.data?.error || err.message;
       if (errorMsg?.includes('already has a pin')) {
         haptic.confirm();
-        setPinSuccessMessage(wasPlacementType === 'there' ? "You're checked in there." : "You're checked in here.");
+        setPinSuccessMessage("You're checked in here.");
         setPinCreationSuccess(true);
         haptic.microPulse();
         setTimeout(() => setPinCreationSuccess(false), 3000);
