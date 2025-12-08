@@ -62,7 +62,12 @@ function createPinIcon(
   isFriend: boolean = false,
   arrivalTime?: string  // For "Where I'll Be" pins
 ) {
-  const colors = modeColors[mode];
+  // If this is a "Where I'll Be" pin, use YELLOW colors
+  const isDestination = !!arrivalTime;
+  const colors = isDestination 
+    ? { primary: '#eab308', secondary: '#f59e0b' } // YELLOW for "Where I'll Be"
+    : modeColors[mode]; // Regular mode colors for "Where I'm At"
+  
   const size = isActive ? 48 : 40;
   const opacity = isGhost ? 0.5 : 1;
   
@@ -71,7 +76,7 @@ function createPinIcon(
   const borderWidth = isFriend ? 4 : 3;
   const friendGlow = isFriend ? 'box-shadow: 0 0 12px #FFD70080, 0 4px 12px ' + colors.primary + '60;' : 'box-shadow: 0 4px 12px ' + colors.primary + (isGhost ? '30' : '60') + ';';
   
-  // Calculate countdown for arrival time
+  // Calculate countdown for arrival time - BIGGER AND MORE VISIBLE
   const countdownBadge = arrivalTime ? (() => {
     const now = new Date();
     const arrival = new Date(arrivalTime);
@@ -103,19 +108,19 @@ function createPinIcon(
     return `
       <div style="
         position: absolute;
-        top: -8px;
-        right: -8px;
+        top: -12px;
+        right: -12px;
         background: ${color};
         color: white;
-        font-size: 10px;
-        font-weight: 700;
-        padding: 3px 6px;
-        border-radius: 10px;
-        box-shadow: 0 2px 8px ${color}60;
+        font-size: 13px;
+        font-weight: 800;
+        padding: 5px 9px;
+        border-radius: 12px;
+        box-shadow: 0 3px 12px ${color}80;
         border: 2px solid white;
         white-space: nowrap;
         z-index: 10;
-        animation: countdownPulse 2s ease-in-out infinite;
+        animation: countdownPulse 1.5s ease-in-out infinite;
       ">🕐 ${text}</div>
     `;
   })() : '';
@@ -135,6 +140,15 @@ function createPinIcon(
             inset: -4px;
             border-radius: 50%;
             background: linear-gradient(135deg, ${isFriend ? '#FFD70040' : colors.primary + '40'}, ${isFriend ? '#FFA50040' : colors.secondary + '40'});
+            animation: pulse 2s ease-in-out infinite;
+          "></div>
+        ` : ''}
+        ${isDestination && !isGhost ? `
+          <div style="
+            position: absolute;
+            inset: -4px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #eab30840, #f59e0b40);
             animation: pulse 2s ease-in-out infinite;
           "></div>
         ` : ''}
@@ -163,6 +177,11 @@ function createPinIcon(
               font-size: ${size * 0.4}px;
               line-height: 1;
             ">⭐</div>
+          ` : isDestination ? `
+            <div style="
+              font-size: ${size * 0.5}px;
+              line-height: 1;
+            ">📍</div>
           ` : `
             <div style="
               width: ${size * 0.4}px;
@@ -178,6 +197,25 @@ function createPinIcon(
           bottom: -6px;
           left: 50%;
           transform: translateX(-50%);
+          width: 10px;
+          height: 10px;
+          background: linear-gradient(135deg, ${isFriend ? '#FFD700' : colors.primary}, ${isFriend ? '#FFA500' : colors.secondary});
+          transform: translateX(-50%) rotate(45deg);
+        "></div>
+        <style>
+          @keyframes countdownPulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.15); opacity: 0.9; }
+          }
+        </style>
+      </div>
+    `,
+    className: 'custom-pin-icon',
+    iconSize: L.point(size, size + 10, true),
+    iconAnchor: L.point(size / 2, size + 6),
+    popupAnchor: L.point(0, -size),
+  });
+}
           width: 10px;
           height: 10px;
           background: linear-gradient(135deg, ${isFriend ? '#FFD700' : colors.primary}, ${isFriend ? '#FFA500' : colors.secondary});
