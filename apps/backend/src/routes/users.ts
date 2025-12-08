@@ -404,6 +404,115 @@ userRoutes.patch('/me', authMiddleware, async (c) => {
   }
 });
 
+// PUT /api/users/profile - Update user profile (alias for web app onboarding)
+userRoutes.put('/profile', authMiddleware, async (c) => {
+  try {
+    const userId = c.get('userId');
+
+    if (!userId) {
+      return c.json({ error: 'Unauthorized' }, 401);
+    }
+
+    const body = await c.req.json();
+    const {
+      displayName,
+      bio,
+      age,
+      gender,
+      location,
+      avatar,
+      interests,
+      lookingFor,
+      activityIntent,
+      chatReadiness,
+      visibilityMode,
+      ghostMode,
+      // Campus Layer fields
+      primarySchool,
+      schoolRole,
+      gradYear,
+    } = body;
+
+    // Ensure user exists
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: { profile: true },
+    });
+
+    if (!user) {
+      return c.json({ error: 'User not found' }, 404);
+    }
+
+    // Prepare profile update data
+    const profileData: any = {};
+
+    if (displayName !== undefined) profileData.displayName = displayName;
+    if (bio !== undefined) profileData.bio = bio;
+    if (age !== undefined) profileData.age = age;
+    if (gender !== undefined) profileData.gender = gender;
+    if (location !== undefined) profileData.location = location;
+    if (avatar !== undefined) profileData.avatar = avatar;
+    if (interests !== undefined) {
+      // Already JSON string from frontend
+      profileData.interests = interests;
+    }
+    if (lookingFor !== undefined) {
+      // Already JSON string from frontend
+      profileData.lookingFor = lookingFor;
+    }
+    if (activityIntent !== undefined) profileData.activityIntent = activityIntent;
+    if (chatReadiness !== undefined) profileData.chatReadiness = chatReadiness;
+    if (visibilityMode !== undefined) profileData.visibilityMode = visibilityMode;
+    if (ghostMode !== undefined) profileData.ghostMode = ghostMode;
+
+    // Campus Layer fields
+    if (primarySchool !== undefined) profileData.primarySchool = primarySchool;
+    if (schoolRole !== undefined) profileData.schoolRole = schoolRole;
+    if (gradYear !== undefined) profileData.gradYear = gradYear;
+    
+    // Auto-verify if user's email is .edu domain
+    if (primarySchool && user?.email) {
+      const emailDomain = user.email.split('@')[1]?.toLowerCase() || '';
+      const eduDomains = ['.edu', '.ac.uk', '.edu.au', '.edu.cn', '.edu.in', '.ac.jp', '.edu.mx', '.edu.sg'];
+      const isEduEmail = eduDomains.some(d => emailDomain.endsWith(d));
+      if (isEduEmail) {
+        profileData.schoolVerified = true;
+      }
+    }
+
+    // Update or create profile
+    if (user.profile) {
+      // Update existing profile
+      await prisma.profile.update({
+        where: { userId },
+        data: profileData,
+      });
+    } else {
+      // Create new profile
+      await prisma.profile.create({
+        data: {
+          userId,
+          ...profileData,
+        },
+      });
+    }
+
+    // Fetch updated user with profile
+    const updatedUser = await prisma.user.findUnique({
+      where: { id: userId },
+      include: { profile: true },
+    });
+
+    return c.json({
+      success: true,
+      user: updatedUser,
+    });
+  } catch (error) {
+    console.error('Error updating user profile:', error);
+    return c.json({ error: 'Failed to update profile' }, 500);
+  }
+});
+
 // GET /api/users/search - Search users
 userRoutes.get('/search', async (c) => {
   try {
