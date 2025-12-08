@@ -1,12 +1,13 @@
 import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { MapContainer, TileLayer, Circle, useMap, Marker, Popup } from 'react-leaflet';
 import { useNavigate } from 'react-router-dom';
-import { Loader } from 'lucide-react';
+import { Loader, Info } from 'lucide-react';
 import { useMapStore } from '../stores/mapStore';
 import { useAuthStore } from '../stores/authStore';
 import { MapControlBar, type MingleMode, type DistanceFilter } from '../components/map/MapControlBar';
 import { PresenceButtonRow } from '../components/map/PresenceButtonRow';
 import { TimePickerModal } from '../components/map/TimePickerModal';
+import { LegendModal } from '../components/map/LegendModal';
 import WelcomeCard from '../components/WelcomeCard';
 import haptic from '../lib/haptics';
 import ProfileInterestsSetup from '../components/ProfileInterestsSetup';
@@ -707,6 +708,7 @@ export default function MapPage() {
   // Welcome/Onboarding state
   const [showWelcomeCard, setShowWelcomeCard] = useState(false);
   const [showInterestsSetup, setShowInterestsSetup] = useState(false);
+  const [showLegend, setShowLegend] = useState(false);
 
   // Calculate viewport activity counts from pins
   const viewportStats = useMemo(() => {
@@ -1068,6 +1070,39 @@ export default function MapPage() {
         isRefreshing={isRefreshing}
       />
 
+      {/* Legend Info Button - Top Right */}
+      <button
+        onClick={() => setShowLegend(true)}
+        style={{
+          position: 'absolute',
+          top: '16px',
+          right: '16px',
+          zIndex: 1000,
+          width: '48px',
+          height: '48px',
+          borderRadius: '50%',
+          background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.98))',
+          backdropFilter: 'blur(20px)',
+          border: '2px solid rgba(168, 85, 247, 0.2)',
+          boxShadow: '0 4px 20px rgba(168, 85, 247, 0.2)',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+        }}
+        onMouseOver={(e) => {
+          e.currentTarget.style.transform = 'scale(1.1)';
+          e.currentTarget.style.boxShadow = '0 8px 30px rgba(168, 85, 247, 0.4)';
+        }}
+        onMouseOut={(e) => {
+          e.currentTarget.style.transform = 'scale(1)';
+          e.currentTarget.style.boxShadow = '0 4px 20px rgba(168, 85, 247, 0.2)';
+        }}
+      >
+        <Info size={24} style={{ color: '#a855f7' }} />
+      </button>
+
       {/* Two-Button Presence Row - directly below top bar */}
       <PresenceButtonRow
         isPlacementMode={isPlacementMode}
@@ -1182,6 +1217,12 @@ export default function MapPage() {
           setPendingPinCoordinates(null);
         }}
         onConfirm={handleTimePickerConfirm}
+      />
+
+      {/* Legend Modal */}
+      <LegendModal 
+        isOpen={showLegend}
+        onClose={() => setShowLegend(false)}
       />
     </div>
   );
