@@ -216,25 +216,6 @@ function createPinIcon(
     popupAnchor: L.point(0, -size),
   });
 }
-          width: 10px;
-          height: 10px;
-          background: linear-gradient(135deg, ${isFriend ? '#FFD700' : colors.primary}, ${isFriend ? '#FFA500' : colors.secondary});
-          transform: translateX(-50%) rotate(45deg);
-        "></div>
-        <style>
-          @keyframes countdownPulse {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.1); }
-          }
-        </style>
-      </div>
-    `,
-    className: 'custom-pin-icon',
-    iconSize: L.point(size, size + 10, true),
-    iconAnchor: L.point(size / 2, size + 6),
-    popupAnchor: L.point(0, -size),
-  });
-}
 
 // Clustered markers component with mode-aware styling
 function ClusteredMarkers({ 
