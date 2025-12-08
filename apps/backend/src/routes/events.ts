@@ -106,9 +106,14 @@ eventRoutes.post('/', authMiddleware, async (c) => {
     if (!userId) return c.json({ error: 'Unauthorized' }, 401);
     
     const body = await c.req.json();
+    
+    // Log the raw body for debugging
+    console.log('📝 Event creation request body:', JSON.stringify(body, null, 2));
+    
     const parsed = createEventSchema.safeParse(body);
     
     if (!parsed.success) {
+      console.error('❌ Validation failed:', parsed.error.errors);
       return c.json({ error: 'Invalid data', details: parsed.error.errors }, 400);
     }
     
@@ -123,26 +128,42 @@ eventRoutes.post('/', authMiddleware, async (c) => {
       longitude: data.longitude,
     });
     
-    // Ensure we have a proper venue name
+    // Ensure we have a proper venue name - REQUIRED field
     let venueName = data.venueName?.trim() || data.address?.trim() || '';
-    if (!venueName || venueName === 'TBD') {
+    if (!venueName || venueName === 'TBD' || venueName === '') {
       venueName = 'Location to be announced';
     }
     
-    console.log('📍 Processed venueName:', venueName);
+    // Ensure latitude/longitude are numbers, not null
+    const latitude = typeof data.latitude === 'number' ? data.latitude : 0;
+    const longitude = typeof data.longitude === 'number' ? data.longitude : 0;
+    
+    // Ensure categories is not empty
+    const categories = data.categories && data.categories.length > 0 
+      ? data.categories.map(c => c.toLowerCase()) 
+      : ['social'];
+    
+    console.log('📍 Processed event data:', { venueName, latitude, longitude, categories });
+    
+    // Validate dates
+    const startTime = new Date(data.startTime);
+    if (isNaN(startTime.getTime())) {
+      console.error('❌ Invalid startTime:', data.startTime);
+      return c.json({ error: 'Invalid start time' }, 400);
+    }
     
     const event = await prisma.event.create({
       data: {
         hostId: userId,
         title: data.title,
         description: data.description,
-        categories: data.categories.map(c => c.toLowerCase()),
+        categories,
         image: data.image,
         venueName,
-        venueAddress: data.venueAddress || data.address,
-        latitude: data.latitude || 0,
-        longitude: data.longitude || 0,
-        startTime: new Date(data.startTime),
+        venueAddress: data.venueAddress || data.address || null,
+        latitude,
+        longitude,
+        startTime,
         endTime: data.endTime ? new Date(data.endTime) : null,
         maxAttendees: data.maxAttendees || data.capacity || null,
         schoolAffiliation: data.schoolAffiliation || null,
@@ -151,6 +172,8 @@ eventRoutes.post('/', authMiddleware, async (c) => {
         host: { select: { id: true, name: true, image: true } },
       },
     });
+    
+    console.log('✅ Event created successfully:', event.id);
     
     // Auto-RSVP host as going
     await prisma.eventAttendee.create({
@@ -173,9 +196,19 @@ eventRoutes.post('/', authMiddleware, async (c) => {
       host: event.host,
       createdAt: event.createdAt.toISOString(),
     }, 201);
-  } catch (error) {
-    console.error('Error creating event:', error);
-    return c.json({ error: 'Failed to create event' }, 500);
+  } catch (error: any) {
+    console.error('❌ Error creating event:', error);
+    console.error('❌ Error stack:', error.stack);
+    console.error('❌ Error details:', {
+      message: error.message,
+      code: error.code,
+      meta: error.meta,
+    });
+    return c.json({ 
+      error: 'Failed to create event',
+      details: error.message,
+      code: error.code 
+    }, 500);
   }
 });
 
