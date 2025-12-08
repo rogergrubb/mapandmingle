@@ -8,6 +8,7 @@ import { MapControlBar, type MingleMode, type DistanceFilter } from '../componen
 import { PresenceButtonRow } from '../components/map/PresenceButtonRow';
 import { TimePickerModal } from '../components/map/TimePickerModal';
 import { LegendModal } from '../components/map/LegendModal';
+import { ConfirmModal } from '../components/map/ConfirmModal';
 import WelcomeCard from '../components/WelcomeCard';
 import haptic from '../lib/haptics';
 import ProfileInterestsSetup from '../components/ProfileInterestsSetup';
@@ -295,6 +296,8 @@ function ClusteredMarkers({
       const isActive = pin.isActive === true;
       const isGhost = pin.isActive === false;
       const isFriend = pin.isFriend === true;
+      const currentUserId = authStore.user?.id;
+      const isOwnPin = pin.userId === currentUserId;
       const marker = L.marker([pin.latitude, pin.longitude], {
         icon: createPinIcon(mode, isActive, isGhost, isFriend, pin.arrivalTime),
       });
@@ -315,56 +318,80 @@ function ClusteredMarkers({
       let connectionBtnHtml = '';
       const connectionStatus = pin.connectionStatus || 'none';
       
-      if (isFriend) {
-        connectionBtnHtml = `
-          <div style="
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 6px;
-            padding: 8px;
-            background: linear-gradient(135deg, #FFD700, #FFA500);
-            color: white;
-            border-radius: 8px;
-            font-size: 12px;
-            font-weight: 600;
-            margin-bottom: 8px;
-          ">
-            ⭐ Connected Friend
-          </div>
-        `;
-      } else if (connectionStatus === 'pending') {
-        if (pin.isRequester) {
+      // Don't show connection buttons on user's own pins
+      if (!isOwnPin) {
+        if (isFriend) {
           connectionBtnHtml = `
-            <button 
-              class="connection-btn"
-              disabled
-              style="
-                width: 100%;
-                padding: 8px;
-                background: #e5e7eb;
-                color: #6b7280;
-                border: none;
-                border-radius: 8px;
-                font-size: 12px;
-                font-weight: 600;
-                margin-bottom: 8px;
-                cursor: not-allowed;
-              "
-            >
-              ⏳ Request Pending
-            </button>
+            <div style="
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              gap: 6px;
+              padding: 8px;
+              background: linear-gradient(135deg, #FFD700, #FFA500);
+              color: white;
+              border-radius: 8px;
+              font-size: 12px;
+              font-weight: 600;
+              margin-bottom: 8px;
+            ">
+              ⭐ Connected Friend
+            </div>
           `;
+        } else if (connectionStatus === 'pending') {
+          if (pin.isRequester) {
+            connectionBtnHtml = `
+              <button 
+                class="connection-btn"
+                disabled
+                style="
+                  width: 100%;
+                  padding: 8px;
+                  background: #e5e7eb;
+                  color: #6b7280;
+                  border: none;
+                  border-radius: 8px;
+                  font-size: 12px;
+                  font-weight: 600;
+                  margin-bottom: 8px;
+                  cursor: not-allowed;
+                "
+              >
+                ⏳ Request Pending
+              </button>
+            `;
+          } else {
+            connectionBtnHtml = `
+              <button 
+                class="connection-btn accept-btn"
+                data-user-id="${pin.createdBy?.id}"
+                data-connection-id="${pin.connectionId}"
+                style="
+                  width: 100%;
+                  padding: 8px;
+                  background: linear-gradient(135deg, #22c55e, #16a34a);
+                  color: white;
+                  border: none;
+                  border-radius: 8px;
+                  font-size: 12px;
+                  font-weight: 600;
+                  margin-bottom: 8px;
+                  cursor: pointer;
+                "
+              >
+                ✓ Accept Connection
+              </button>
+            `;
+          }
         } else {
           connectionBtnHtml = `
             <button 
-              class="connection-btn accept-btn"
+              class="connection-btn quick-connect-btn"
               data-user-id="${pin.createdBy?.id}"
-              data-connection-id="${pin.connectionId}"
               style="
                 width: 100%;
                 padding: 8px;
-                background: linear-gradient(135deg, #22c55e, #16a34a);
+                background: linear-gradient(135deg, #8b5cf6, #6366f1);
                 color: white;
                 border: none;
                 border-radius: 8px;
@@ -372,36 +399,15 @@ function ClusteredMarkers({
                 font-weight: 600;
                 margin-bottom: 8px;
                 cursor: pointer;
+                transition: transform 0.1s;
               "
+              onmouseover="this.style.transform='scale(1.02)';"
+              onmouseout="this.style.transform='scale(1)';"
             >
-              ✓ Accept Connection
+              🤝 Quick Connect
             </button>
           `;
         }
-      } else {
-        connectionBtnHtml = `
-          <button 
-            class="connection-btn quick-connect-btn"
-            data-user-id="${pin.createdBy?.id}"
-            style="
-              width: 100%;
-              padding: 8px;
-              background: linear-gradient(135deg, #8b5cf6, #6366f1);
-              color: white;
-              border: none;
-              border-radius: 8px;
-              font-size: 12px;
-              font-weight: 600;
-              margin-bottom: 8px;
-              cursor: pointer;
-              transition: transform 0.1s;
-            "
-            onmouseover="this.style.transform='scale(1.02)';"
-            onmouseout="this.style.transform='scale(1)';"
-          >
-            🤝 Quick Connect
-          </button>
-        `;
       }
       
       popupContent.innerHTML = `
@@ -464,25 +470,52 @@ function ClusteredMarkers({
             </div>
           ` : ''}
           ${connectionBtnHtml}
-          <button 
-            class="view-profile-btn"
-            style="
-              width: 100%;
-              padding: 10px 16px;
-              background: linear-gradient(135deg, ${colors.primary}, ${colors.secondary});
-              color: white;
-              border: none;
-              border-radius: 10px;
-              font-weight: 600;
-              font-size: 14px;
-              cursor: pointer;
-              transition: transform 0.1s, box-shadow 0.1s;
-            "
-            onmouseover="this.style.transform='scale(1.02)'; this.style.boxShadow='0 4px 12px ${colors.primary}40';"
-            onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='none';"
-          >
-            View Profile
-          </button>
+          ${isOwnPin ? `
+            <button 
+              class="delete-pin-btn"
+              data-pin-id="${pin.id}"
+              style="
+                width: 100%;
+                padding: 10px 16px;
+                background: linear-gradient(135deg, #ef4444, #dc2626);
+                color: white;
+                border: none;
+                border-radius: 10px;
+                font-weight: 600;
+                font-size: 14px;
+                cursor: pointer;
+                transition: transform 0.1s, box-shadow 0.1s;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 6px;
+              "
+              onmouseover="this.style.transform='scale(1.02)'; this.style.boxShadow='0 4px 12px rgba(239, 68, 68, 0.4)';"
+              onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='none';"
+            >
+              🗑️ Delete Pin
+            </button>
+          ` : `
+            <button 
+              class="view-profile-btn"
+              style="
+                width: 100%;
+                padding: 10px 16px;
+                background: linear-gradient(135deg, ${colors.primary}, ${colors.secondary});
+                color: white;
+                border: none;
+                border-radius: 10px;
+                font-weight: 600;
+                font-size: 14px;
+                cursor: pointer;
+                transition: transform 0.1s, box-shadow 0.1s;
+              "
+              onmouseover="this.style.transform='scale(1.02)'; this.style.boxShadow='0 4px 12px ${colors.primary}40';"
+              onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='none';"
+            >
+              View Profile
+            </button>
+          `}
         </div>
       `;
       
@@ -525,6 +558,19 @@ function ClusteredMarkers({
           } catch (err) {
             (quickConnectBtn as HTMLButtonElement).innerHTML = '✗ Error';
             (quickConnectBtn as HTMLButtonElement).style.background = '#ef4444';
+          }
+        });
+      }
+      
+      // Add click handler for Delete Pin
+      const deleteBtn = popupContent.querySelector('.delete-pin-btn');
+      if (deleteBtn) {
+        deleteBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const pinId = (deleteBtn as HTMLElement).dataset.pinId;
+          if (pinId) {
+            setPinToDelete(pinId);
+            setShowDeleteConfirm(true);
           }
         });
       }
@@ -709,6 +755,11 @@ export default function MapPage() {
   const [showWelcomeCard, setShowWelcomeCard] = useState(false);
   const [showInterestsSetup, setShowInterestsSetup] = useState(false);
   const [showLegend, setShowLegend] = useState(false);
+  
+  // Delete confirmation state
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [pinToDelete, setPinToDelete] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Calculate viewport activity counts from pins
   const viewportStats = useMemo(() => {
@@ -750,6 +801,36 @@ export default function MapPage() {
     } finally {
       // Minimum 500ms spin for visual feedback
       setTimeout(() => setIsRefreshing(false), 500);
+    }
+  };
+
+  // Delete pin function
+  const handleDeletePin = async (pinId: string) => {
+    if (isDeleting) return;
+    
+    setIsDeleting(true);
+    
+    try {
+      await api.delete(`/api/pins/${pinId}`);
+      
+      // Remove pin from local state
+      const updatedPins = pins.filter(p => p.id !== pinId);
+      setMapPins(updatedPins);
+      
+      // Success feedback
+      console.log('✅ Pin deleted successfully');
+      haptic.success();
+      
+      // Close any open popups
+      if (mapRef.current) {
+        mapRef.current.closePopup();
+      }
+    } catch (error) {
+      console.error('Failed to delete pin:', error);
+      alert('Failed to delete pin. Please try again.');
+    } finally {
+      setIsDeleting(false);
+      setPinToDelete(null);
     }
   };
 
@@ -1223,6 +1304,25 @@ export default function MapPage() {
       <LegendModal 
         isOpen={showLegend}
         onClose={() => setShowLegend(false)}
+      />
+
+      {/* Delete Pin Confirmation */}
+      <ConfirmModal
+        isOpen={showDeleteConfirm}
+        onClose={() => {
+          setShowDeleteConfirm(false);
+          setPinToDelete(null);
+        }}
+        onConfirm={() => {
+          if (pinToDelete) {
+            handleDeletePin(pinToDelete);
+          }
+        }}
+        title="Delete Pin?"
+        message="Are you sure you want to remove this pin? This action cannot be undone."
+        confirmText="Delete"
+        confirmColor="#ef4444"
+        type="danger"
       />
     </div>
   );
