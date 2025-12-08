@@ -67,7 +67,7 @@ aiRoutes.get('/recommend-events', async (c) => {
       id: e.id,
       title: e.title,
       description: e.description || '',
-      category: e.category || 'general',
+      category: e.categories?.[0] || 'general', // Use first category
     }));
 
     const recommendations = await AIService.generateEventRecommendations(
