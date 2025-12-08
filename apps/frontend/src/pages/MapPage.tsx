@@ -6,6 +6,7 @@ import { useMapStore } from '../stores/mapStore';
 import { useAuthStore } from '../stores/authStore';
 import { MapControlBar, type MingleMode, type DistanceFilter } from '../components/map/MapControlBar';
 import { PresenceButtonRow } from '../components/map/PresenceButtonRow';
+import { TimePickerModal } from '../components/map/TimePickerModal';
 import WelcomeCard from '../components/WelcomeCard';
 import haptic from '../lib/haptics';
 import ProfileInterestsSetup from '../components/ProfileInterestsSetup';
@@ -575,6 +576,8 @@ export default function MapPage() {
   const [placementType, setPlacementType] = useState<'here' | 'there' | null>(null);
   const [isPopupOpen, setIsPopupOpen] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [showTimePickerModal, setShowTimePickerModal] = useState(false);
+  const [pendingPinCoordinates, setPendingPinCoordinates] = useState<{ lat: number; lng: number } | null>(null);
   
   // Welcome/Onboarding state
   const [showWelcomeCard, setShowWelcomeCard] = useState(false);
@@ -765,9 +768,20 @@ export default function MapPage() {
       return;
     }
 
+    const wasPlacementType = placementType;
+    
+    // If it's a "Where I'll Be" pin, show time picker first
+    if (wasPlacementType === 'there') {
+      setPendingPinCoordinates({ lat, lng });
+      setShowTimePickerModal(true);
+      setIsPlacementMode(false);
+      setPlacementType(null);
+      return;
+    }
+
+    // For "Where I'm At" pins, create immediately
     haptic.confirm(); // Haptic on map tap placement
     
-    const wasPlacementType = placementType;
     setIsPlacementMode(false);
     setPlacementType(null);
     setCreatingPin(true);
@@ -810,6 +824,59 @@ export default function MapPage() {
       setCreatingPin(false);
     }
   }, [isAuthenticated, navigate, placementType]);
+
+  // Handle time picker confirmation for "Where I'll Be" pins
+  const handleTimePickerConfirm = useCallback(async (arrivalTime: Date) => {
+    if (!pendingPinCoordinates) return;
+    
+    setShowTimePickerModal(false);
+    setCreatingPin(true);
+    haptic.confirm();
+    
+    try {
+      await api.post('/api/pins/auto-create', {
+        latitude: pendingPinCoordinates.lat,
+        longitude: pendingPinCoordinates.lng,
+        arrivalTime: arrivalTime.toISOString(),
+        pinType: 'future', // Mark as a future/destination pin
+      });
+      
+      haptic.confirm();
+      setPinSuccessMessage(`You'll arrive ${formatArrivalTime(arrivalTime)}!`);
+      setPinCreationSuccess(true);
+      haptic.microPulse();
+      setTimeout(() => setPinCreationSuccess(false), 3000);
+      
+      // Refresh pins
+      const bounds = mapRef.current?.getBounds();
+      if (bounds) {
+        useMapStore.getState().fetchPins({
+          north: bounds.getNorth(),
+          south: bounds.getSouth(),
+          east: bounds.getEast(),
+          west: bounds.getWest(),
+        });
+      }
+    } catch (err: any) {
+      const errorMsg = err.response?.data?.error || err.message;
+      alert(errorMsg || 'Failed to create pin');
+    } finally {
+      setCreatingPin(false);
+      setPendingPinCoordinates(null);
+    }
+  }, [pendingPinCoordinates]);
+
+  // Format arrival time for success message
+  const formatArrivalTime = (date: Date) => {
+    const now = new Date();
+    const diffMinutes = Math.floor((date.getTime() - now.getTime()) / (1000 * 60));
+    
+    if (diffMinutes < 15) return 'in a few minutes';
+    if (diffMinutes < 60) return `in ${diffMinutes} minutes`;
+    if (diffMinutes < 120) return 'in about an hour';
+    if (diffMinutes < 1440) return `in ${Math.floor(diffMinutes / 60)} hours`;
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  };
 
   if (isLocating) {
     return (
@@ -981,6 +1048,16 @@ export default function MapPage() {
       <ProfileInterestsSetup
         isOpen={showInterestsSetup}
         onComplete={() => setShowInterestsSetup(false)}
+      />
+
+      {/* Time Picker Modal for "Where I'll Be" */}
+      <TimePickerModal
+        isOpen={showTimePickerModal}
+        onClose={() => {
+          setShowTimePickerModal(false);
+          setPendingPinCoordinates(null);
+        }}
+        onConfirm={handleTimePickerConfirm}
       />
     </div>
   );
