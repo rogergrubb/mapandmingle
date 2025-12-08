@@ -276,11 +276,15 @@ export default function CreateEvent() {
 
       const eventData = {
         ...formData,
+        categories: formData.category ? [formData.category.toLowerCase()] : ['social'], // Convert to array
         startTime: startDateTime.toISOString(),
         endTime: endDateTime ? endDateTime.toISOString() : null,
         price: formData.isFree ? 0 : formData.price,
         capacity: formData.unlimitedCapacity ? null : formData.capacity,
       };
+      
+      // Remove old category field
+      delete (eventData as any).category;
 
       const response: any = await api.post('/api/events', eventData);
       console.log('Create event response:', response);
