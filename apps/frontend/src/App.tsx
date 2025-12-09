@@ -48,6 +48,7 @@ import StartTripPage from './pages/StartTripPage';
 import TripPage from './pages/TripPage';
 import { useProfileSetup } from './hooks/useProfileSetup';
 import { VideoCall, CallNotificationChecker } from './components/VideoCall';
+import branding from './config/branding';
 import { ToastNotificationContainer } from './components/ToastNotification';
 import NotificationListener from './components/NotificationListener';
 
@@ -64,6 +65,11 @@ function HomeRoute() {
 function App() {
   const fetchUser = useAuthStore((state) => state.fetchUser);
   const { showInterestsSetup, closeInterestsSetup } = useProfileSetup();
+
+  // Set dynamic document title from branding
+  useEffect(() => {
+    document.title = `${branding.appName} — ${branding.tagline}`;
+  }, []);
 
   useEffect(() => {
     // Don't run fetchUser on auth callback page - let that page handle auth
