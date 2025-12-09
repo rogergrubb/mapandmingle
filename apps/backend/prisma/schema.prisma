@@ -113,6 +113,15 @@ model User {
   blockedUsers      BlockedUser[] @relation("BlockedBy")
   blockingUsers     BlockedUser[] @relation("Blocks")
   photos            UserPhoto[]   @relation("UserPhotos")
+  
+  // Safety features
+  circlesOwned      Circle[]         @relation("CircleOwner")
+  circleMemberships CircleMember[]
+  trips             Trip[]           @relation("UserTrips")
+  checkIns          CheckIn[]        @relation("UserCheckIns")
+  emergencyAlerts   EmergencyAlert[] @relation("UserEmergencies")
+  createdArrivalAlerts  ArrivalAlert[]   @relation("CreatedArrivalAlerts")
+  watchedByAlerts       ArrivalAlert[]   @relation("WatchedArrivalAlerts")
 }
 
   // Messaging and call relations
@@ -301,6 +310,176 @@ model Profile {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+// ============================================================================
+// SAFETY - CIRCLES (Family Groups)
+// ============================================================================
+
+model Circle {
+  id          String   @id @default(cuid())
+  name        String   @db.VarChar(50) // "Family", "Close Friends", "Carpool", etc.
+  ownerId     String
+  emoji       String?  @default("👨‍👩‍👧‍👦")
+  color       String?  @default("#3B82F6")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  owner       User     @relation("CircleOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  members     CircleMember[]
+  trips       Trip[]
+  arrivalAlerts ArrivalAlert[]
+
+  @@index([ownerId])
+}
+
+model CircleMember {
+  id          String   @id @default(cuid())
+  circleId    String
+  userId      String
+  role        String   @default("member") // owner, admin, member
+  canSeeLocation Boolean @default(true)
+  canRequestLocation Boolean @default(true)
+  joinedAt    DateTime @default(now())
+
+  circle      Circle   @relation(fields: [circleId], references: [id], onDelete: Cascade)
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([circleId, userId])
+  @@index([userId])
+}
+
+// ============================================================================
+// SAFETY - TRIPS (Location Sharing Sessions)
+// ============================================================================
+
+model Trip {
+  id              String    @id @default(cuid())
+  userId          String
+  circleId        String?   // Optional - share with specific circle or all connections
+  name            String?   @db.VarChar(100) // "Driving home", "Walking to school"
+  
+  // Origin
+  originLat       Float
+  originLng       Float
+  originName      String?   @db.VarChar(200)
+  
+  // Destination
+  destLat         Float
+  destLng         Float
+  destName        String?   @db.VarChar(200)
+  
+  // Status
+  status          String    @default("active") // active, paused, arrived, cancelled
+  startedAt       DateTime  @default(now())
+  arrivedAt       DateTime?
+  expectedArrival DateTime?
+  
+  // Live tracking
+  currentLat      Float?
+  currentLng      Float?
+  lastUpdatedAt   DateTime?
+  updateInterval  Int       @default(60) // seconds between updates (30 or 60)
+  
+  // Battery (optional)
+  batteryLevel    Int?      // 0-100
+  batterySharing  Boolean   @default(false)
+  
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  user            User      @relation("UserTrips", fields: [userId], references: [id], onDelete: Cascade)
+  circle          Circle?   @relation(fields: [circleId], references: [id], onDelete: SetNull)
+  arrivalAlerts   ArrivalAlert[]
+
+  @@index([userId])
+  @@index([circleId])
+  @@index([status])
+}
+
+// ============================================================================
+// SAFETY - ARRIVAL ALERTS
+// ============================================================================
+
+model ArrivalAlert {
+  id              String    @id @default(cuid())
+  creatorId       String    // Who created the alert
+  watchedUserId   String    // Who we're watching
+  tripId          String?   // Optional - linked to specific trip
+  circleId        String?   // Optional - for circle-based alerts
+  
+  // Location to watch for
+  destLat         Float
+  destLng         Float
+  destName        String?   @db.VarChar(200)
+  radiusMeters    Int       @default(100) // How close = "arrived"
+  
+  // Alert timing
+  expectedBy      DateTime? // "Alert me if not arrived by..."
+  notifyOnArrival Boolean   @default(true)
+  notifyIfLate    Boolean   @default(true)
+  lateThresholdMin Int      @default(15) // Minutes past expected time
+  
+  // Status
+  status          String    @default("active") // active, triggered, expired, cancelled
+  triggeredAt     DateTime?
+  
+  createdAt       DateTime  @default(now())
+  expiresAt       DateTime? // Auto-delete after this time
+
+  creator         User      @relation("CreatedArrivalAlerts", fields: [creatorId], references: [id], onDelete: Cascade)
+  watchedUser     User      @relation("WatchedArrivalAlerts", fields: [watchedUserId], references: [id], onDelete: Cascade)
+  trip            Trip?     @relation(fields: [tripId], references: [id], onDelete: SetNull)
+  circle          Circle?   @relation(fields: [circleId], references: [id], onDelete: SetNull)
+
+  @@index([creatorId])
+  @@index([watchedUserId])
+  @@index([status])
+}
+
+// ============================================================================
+// SAFETY - CHECK-INS
+// ============================================================================
+
+model CheckIn {
+  id          String    @id @default(cuid())
+  userId      String
+  type        String    // "home", "arrived", "safe", "custom"
+  message     String?   @db.VarChar(200)
+  latitude    Float?
+  longitude   Float?
+  placeName   String?   @db.VarChar(200)
+  circleId    String?   // Share with specific circle or all connections
+  createdAt   DateTime  @default(now())
+
+  user        User      @relation("UserCheckIns", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([createdAt])
+}
+
+// ============================================================================
+// SAFETY - EMERGENCY ALERTS (Panic Button)
+// ============================================================================
+
+model EmergencyAlert {
+  id          String    @id @default(cuid())
+  userId      String
+  latitude    Float
+  longitude   Float
+  batteryLevel Int?
+  message     String?   @db.VarChar(500)
+  voiceNoteUrl String?  // S3 URL for recorded message
+  status      String    @default("active") // active, acknowledged, resolved, false_alarm
+  resolvedAt  DateTime?
+  resolvedBy  String?   // User who marked it resolved
+  createdAt   DateTime  @default(now())
+
+  user        User      @relation("UserEmergencies", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
 }
 
 // ============================================================================
