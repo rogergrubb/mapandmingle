@@ -5,7 +5,7 @@ import {
   Check, Trash2, ArrowLeft, Edit2
 } from 'lucide-react';
 import api from '../lib/api';
-import { triggerHaptic } from '../lib/haptics';
+import { haptic } from '../lib/haptics';
 
 interface CircleMember {
   id: string;
@@ -56,7 +56,7 @@ export default function CirclesPage() {
     if (!newCircleName.trim()) return;
     
     setSubmitting(true);
-    triggerHaptic('medium');
+    haptic.lightTap();
     
     try {
       await api.post('/api/circles', {
@@ -64,14 +64,14 @@ export default function CirclesPage() {
         emoji: newCircleEmoji,
       });
       
-      triggerHaptic('success');
+      haptic.confirm();
       setShowCreateModal(false);
       setNewCircleName('');
       setNewCircleEmoji('👨‍👩‍👧‍👦');
       fetchCircles();
     } catch (err) {
       console.error('Failed to create circle:', err);
-      triggerHaptic('error');
+      haptic.softTick();
     } finally {
       setSubmitting(false);
     }
@@ -81,20 +81,20 @@ export default function CirclesPage() {
     if (!inviteEmail.trim()) return;
     
     setSubmitting(true);
-    triggerHaptic('medium');
+    haptic.lightTap();
     
     try {
       await api.post(`/api/circles/${circleId}/invite`, {
         inviteeEmail: inviteEmail.trim(),
       });
       
-      triggerHaptic('success');
+      haptic.confirm();
       setShowInviteModal(null);
       setInviteEmail('');
       fetchCircles();
     } catch (err: any) {
       console.error('Failed to invite:', err);
-      triggerHaptic('error');
+      haptic.softTick();
       alert(err.response?.data?.error || 'Failed to invite member');
     } finally {
       setSubmitting(false);
@@ -104,30 +104,30 @@ export default function CirclesPage() {
   const deleteCircle = async (circleId: string, circleName: string) => {
     if (!confirm(`Delete "${circleName}"? This cannot be undone.`)) return;
     
-    triggerHaptic('medium');
+    haptic.lightTap();
     
     try {
       await api.delete(`/api/circles/${circleId}`);
-      triggerHaptic('success');
+      haptic.confirm();
       fetchCircles();
     } catch (err) {
       console.error('Failed to delete circle:', err);
-      triggerHaptic('error');
+      haptic.softTick();
     }
   };
 
   const leaveCircle = async (circleId: string, circleName: string, userId: string) => {
     if (!confirm(`Leave "${circleName}"?`)) return;
     
-    triggerHaptic('medium');
+    haptic.lightTap();
     
     try {
       await api.delete(`/api/circles/${circleId}/members/${userId}`);
-      triggerHaptic('success');
+      haptic.confirm();
       fetchCircles();
     } catch (err) {
       console.error('Failed to leave circle:', err);
-      triggerHaptic('error');
+      haptic.softTick();
     }
   };
 
