@@ -459,10 +459,176 @@ wss.on('connection', (ws, req) => {
 // All fields exist in Prisma schema.prisma
 // Future schema changes should use: npx prisma migrate dev
 
-// Start server immediately
-// Schema is synchronized via Prisma migrations
-server.listen(PORT, '0.0.0.0', () => {
-  console.log(`
+// Safety Tables Auto-Migration (runs once on deploy)
+async function runSafetyMigration() {
+  try {
+    console.log('🔄 Running safety tables migration...');
+    
+    // Create Circle table
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "Circle" (
+        "id" TEXT NOT NULL,
+        "name" VARCHAR(50) NOT NULL,
+        "ownerId" TEXT NOT NULL,
+        "emoji" TEXT DEFAULT '👨‍👩‍👧‍👦',
+        "color" TEXT DEFAULT '#3B82F6',
+        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT "Circle_pkey" PRIMARY KEY ("id")
+      )
+    `);
+
+    // Create CircleMember table
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "CircleMember" (
+        "id" TEXT NOT NULL,
+        "circleId" TEXT NOT NULL,
+        "userId" TEXT NOT NULL,
+        "role" TEXT NOT NULL DEFAULT 'member',
+        "canSeeLocation" BOOLEAN NOT NULL DEFAULT true,
+        "canRequestLocation" BOOLEAN NOT NULL DEFAULT true,
+        "joinedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT "CircleMember_pkey" PRIMARY KEY ("id")
+      )
+    `);
+
+    // Create Trip table
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "Trip" (
+        "id" TEXT NOT NULL,
+        "userId" TEXT NOT NULL,
+        "circleId" TEXT,
+        "name" VARCHAR(100),
+        "originLat" DOUBLE PRECISION NOT NULL,
+        "originLng" DOUBLE PRECISION NOT NULL,
+        "originName" VARCHAR(200),
+        "destLat" DOUBLE PRECISION NOT NULL,
+        "destLng" DOUBLE PRECISION NOT NULL,
+        "destName" VARCHAR(200),
+        "status" TEXT NOT NULL DEFAULT 'active',
+        "startedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "arrivedAt" TIMESTAMP(3),
+        "expectedArrival" TIMESTAMP(3),
+        "currentLat" DOUBLE PRECISION,
+        "currentLng" DOUBLE PRECISION,
+        "lastUpdatedAt" TIMESTAMP(3),
+        "updateInterval" INTEGER NOT NULL DEFAULT 60,
+        "batteryLevel" INTEGER,
+        "batterySharing" BOOLEAN NOT NULL DEFAULT false,
+        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT "Trip_pkey" PRIMARY KEY ("id")
+      )
+    `);
+
+    // Create CheckIn table
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "CheckIn" (
+        "id" TEXT NOT NULL,
+        "userId" TEXT NOT NULL,
+        "type" TEXT NOT NULL,
+        "message" VARCHAR(200),
+        "latitude" DOUBLE PRECISION,
+        "longitude" DOUBLE PRECISION,
+        "placeName" VARCHAR(200),
+        "circleId" TEXT,
+        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT "CheckIn_pkey" PRIMARY KEY ("id")
+      )
+    `);
+
+    // Create EmergencyAlert table
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "EmergencyAlert" (
+        "id" TEXT NOT NULL,
+        "userId" TEXT NOT NULL,
+        "latitude" DOUBLE PRECISION NOT NULL,
+        "longitude" DOUBLE PRECISION NOT NULL,
+        "batteryLevel" INTEGER,
+        "message" VARCHAR(500),
+        "voiceNoteUrl" TEXT,
+        "status" TEXT NOT NULL DEFAULT 'active',
+        "resolvedAt" TIMESTAMP(3),
+        "resolvedBy" TEXT,
+        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT "EmergencyAlert_pkey" PRIMARY KEY ("id")
+      )
+    `);
+
+    // Create ArrivalAlert table
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "ArrivalAlert" (
+        "id" TEXT NOT NULL,
+        "creatorId" TEXT NOT NULL,
+        "watchedUserId" TEXT NOT NULL,
+        "tripId" TEXT,
+        "circleId" TEXT,
+        "destLat" DOUBLE PRECISION NOT NULL,
+        "destLng" DOUBLE PRECISION NOT NULL,
+        "destName" VARCHAR(200),
+        "radiusMeters" INTEGER NOT NULL DEFAULT 100,
+        "expectedBy" TIMESTAMP(3),
+        "notifyOnArrival" BOOLEAN NOT NULL DEFAULT true,
+        "notifyIfLate" BOOLEAN NOT NULL DEFAULT true,
+        "lateThresholdMin" INTEGER NOT NULL DEFAULT 15,
+        "status" TEXT NOT NULL DEFAULT 'active',
+        "triggeredAt" TIMESTAMP(3),
+        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "expiresAt" TIMESTAMP(3),
+        CONSTRAINT "ArrivalAlert_pkey" PRIMARY KEY ("id")
+      )
+    `);
+
+    // Create indexes (silently ignore if they exist)
+    const indexes = [
+      'CREATE INDEX IF NOT EXISTS "Circle_ownerId_idx" ON "Circle"("ownerId")',
+      'CREATE UNIQUE INDEX IF NOT EXISTS "CircleMember_circleId_userId_key" ON "CircleMember"("circleId", "userId")',
+      'CREATE INDEX IF NOT EXISTS "CircleMember_userId_idx" ON "CircleMember"("userId")',
+      'CREATE INDEX IF NOT EXISTS "Trip_userId_idx" ON "Trip"("userId")',
+      'CREATE INDEX IF NOT EXISTS "Trip_circleId_idx" ON "Trip"("circleId")',
+      'CREATE INDEX IF NOT EXISTS "Trip_status_idx" ON "Trip"("status")',
+      'CREATE INDEX IF NOT EXISTS "CheckIn_userId_idx" ON "CheckIn"("userId")',
+      'CREATE INDEX IF NOT EXISTS "CheckIn_createdAt_idx" ON "CheckIn"("createdAt")',
+      'CREATE INDEX IF NOT EXISTS "EmergencyAlert_userId_idx" ON "EmergencyAlert"("userId")',
+      'CREATE INDEX IF NOT EXISTS "EmergencyAlert_status_idx" ON "EmergencyAlert"("status")',
+      'CREATE INDEX IF NOT EXISTS "ArrivalAlert_creatorId_idx" ON "ArrivalAlert"("creatorId")',
+      'CREATE INDEX IF NOT EXISTS "ArrivalAlert_watchedUserId_idx" ON "ArrivalAlert"("watchedUserId")',
+      'CREATE INDEX IF NOT EXISTS "ArrivalAlert_status_idx" ON "ArrivalAlert"("status")',
+    ];
+    
+    for (const idx of indexes) {
+      await prisma.$executeRawUnsafe(idx).catch(() => {});
+    }
+
+    // Add foreign keys (silently ignore if they exist)
+    const fkeys = [
+      'ALTER TABLE "Circle" ADD CONSTRAINT "Circle_ownerId_fkey" FOREIGN KEY ("ownerId") REFERENCES "User"("id") ON DELETE CASCADE',
+      'ALTER TABLE "CircleMember" ADD CONSTRAINT "CircleMember_circleId_fkey" FOREIGN KEY ("circleId") REFERENCES "Circle"("id") ON DELETE CASCADE',
+      'ALTER TABLE "CircleMember" ADD CONSTRAINT "CircleMember_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE',
+      'ALTER TABLE "Trip" ADD CONSTRAINT "Trip_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE',
+      'ALTER TABLE "Trip" ADD CONSTRAINT "Trip_circleId_fkey" FOREIGN KEY ("circleId") REFERENCES "Circle"("id") ON DELETE SET NULL',
+      'ALTER TABLE "CheckIn" ADD CONSTRAINT "CheckIn_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE',
+      'ALTER TABLE "EmergencyAlert" ADD CONSTRAINT "EmergencyAlert_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE',
+      'ALTER TABLE "ArrivalAlert" ADD CONSTRAINT "ArrivalAlert_creatorId_fkey" FOREIGN KEY ("creatorId") REFERENCES "User"("id") ON DELETE CASCADE',
+      'ALTER TABLE "ArrivalAlert" ADD CONSTRAINT "ArrivalAlert_watchedUserId_fkey" FOREIGN KEY ("watchedUserId") REFERENCES "User"("id") ON DELETE CASCADE',
+      'ALTER TABLE "ArrivalAlert" ADD CONSTRAINT "ArrivalAlert_tripId_fkey" FOREIGN KEY ("tripId") REFERENCES "Trip"("id") ON DELETE SET NULL',
+      'ALTER TABLE "ArrivalAlert" ADD CONSTRAINT "ArrivalAlert_circleId_fkey" FOREIGN KEY ("circleId") REFERENCES "Circle"("id") ON DELETE SET NULL',
+    ];
+    
+    for (const fk of fkeys) {
+      await prisma.$executeRawUnsafe(fk).catch(() => {});
+    }
+
+    console.log('✅ Safety tables migration complete');
+  } catch (error) {
+    console.error('⚠️ Safety migration error (may be OK if tables exist):', error);
+  }
+}
+
+// Run migration then start server
+runSafetyMigration().then(() => {
+  server.listen(PORT, '0.0.0.0', () => {
+    console.log(`
 ╔═══════════════════════════════════════════════════════════╗
 ║                    🗺️  MAP MINGLE API                      ║
 ╠═══════════════════════════════════════════════════════════╣
@@ -470,7 +636,8 @@ server.listen(PORT, '0.0.0.0', () => {
 ║  WebSocket ready for real-time connections                ║
 ║  Database: PostgreSQL via Prisma                          ║
 ╚═══════════════════════════════════════════════════════════╝
-  `);
+    `);
+  });
 });
 
 // Graceful shutdown
