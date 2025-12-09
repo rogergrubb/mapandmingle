@@ -1,5 +1,5 @@
 import { Outlet, Link, useLocation } from 'react-router-dom';
-import { MapPin, Compass, MessageCircle, Heart, User, Bell } from 'lucide-react';
+import { MapPin, Compass, MessageCircle, Shield, User, Bell } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import api from '../../lib/api';
 import NotificationCenter, { NotificationBell } from '../NotificationCenter';
@@ -60,9 +60,9 @@ export default function MainLayout() {
 
   const navItems = [
     { path: '/', icon: MapPin, label: 'Map' },
-    { path: '/events', icon: Compass, label: 'Discover' },
+    { path: '/safety', icon: Shield, label: 'Safety' },
     { path: '/messages', icon: MessageCircle, label: 'Messages' },
-    { path: '/activity', icon: Heart, label: 'Connections' },
+    { path: '/events', icon: Compass, label: 'Events' },
     { path: '/profile', icon: User, label: 'Profile' },
   ];
 
