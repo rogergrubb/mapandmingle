@@ -5,7 +5,7 @@ import {
   Pause, Play, X, Check, Loader, Settings, Users
 } from 'lucide-react';
 import api from '../lib/api';
-import { triggerHaptic } from '../lib/haptics';
+import { haptic } from '../lib/haptics';
 
 interface Trip {
   id: string;
@@ -85,7 +85,7 @@ export default function TripPage() {
 
       // If arrived, show message and navigate back
       if (res.data.arrived) {
-        triggerHaptic('success');
+        haptic.confirm();
         alert('You have arrived at your destination!');
         navigate('/safety');
       }
@@ -131,7 +131,7 @@ export default function TripPage() {
   const pauseTrip = async () => {
     if (!trip) return;
     
-    triggerHaptic('medium');
+    haptic.lightTap();
     
     try {
       await api.put(`/api/trips/${trip.id}/pause`);
@@ -144,7 +144,7 @@ export default function TripPage() {
   const resumeTrip = async () => {
     if (!trip) return;
     
-    triggerHaptic('medium');
+    haptic.lightTap();
     
     try {
       await api.put(`/api/trips/${trip.id}/resume`);
@@ -159,15 +159,15 @@ export default function TripPage() {
     if (!confirm('Stop sharing your location?')) return;
     
     setEnding(true);
-    triggerHaptic('medium');
+    haptic.lightTap();
     
     try {
       await api.delete(`/api/trips/${trip.id}`);
-      triggerHaptic('success');
+      haptic.confirm();
       navigate('/safety');
     } catch (err) {
       console.error('Failed to end trip:', err);
-      triggerHaptic('error');
+      haptic.softTick();
     } finally {
       setEnding(false);
     }
@@ -176,7 +176,7 @@ export default function TripPage() {
   const markArrived = async () => {
     if (!trip) return;
     
-    triggerHaptic('success');
+    haptic.confirm();
     
     try {
       // Get current location
