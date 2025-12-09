@@ -6,6 +6,7 @@ import {
   Zap, Eye, Lock, UserCheck, Menu, X,
   Instagram, Twitter, Linkedin, Play, Apple, Flag
 } from 'lucide-react';
+import branding, { brandStyle } from '../config/branding';
 
 export default function LandingPage() {
   const navigate = useNavigate();
@@ -57,11 +58,11 @@ export default function LandingPage() {
             onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
             className="flex items-center gap-2 hover:opacity-80 transition-opacity"
           >
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-pink-500 to-purple-600 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={brandStyle.primaryGradientBg}>
               <MapPin className="w-5 h-5 text-white" />
             </div>
             <span className="text-xl font-bold bg-gradient-to-r from-pink-400 to-purple-400 bg-clip-text text-transparent">
-              Map & Mingle
+              {branding.appName}
             </span>
           </button>
 
@@ -545,15 +546,15 @@ export default function LandingPage() {
             {/* Brand Column */}
             <div className="col-span-2 md:col-span-4 lg:col-span-1 mb-8 lg:mb-0">
               <div className="flex items-center gap-2 mb-4">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-pink-500 to-purple-600 flex items-center justify-center">
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={brandStyle.primaryGradientBg}>
                   <MapPin className="w-5 h-5 text-white" />
                 </div>
                 <span className="text-xl font-bold bg-gradient-to-r from-pink-400 to-purple-400 bg-clip-text text-transparent">
-                  Map & Mingle
+                  {branding.appName}
                 </span>
               </div>
               <p className="text-white/50 text-sm leading-relaxed mb-4">
-                The real-time map for dating, friendships, networking, events, and travel connections near you.
+                {branding.tagline}. {branding.showSocialFeatures && 'Connect with people near you for dating, friendships, networking, and events.'}
               </p>
               <div className="flex gap-3">
                 <a href="#" className="w-9 h-9 bg-white/5 hover:bg-white/10 rounded-lg flex items-center justify-center transition-colors">
@@ -598,7 +599,7 @@ export default function LandingPage() {
                 <li><span className="text-white/30 text-sm">Help Center (Soon)</span></li>
                 <li><button onClick={() => scrollToSection('safety')} className="text-white/50 hover:text-white text-sm transition-colors">Safety & Privacy</button></li>
                 <li><button onClick={() => navigate('/report-status')} className="text-white/50 hover:text-white text-sm transition-colors">Report a Problem</button></li>
-                <li><a href="mailto:support@mapandmingle.com" className="text-white/50 hover:text-white text-sm transition-colors">Contact Us</a></li>
+                <li><a href={`mailto:${branding.supportEmail}`} className="text-white/50 hover:text-white text-sm transition-colors">Contact Us</a></li>
               </ul>
             </div>
 
@@ -641,13 +642,13 @@ export default function LandingPage() {
               Always meet in public places and use your judgment. Your safety comes first. Location sharing is always optional and under your control.
             </p>
             <p className="text-white/30 text-xs mt-3 max-w-2xl mx-auto">
-              Map & Mingle does not guarantee any specific outcomes from connections made on the platform. Please use common sense and follow local laws and safety guidelines.
+              {branding.appName} does not guarantee any specific outcomes from connections made on the platform. Please use common sense and follow local laws and safety guidelines.
             </p>
           </div>
 
           {/* Copyright */}
           <div className="text-center pt-8 border-t border-white/10">
-            <p className="text-white/40 text-sm">© {new Date().getFullYear()} Map & Mingle. All rights reserved.</p>
+            <p className="text-white/40 text-sm">© {new Date().getFullYear()} {branding.companyName}. All rights reserved.</p>
           </div>
         </div>
       </footer>
