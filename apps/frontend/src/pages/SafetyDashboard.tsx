@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
 import api from '../lib/api';
-import { triggerHaptic } from '../lib/haptics';
+import { haptic } from '../lib/haptics';
 import branding from '../config/branding';
 
 interface CircleMember {
@@ -110,7 +110,7 @@ export default function SafetyDashboard() {
 
   const handleCheckIn = async (type: 'home' | 'arrived' | 'safe') => {
     setCheckingIn(true);
-    triggerHaptic('medium');
+    haptic.lightTap();
     
     try {
       // Get current location
@@ -134,18 +134,18 @@ export default function SafetyDashboard() {
         longitude,
       });
 
-      triggerHaptic('success');
+      haptic.confirm();
       fetchData();
     } catch (err) {
       console.error('Check-in failed:', err);
-      triggerHaptic('error');
+      haptic.softTick();
     } finally {
       setCheckingIn(false);
     }
   };
 
   const handleEmergency = async () => {
-    triggerHaptic('heavy');
+    haptic.lightTap();
     
     // Confirm emergency
     if (!confirm('This will alert all your circle members with your location. Continue?')) {
@@ -177,7 +177,7 @@ export default function SafetyDashboard() {
         batteryLevel,
       });
 
-      triggerHaptic('success');
+      haptic.confirm();
       alert('Emergency alert sent to all your circle members.');
     } catch (err) {
       console.error('Emergency alert failed:', err);
