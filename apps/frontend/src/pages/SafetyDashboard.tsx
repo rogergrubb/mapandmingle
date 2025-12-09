@@ -7,6 +7,7 @@ import {
 import { useAuthStore } from '../stores/authStore';
 import api from '../lib/api';
 import { triggerHaptic } from '../lib/haptics';
+import branding from '../config/branding';
 
 interface CircleMember {
   userId: string;
@@ -208,11 +209,11 @@ export default function SafetyDashboard() {
   return (
     <div className="h-full bg-gray-50 flex flex-col overflow-y-auto pb-20">
       {/* Header */}
-      <div className="bg-gradient-to-br from-blue-600 to-indigo-700 text-white px-4 pt-6 pb-8">
+      <div className="text-white px-4 pt-6 pb-8" style={{ background: branding.safetyGradient }}>
         <div className="flex items-center justify-between mb-4">
           <div>
             <h1 className="text-2xl font-bold">Safety</h1>
-            <p className="text-blue-100 text-sm">Keep your loved ones close</p>
+            <p className="text-blue-100 text-sm">{branding.safetyTagline}</p>
           </div>
           <button 
             onClick={() => navigate('/circles')}
