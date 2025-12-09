@@ -55,6 +55,10 @@ import admin from './routes/admin';
 import { settingsRoutes } from './routes/settings';
 import connections from './routes/connections';
 import photos from './routes/photos';
+// Safety app pivot routes
+import { circleRoutes } from './routes/circles';
+import { tripRoutes } from './routes/trips';
+import { safetyRoutes as safetyFeaturesRoutes } from './routes/safety-features';
 
 // Import trial & usage middleware
 import { rateLimitMiddleware as trialRateLimitMiddleware } from './middleware/rateLimit';
@@ -312,6 +316,10 @@ app.route('/api/settings', settingsRoutes);
 app.route('/api/admin', admin);
 app.route('/api/connections', connections);
 app.route('/api/photos', photos);
+// Safety app pivot routes
+app.route('/api/circles', circleRoutes);
+app.route('/api/trips', tripRoutes);
+app.route('/api/safety/features', safetyFeaturesRoutes);
 app.route('/webhook', stripeWebhookRoutes);
 
 // Start server
