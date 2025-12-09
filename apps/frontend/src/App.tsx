@@ -42,6 +42,10 @@ import TermsOfService from './pages/legal/TermsOfService';
 import PrivacyPolicyPage from './pages/legal/PrivacyPolicy';
 import { AdminReports } from './pages/admin/AdminReports';
 import ProfileInterestsSetup from './components/ProfileInterestsSetup';
+import SafetyDashboard from './pages/SafetyDashboard';
+import CirclesPage from './pages/CirclesPage';
+import StartTripPage from './pages/StartTripPage';
+import TripPage from './pages/TripPage';
 import { useProfileSetup } from './hooks/useProfileSetup';
 import { VideoCall, CallNotificationChecker } from './components/VideoCall';
 import { ToastNotificationContainer } from './components/ToastNotification';
@@ -123,6 +127,12 @@ function App() {
           <Route path="/settings/account" element={<AccountSettings />} />
           <Route path="/settings/help" element={<HelpSupport />} />
           <Route path="/admin/reports" element={<AdminReports />} />
+          {/* Safety Routes */}
+          <Route path="/safety" element={<SafetyDashboard />} />
+          <Route path="/circles" element={<CirclesPage />} />
+          <Route path="/circles/create" element={<CirclesPage />} />
+          <Route path="/trip" element={<TripPage />} />
+          <Route path="/trip/start" element={<StartTripPage />} />
         </Route>
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
