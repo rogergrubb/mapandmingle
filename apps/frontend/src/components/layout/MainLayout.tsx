@@ -3,6 +3,7 @@ import { MapPin, Compass, MessageCircle, Shield, User, Bell } from 'lucide-react
 import { useState, useEffect } from 'react';
 import api from '../../lib/api';
 import NotificationCenter, { NotificationBell } from '../NotificationCenter';
+import branding from '../../config/branding';
 
 export default function MainLayout() {
   const location = useLocation();
@@ -98,8 +99,8 @@ export default function MainLayout() {
             {/* Left: Brand */}
             <div className="flex items-center gap-2 min-w-0">
               <div className="flex-shrink-0">
-                <div className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-pink-500 via-purple-500 to-blue-500 bg-clip-text text-transparent">
-                  Map & Mingle
+                <div className="text-xl sm:text-2xl font-bold" style={{ background: branding.headerGradient, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+                  {branding.appName}
                 </div>
               </div>
             </div>
