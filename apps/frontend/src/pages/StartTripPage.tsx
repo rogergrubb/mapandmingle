@@ -5,7 +5,7 @@ import {
   Users, Search, X, Loader
 } from 'lucide-react';
 import api from '../lib/api';
-import { triggerHaptic } from '../lib/haptics';
+import { haptic } from '../lib/haptics';
 
 interface Circle {
   id: string;
@@ -101,7 +101,7 @@ export default function StartTripPage() {
       lat: suggestion.center[1],
     });
     setShowSuggestions(false);
-    triggerHaptic('light');
+    haptic.navTap();
   };
 
   const startTrip = async () => {
@@ -111,7 +111,7 @@ export default function StartTripPage() {
     }
 
     setLoading(true);
-    triggerHaptic('medium');
+    haptic.lightTap();
 
     try {
       // Get battery level if sharing
@@ -136,11 +136,11 @@ export default function StartTripPage() {
         batteryLevel,
       });
 
-      triggerHaptic('success');
+      haptic.confirm();
       navigate('/trip');
     } catch (err: any) {
       console.error('Failed to start trip:', err);
-      triggerHaptic('error');
+      haptic.softTick();
       alert(err.response?.data?.error || 'Failed to start trip');
     } finally {
       setLoading(false);
