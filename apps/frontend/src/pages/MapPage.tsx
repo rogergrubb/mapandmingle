@@ -693,9 +693,34 @@ function MapController() {
   const map = useMap();
   const fetchPins = useMapStore((state) => state.fetchPins);
 
+  // Restore saved map position on mount
+  useEffect(() => {
+    const savedPosition = localStorage.getItem('mapandmingle_map_position');
+    if (savedPosition) {
+      try {
+        const { lat, lng, zoom } = JSON.parse(savedPosition);
+        if (lat && lng && zoom) {
+          map.setView([lat, lng], zoom, { animate: false });
+        }
+      } catch (e) {
+        // Ignore parse errors
+      }
+    }
+  }, [map]);
+
   useEffect(() => {
     const handleMoveEnd = () => {
       const bounds = map.getBounds();
+      const center = map.getCenter();
+      const zoom = map.getZoom();
+      
+      // Save current position to localStorage
+      localStorage.setItem('mapandmingle_map_position', JSON.stringify({
+        lat: center.lat,
+        lng: center.lng,
+        zoom: zoom
+      }));
+      
       fetchPins({
         north: bounds.getNorth(),
         south: bounds.getSouth(),
