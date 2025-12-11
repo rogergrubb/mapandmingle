@@ -13,19 +13,29 @@ interface UserPin {
   ageHours: number;
 }
 
+interface GlobalStats {
+  liveNow: number;
+  activeThisMonth: number;
+}
+
 /**
- * PinLegend - Dynamic visual guide showing YOUR pins
+ * PinLegend - Dynamic visual guide showing YOUR pins + global mingler stats
  * Shows "Where I'm At" + multiple "Where I'll Be" with actual countdowns
  */
 
 export function PinLegend() {
   const [myPins, setMyPins] = useState<UserPin[]>([]);
+  const [globalStats, setGlobalStats] = useState<GlobalStats>({ liveNow: 0, activeThisMonth: 0 });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchMyPins();
+    fetchGlobalStats();
     // Refresh every minute to update countdowns
-    const interval = setInterval(fetchMyPins, 60000);
+    const interval = setInterval(() => {
+      fetchMyPins();
+      fetchGlobalStats();
+    }, 60000);
     return () => clearInterval(interval);
   }, []);
 
@@ -37,6 +47,19 @@ export function PinLegend() {
       console.error('Failed to fetch my pins:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchGlobalStats = async () => {
+    try {
+      const response = await api.get('/api/pins/global-stats');
+      const data = response.data || response;
+      setGlobalStats({
+        liveNow: data.liveNow || 0,
+        activeThisMonth: data.activeThisMonth || 0,
+      });
+    } catch (err) {
+      console.error('Failed to fetch global stats:', err);
     }
   };
 
@@ -320,9 +343,69 @@ export function PinLegend() {
           </>
         )}
 
-        {/* Footer notice */}
-        <div style={noticeStyle}>
-          Pins visible for 30 days
+        {/* Global Mingler Stats */}
+        <div style={{
+          ...dividerStyle,
+          background: 'linear-gradient(135deg, #fdf2f8, #f3e8ff)',
+          margin: '12px -14px -16px -14px',
+          padding: '12px 14px 14px 14px',
+          borderRadius: '0 0 16px 16px',
+          borderTop: '1px solid #e5e7eb',
+        }}>
+          <div style={{ 
+            fontSize: '10px', 
+            fontWeight: 700, 
+            color: '#7c3aed',
+            marginBottom: '8px',
+            textTransform: 'uppercase',
+            letterSpacing: '0.3px',
+          }}>
+            🌍 MINGLERS WORLDWIDE
+          </div>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <div style={{
+              flex: 1,
+              background: 'white',
+              borderRadius: '8px',
+              padding: '8px',
+              textAlign: 'center',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+            }}>
+              <div style={{
+                fontSize: '16px',
+                fontWeight: 700,
+                background: 'linear-gradient(135deg, #22c55e, #16a34a)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+              }}>
+                {globalStats.liveNow}
+              </div>
+              <div style={{ fontSize: '8px', color: '#6b7280', fontWeight: 500 }}>
+                Live Now
+              </div>
+            </div>
+            <div style={{
+              flex: 1,
+              background: 'white',
+              borderRadius: '8px',
+              padding: '8px',
+              textAlign: 'center',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+            }}>
+              <div style={{
+                fontSize: '16px',
+                fontWeight: 700,
+                background: 'linear-gradient(135deg, #ec4899, #a855f7)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+              }}>
+                {globalStats.activeThisMonth}
+              </div>
+              <div style={{ fontSize: '8px', color: '#6b7280', fontWeight: 500 }}>
+                This Month
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
