@@ -172,14 +172,14 @@ export default function NotificationCenter({ isOpen, onClose }: NotificationCent
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 md:relative md:inset-auto">
+    <div className="fixed inset-0 z-[9999] md:relative md:inset-auto">
       {/* Backdrop (mobile only) */}
-      <div className="fixed inset-0 bg-black/30 md:hidden" onClick={onClose} />
+      <div className="fixed inset-0 bg-black/30 md:hidden z-[9998]" onClick={onClose} />
 
       {/* Panel */}
       <div 
         ref={panelRef}
-        className="fixed inset-x-0 bottom-0 top-16 md:absolute md:right-0 md:top-full md:inset-x-auto 
+        className="fixed inset-x-0 bottom-0 top-16 z-[9999] md:absolute md:right-0 md:top-full md:inset-x-auto 
           md:w-96 md:mt-2 bg-white md:rounded-xl md:shadow-xl md:border md:max-h-[calc(100vh-100px)]
           overflow-hidden flex flex-col"
       >
@@ -348,3 +348,4 @@ export function NotificationBell({ onClick }: { onClick: () => void }) {
     </button>
   );
 }
+
