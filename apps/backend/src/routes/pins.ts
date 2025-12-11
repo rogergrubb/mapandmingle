@@ -7,6 +7,7 @@ import { notifyAboutNewPin, notifyAboutPinLike } from '../services/notificationS
 type PinStatus = 'active' | 'recently_arrived' | 'ghost' | 'old_ghost';
 
 // Calculate pin status based on age and type
+// Pins last 30 days with very gradual opacity decay
 function calculatePinStatus(pin: { 
   pinType: string; 
   arrivalTime: Date | null; 
@@ -25,71 +26,85 @@ function calculatePinStatus(pin: {
     
     // After arrival - calculate time since arrival
     const hoursSinceArrival = (now.getTime() - arrival.getTime()) / (1000 * 60 * 60);
-    
-    if (hoursSinceArrival < 6) {
-      return { status: 'recently_arrived', opacity: 0.6, ageHours: hoursSinceArrival };
-    }
-    
-    if (hoursSinceArrival < 24) {
-      return { status: 'ghost', opacity: 0.4, ageHours: hoursSinceArrival };
-    }
-    
     const daysSinceArrival = hoursSinceArrival / 24;
+    
+    // Full opacity for first 3 days after arrival
     if (daysSinceArrival < 3) {
-      return { status: 'ghost', opacity: 0.4, ageHours: hoursSinceArrival };
+      return { status: 'recently_arrived', opacity: 1.0, ageHours: hoursSinceArrival };
     }
     
+    // Days 3-7: opacity 0.9
     if (daysSinceArrival < 7) {
-      return { status: 'old_ghost', opacity: 0.2, ageHours: hoursSinceArrival };
+      return { status: 'ghost', opacity: 0.9, ageHours: hoursSinceArrival };
     }
     
-    // 7+ days - should be cleaned up
-    return { status: 'old_ghost', opacity: 0.1, ageHours: hoursSinceArrival };
+    // Days 7-14: opacity 0.8
+    if (daysSinceArrival < 14) {
+      return { status: 'ghost', opacity: 0.8, ageHours: hoursSinceArrival };
+    }
+    
+    // Days 14-21: opacity 0.7
+    if (daysSinceArrival < 21) {
+      return { status: 'old_ghost', opacity: 0.7, ageHours: hoursSinceArrival };
+    }
+    
+    // Days 21-30: opacity 0.6
+    if (daysSinceArrival < 30) {
+      return { status: 'old_ghost', opacity: 0.6, ageHours: hoursSinceArrival };
+    }
+    
+    // 30+ days - minimum opacity before cleanup
+    return { status: 'old_ghost', opacity: 0.5, ageHours: hoursSinceArrival };
   }
   
   // Current location pin - based on creation time
   const hoursSinceCreated = (now.getTime() - pin.createdAt.getTime()) / (1000 * 60 * 60);
+  const daysSinceCreated = hoursSinceCreated / 24;
   
-  if (hoursSinceCreated < 4) {
+  // Full opacity for first 3 days
+  if (daysSinceCreated < 3) {
     return { status: 'active', opacity: 1.0, ageHours: hoursSinceCreated };
   }
   
-  if (hoursSinceCreated < 12) {
-    return { status: 'active', opacity: 0.8, ageHours: hoursSinceCreated };
-  }
-  
-  if (hoursSinceCreated < 24) {
-    return { status: 'active', opacity: 0.6, ageHours: hoursSinceCreated };
-  }
-  
-  const daysSinceCreated = hoursSinceCreated / 24;
-  if (daysSinceCreated < 3) {
-    return { status: 'ghost', opacity: 0.4, ageHours: hoursSinceCreated };
-  }
-  
+  // Days 3-7: opacity 0.9
   if (daysSinceCreated < 7) {
-    return { status: 'old_ghost', opacity: 0.25, ageHours: hoursSinceCreated };
+    return { status: 'active', opacity: 0.9, ageHours: hoursSinceCreated };
   }
   
-  // 7+ days old
-  return { status: 'old_ghost', opacity: 0.15, ageHours: hoursSinceCreated };
+  // Days 7-14: opacity 0.8
+  if (daysSinceCreated < 14) {
+    return { status: 'ghost', opacity: 0.8, ageHours: hoursSinceCreated };
+  }
+  
+  // Days 14-21: opacity 0.7
+  if (daysSinceCreated < 21) {
+    return { status: 'ghost', opacity: 0.7, ageHours: hoursSinceCreated };
+  }
+  
+  // Days 21-30: opacity 0.6
+  if (daysSinceCreated < 30) {
+    return { status: 'old_ghost', opacity: 0.6, ageHours: hoursSinceCreated };
+  }
+  
+  // 30+ days old - minimum opacity
+  return { status: 'old_ghost', opacity: 0.5, ageHours: hoursSinceCreated };
 }
 
-// Check if pin should be auto-deleted (7+ days old)
+// Check if pin should be auto-deleted (30+ days old)
 function shouldDeletePin(pin: { 
   pinType: string; 
   arrivalTime: Date | null; 
   createdAt: Date;
 }): boolean {
   const now = new Date();
-  const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
+  const thirtyDaysMs = 30 * 24 * 60 * 60 * 1000;
   
   if (pin.pinType === 'future' && pin.arrivalTime) {
     const arrival = new Date(pin.arrivalTime);
-    return (now.getTime() - arrival.getTime()) > sevenDaysMs;
+    return (now.getTime() - arrival.getTime()) > thirtyDaysMs;
   }
   
-  return (now.getTime() - pin.createdAt.getTime()) > sevenDaysMs;
+  return (now.getTime() - pin.createdAt.getTime()) > thirtyDaysMs;
 }
 
 
