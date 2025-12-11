@@ -276,12 +276,14 @@ function ClusteredMarkers({
   onPinClick,
   currentUserId,
   onDeletePin,
+  onEditProfile,
 }: { 
   pins: any[]; 
   mode: MingleMode;
   onPinClick: (pin: any) => void;
   currentUserId: string | undefined;
   onDeletePin: (pinId: string, pinType: 'current' | 'future') => void;
+  onEditProfile: () => void;
 }) {
   const map = useMap();
   const clusterGroupRef = useRef<L.MarkerClusterGroup | null>(null);
@@ -527,6 +529,32 @@ function ClusteredMarkers({
           ` : ''}
           ${connectionBtnHtml}
           ${isOwnPin ? `
+            <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+              <button 
+                class="edit-profile-btn"
+                style="
+                  flex: 1;
+                  padding: 10px 16px;
+                  background: linear-gradient(135deg, #a855f7, #7c3aed);
+                  color: white;
+                  border: none;
+                  border-radius: 10px;
+                  font-weight: 600;
+                  font-size: 14px;
+                  cursor: pointer;
+                  transition: transform 0.1s, box-shadow 0.1s;
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  gap: 6px;
+                "
+                onmouseover="this.style.transform='scale(1.02)'; this.style.boxShadow='0 4px 12px #a855f740';"
+                onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='none';"
+              >
+                <span style="font-size: 14px;">✏️</span>
+                Edit Profile
+              </button>
+            </div>
             <button 
               class="delete-pin-btn"
               style="
@@ -661,6 +689,16 @@ function ClusteredMarkers({
           haptic.softTick();
           
           onDeletePin(pin.id, pin.pinType as 'current' | 'future');
+        });
+      }
+      
+      // Add click handler for Edit Profile (own pins)
+      const editProfileBtn = popupContent.querySelector('.edit-profile-btn');
+      if (editProfileBtn) {
+        editProfileBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          haptic.softTick();
+          onEditProfile();
         });
       }
       
@@ -1344,6 +1382,7 @@ export default function MapPage() {
           onPinClick={handlePinClick}
           currentUserId={user?.id}
           onDeletePin={handleOpenDeleteDialog}
+          onEditProfile={() => navigate('/profile/edit')}
         />
 
         {/* User location marker */}
