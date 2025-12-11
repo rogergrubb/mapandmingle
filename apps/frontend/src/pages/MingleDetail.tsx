@@ -161,6 +161,11 @@ export default function MingleDetail() {
             <ArrowLeft size={24} />
           </button>
           <h1 className="text-xl font-bold ml-2">Profile</h1>
+          {isOwnPin && (
+            <span className="ml-2 px-2 py-1 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs font-bold rounded-full">
+              YOUR PIN
+            </span>
+          )}
         </div>
       </div>
 
@@ -380,7 +385,27 @@ export default function MingleDetail() {
         </div>
 
         {/* Action Buttons - Fixed at Bottom */}
-        {!isOwnPin && (
+        {isOwnPin ? (
+          <div className="fixed bottom-20 left-0 right-0 bg-white border-t px-4 py-3 z-20">
+            <div className="max-w-2xl mx-auto flex gap-3">
+              <button
+                onClick={() => navigate('/profile/edit')}
+                className="flex-1 flex items-center justify-center gap-2 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl font-semibold hover:shadow-lg transition-all"
+              >
+                <span className="text-lg">✏️</span>
+                Edit Profile
+              </button>
+              
+              <button
+                onClick={() => navigate('/profile')}
+                className="flex-1 flex items-center justify-center gap-2 py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition-all"
+              >
+                <Eye size={20} />
+                View Full Profile
+              </button>
+            </div>
+          </div>
+        ) : (
           <div className="fixed bottom-20 left-0 right-0 bg-white border-t px-4 py-3 z-20">
             <div className="max-w-2xl mx-auto flex gap-3">
               <button
