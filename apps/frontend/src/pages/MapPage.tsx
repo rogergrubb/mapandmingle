@@ -65,18 +65,31 @@ function createPinIcon(
   isFriend: boolean = false,
   arrivalTime?: string,  // For "Where I'll Be" pins
   pinOpacity: number = 1.0,  // From API lifecycle calculation
-  pinStatus: string = 'active'  // 'active', 'recently_arrived', 'ghost', 'old_ghost'
+  pinStatus: string = 'active',  // 'active', 'recently_arrived', 'ghost', 'old_ghost'
+  isOwnPin: boolean = false  // Is this the current user's pin?
 ) {
   // If this is a "Where I'll Be" pin, use YELLOW colors (unless it's expired/ghost)
   const isDestination = !!arrivalTime;
   const isExpiredPin = pinStatus === 'ghost' || pinStatus === 'old_ghost' || pinStatus === 'recently_arrived';
   
-  // Use gray for expired pins, yellow for future, mode colors for current
-  const colors = isExpiredPin 
-    ? { primary: '#9ca3af', secondary: '#6b7280' } // Gray for expired
-    : isDestination 
-      ? { primary: '#eab308', secondary: '#f59e0b' } // Yellow for "Where I'll Be"
-      : modeColors[mode]; // Regular mode colors for "Where I'm At"
+  // Color logic:
+  // - Own pins: gray for expired, yellow for future destination, gray for current location
+  // - Other users: gray for expired, PINK/PURPLE gradient for active (to stand out!)
+  // - Friends: gold ring regardless of ownership
+  let colors;
+  if (isExpiredPin) {
+    colors = { primary: '#9ca3af', secondary: '#6b7280' }; // Gray for all expired pins
+  } else if (isOwnPin) {
+    // Your own pins - more muted colors
+    colors = isDestination 
+      ? { primary: '#eab308', secondary: '#f59e0b' } // Yellow for your "Where I'll Be"
+      : { primary: '#6b7280', secondary: '#4b5563' }; // Dark gray for your "Where I'm At"
+  } else {
+    // OTHER users' pins - vibrant pink/purple to stand out!
+    colors = isDestination
+      ? { primary: '#f59e0b', secondary: '#eab308' } // Orange-yellow for others' destinations
+      : { primary: '#ec4899', secondary: '#a855f7' }; // PINK-PURPLE gradient for other minglers!
+  }
   
   const size = isActive ? 48 : 40;
   
@@ -354,9 +367,10 @@ function ClusteredMarkers({
       const isFriend = pin.isFriend === true;
       const pinOpacity = pin.pinOpacity || 1.0; // From API lifecycle calculation
       const pinStatus = pin.pinStatus || 'active'; // From API
+      const isOwnPin = pin.userId === currentUserId;
       
       const marker = L.marker([pin.latitude, pin.longitude], {
-        icon: createPinIcon(mode, isActive, isGhost, isFriend, pin.arrivalTime, pinOpacity, pinStatus),
+        icon: createPinIcon(mode, isActive, isGhost, isFriend, pin.arrivalTime, pinOpacity, pinStatus, isOwnPin),
       });
       
       // Create popup content
