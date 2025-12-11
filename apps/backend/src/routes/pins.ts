@@ -517,7 +517,47 @@ pinRoutes.get('/nearby', async (c) => {
   }
 });
 
-// GET /api/pins/mine - Get current user's pins (for legend display)
+// GET /api/pins/global-stats - Get worldwide mingler statistics
+pinRoutes.get('/global-stats', async (c) => {
+  try {
+    const now = new Date();
+    const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    
+    // Count users with pins updated in last 24 hours (live now)
+    const liveNow = await prisma.pin.count({
+      where: {
+        createdAt: { gte: oneDayAgo },
+        user: {
+          profile: {
+            ghostMode: false, // Don't count ghost mode users
+          },
+        },
+      },
+    });
+    
+    // Count unique users with pins in last 30 days (active this month)
+    const activeUsersThisMonth = await prisma.pin.groupBy({
+      by: ['userId'],
+      where: {
+        createdAt: { gte: thirtyDaysAgo },
+        user: {
+          profile: {
+            ghostMode: false,
+          },
+        },
+      },
+    });
+    
+    return c.json({
+      liveNow,
+      activeThisMonth: activeUsersThisMonth.length,
+    });
+  } catch (error) {
+    console.error('Error fetching global stats:', error);
+    return c.json({ liveNow: 0, activeThisMonth: 0 });
+  }
+});
 pinRoutes.get('/mine', async (c) => {
   try {
     let userId = c.req.header('X-User-Id');
