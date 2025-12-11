@@ -517,6 +517,68 @@ pinRoutes.get('/nearby', async (c) => {
   }
 });
 
+// GET /api/pins/mine - Get current user's pins (for legend display)
+pinRoutes.get('/mine', async (c) => {
+  try {
+    let userId = c.req.header('X-User-Id');
+    if (!userId) {
+      const authHeader = c.req.header('Authorization');
+      userId = extractUserIdFromToken(authHeader);
+    }
+    if (!userId) {
+      return c.json({ error: 'Unauthorized' }, 401);
+    }
+    
+    const pins = await prisma.pin.findMany({
+      where: { userId },
+      orderBy: [
+        { pinType: 'asc' }, // 'current' comes before 'future'
+        { arrivalTime: 'asc' }, // Sort future pins by arrival time
+      ],
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            profile: {
+              select: {
+                avatar: true,
+                displayName: true,
+              },
+            },
+          },
+        },
+      },
+    });
+    
+    const formattedPins = pins.map(pin => {
+      const lifecycle = calculatePinStatus({
+        pinType: pin.pinType || 'current',
+        arrivalTime: pin.arrivalTime,
+        createdAt: pin.createdAt,
+      });
+      
+      return {
+        id: pin.id,
+        latitude: pin.latitude,
+        longitude: pin.longitude,
+        description: pin.description,
+        pinType: pin.pinType || 'current',
+        arrivalTime: pin.arrivalTime?.toISOString() || null,
+        createdAt: pin.createdAt.toISOString(),
+        pinStatus: lifecycle.status,
+        pinOpacity: lifecycle.opacity,
+        ageHours: lifecycle.ageHours,
+      };
+    });
+    
+    return c.json({ pins: formattedPins });
+  } catch (error) {
+    console.error('Error fetching user pins:', error);
+    return c.json({ error: 'Failed to fetch your pins' }, 500);
+  }
+});
+
 // POST /api/pins/auto-create - Auto-create a pin at user's current location
 pinRoutes.post('/auto-create', async (c) => {
   try {
@@ -535,13 +597,55 @@ pinRoutes.post('/auto-create', async (c) => {
       return c.json({ error: 'latitude and longitude required' }, 400);
     }
     
-    // Check if user already has a pin - if so, update it
-    const existingPin = await prisma.pin.findFirst({
-      where: { userId },
-    });
+    const isPinTypeFuture = pinType === 'future';
     
     let pin;
     let isUpdate = false;
+    
+    if (isPinTypeFuture) {
+      // For future pins, always create a new one (users can have multiple future pins)
+      // But limit to max 5 future pins per user
+      const futureCount = await prisma.pin.count({
+        where: { userId, pinType: 'future' }
+      });
+      
+      if (futureCount >= 5) {
+        return c.json({ error: 'Maximum 5 future pins allowed. Delete an existing one first.' }, 400);
+      }
+      
+      pin = await prisma.pin.create({
+        data: {
+          userId,
+          latitude,
+          longitude,
+          description: 'Heading here!',
+          arrivalTime: arrivalTime ? new Date(arrivalTime) : null,
+          pinType: 'future',
+        },
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              image: true,
+              profile: {
+                select: { avatar: true },
+              },
+            },
+          },
+        },
+      });
+      
+      // Update user's pin count
+      await prisma.profile.update({
+        where: { userId },
+        data: { pinsCreated: { increment: 1 } },
+      });
+    } else {
+      // For current location pins, only allow one - update if exists
+      const existingPin = await prisma.pin.findFirst({
+        where: { userId, pinType: 'current' },
+      });
     
     if (existingPin) {
       // Update existing pin's location
@@ -597,6 +701,7 @@ pinRoutes.post('/auto-create', async (c) => {
         where: { userId },
         data: { pinsCreated: { increment: 1 } },
       });
+    }
     }
     
     // Broadcast new/updated pin to all connected users
