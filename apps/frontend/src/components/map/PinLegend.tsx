@@ -197,7 +197,7 @@ export function PinLegend() {
               style={{
                 ...iconStyle,
                 background: 'linear-gradient(135deg, #9ca3af, #6b7280)',
-                opacity: 0.25,
+                opacity: 0.6,
               }}
             />
             <div>
@@ -238,7 +238,7 @@ export function PinLegend() {
         <div style={noticeStyle}>
           Pins fade over time
           <br />
-          Auto-deleted after 7 days
+          Auto-deleted after 30 days
         </div>
       </div>
     </div>
