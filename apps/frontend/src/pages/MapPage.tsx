@@ -478,8 +478,7 @@ function ClusteredMarkers({
         `;
       }
       
-      // Check if this is the current user's pin
-      const isOwnPin = pin.userId === currentUserId;
+      // isOwnPin already declared above for icon creation
       
       popupContent.innerHTML = `
         <div style="padding: 12px;">
