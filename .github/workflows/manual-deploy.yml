@@ -28,14 +28,20 @@ jobs:
         with:
           project_id: ${{ secrets.GCP_PROJECT_ID }}
 
-      - name: Trigger Cloud Build
+      - name: Deploy to Cloud Run
         run: |
           echo "🚀 Deploying backend..."
           echo "Reason: ${{ github.event.inputs.reason || github.event.client_payload.reason || 'API trigger' }}"
           
-          gcloud builds submit \
-            --config=cloudbuild.yaml \
-            --substitutions=COMMIT_SHA=${{ github.sha }}
+          cd apps/backend
+          
+          gcloud run deploy mapandmingle-api \
+            --source . \
+            --region us-west1 \
+            --platform managed \
+            --allow-unauthenticated \
+            --memory 512Mi \
+            --timeout 300
           
       - name: Deployment Complete
         run: |
