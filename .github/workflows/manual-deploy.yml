@@ -1,0 +1,43 @@
+name: Manual Backend Deploy
+
+on:
+  repository_dispatch:
+    types: [deploy-backend]
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: 'Reason for deployment'
+        required: false
+        default: 'Manual trigger'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Google Auth
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: '${{ secrets.GCP_SA_KEY }}'
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+
+      - name: Trigger Cloud Build
+        run: |
+          echo "🚀 Deploying backend..."
+          echo "Reason: ${{ github.event.inputs.reason || github.event.client_payload.reason || 'API trigger' }}"
+          
+          gcloud builds submit \
+            --config=cloudbuild.yaml \
+            --substitutions=COMMIT_SHA=${{ github.sha }}
+          
+      - name: Deployment Complete
+        run: |
+          echo "✅ Backend deployed to Cloud Run!"
+          echo "API URL: https://mapandmingle-api-492171901610.us-west1.run.app"
