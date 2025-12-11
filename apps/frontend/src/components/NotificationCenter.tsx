@@ -179,9 +179,9 @@ export default function NotificationCenter({ isOpen, onClose }: NotificationCent
       {/* Panel */}
       <div 
         ref={panelRef}
-        className="fixed inset-x-0 bottom-0 top-16 z-[9999] md:absolute md:right-0 md:top-full md:inset-x-auto 
+        className="fixed inset-x-0 bottom-0 top-16 md:absolute md:right-0 md:top-full md:inset-x-auto 
           md:w-96 md:mt-2 bg-white md:rounded-xl md:shadow-xl md:border md:max-h-[calc(100vh-100px)]
-          overflow-hidden flex flex-col"
+          overflow-hidden flex flex-col z-[9999]"
       >
         {/* Header */}
         <div className="px-4 py-3 border-b flex items-center justify-between bg-white">
@@ -348,4 +348,3 @@ export function NotificationBell({ onClick }: { onClick: () => void }) {
     </button>
   );
 }
-
