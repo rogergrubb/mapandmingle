@@ -15,6 +15,7 @@ interface MapState {
     south: number;
     east: number;
     west: number;
+    zoom?: number;
   }) => Promise<void>;
   fetchHotspots: (location: { latitude: number; longitude: number; radius: number }) => Promise<void>;
   setFilter: (filter: 'all' | '24h' | 'week') => void;
