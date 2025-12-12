@@ -54,8 +54,7 @@ jobs:
             --memory 512Mi \
             --timeout 300 \
             --port 8080 \
-            --set-env-vars "NODE_ENV=production,DATABASE_URL=${DATABASE_URL}" \
-            --set-env-vars "DATABASE_URL=postgresql://postgres.oebwitesfxypypqzrunz:xm4q40xkb1uT1WCt@aws-0-us-west-1.pooler.supabase.com:6543/postgres"
+            --set-env-vars "NODE_ENV=production,DATABASE_URL=${DATABASE_URL}"
           
       - name: Deployment Complete
         run: |
