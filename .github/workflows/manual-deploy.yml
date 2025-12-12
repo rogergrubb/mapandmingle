@@ -37,12 +37,15 @@ jobs:
             --quiet || echo "Repository already exists or creation skipped"
 
       - name: Deploy to Cloud Run
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: |
           echo "🚀 Deploying backend..."
           echo "Reason: ${{ github.event.inputs.reason || github.event.client_payload.reason || 'API trigger' }}"
           
           cd apps/backend
           
+          # Deploy with env vars preserved from existing service
           gcloud run deploy mapandmingle-api \
             --source . \
             --region us-west1 \
@@ -50,6 +53,9 @@ jobs:
             --allow-unauthenticated \
             --memory 512Mi \
             --timeout 300 \
+            --port 8080 \
+            --set-env-vars "NODE_ENV=production" \
+            --update-env-vars "DATABASE_URL=${DATABASE_URL}" \
             --set-env-vars "DATABASE_URL=postgresql://postgres.oebwitesfxypypqzrunz:xm4q40xkb1uT1WCt@aws-0-us-west-1.pooler.supabase.com:6543/postgres"
           
       - name: Deployment Complete
