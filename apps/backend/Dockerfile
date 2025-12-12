@@ -47,5 +47,8 @@ ENV NODE_ENV=production
 # Expose port
 EXPOSE 8080
 
-# Start server directly - migrations handled separately
-CMD ["node", "dist/index.js"]
+# Create startup script that runs db push then starts server
+RUN echo '#!/bin/sh\nnpx prisma db push --accept-data-loss --skip-generate\nnode dist/index.js' > /app/start.sh && chmod +x /app/start.sh
+
+# Start with db push
+CMD ["/app/start.sh"]
