@@ -4,6 +4,7 @@ import { Button } from '../components/common/Button';
 import { Input } from '../components/common/Input';
 import api from '../lib/api';
 import { User, Heart, Target, Lock, Bell, CheckCircle } from 'lucide-react';
+import VisibilitySlider, { VisibilityLevel } from '../components/privacy/VisibilitySlider';
 
 type Step = 'basics' | 'demographics' | 'interests' | 'intent' | 'looking' | 'privacy' | 'permissions' | 'complete';
 
@@ -33,6 +34,7 @@ export function Onboarding() {
     allowMessages: true,
     notifications: true,
     locationPermission: false,
+    visibilityLevel: 'circles' as VisibilityLevel,
   });
 
   const handleNext = () => {
@@ -274,33 +276,36 @@ export function Onboarding() {
           {/* Step: Privacy */}
           {step === 'privacy' && (
             <div>
-              <div className="flex items-center mb-6">
+              <div className="flex items-center mb-4">
                 <Lock className="w-8 h-8 text-pink-600 mr-3" />
-                <h2 className="text-2xl font-bold text-gray-900">Privacy Settings</h2>
-              </div>
-              <div className="space-y-4 mb-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Profile Visibility</label>
-                  <select
-                    value={formData.profileVisibility}
-                    onChange={(e) => setFormData({ ...formData, profileVisibility: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500"
-                  >
-                    <option value="public">Public</option>
-                    <option value="friends">Friends Only</option>
-                    <option value="private">Private</option>
-                  </select>
+                  <h2 className="text-2xl font-bold text-gray-900">Your Visibility</h2>
+                  <p className="text-gray-600">Choose how visible you want to be</p>
                 </div>
-                <label className="flex items-center justify-between p-4 border rounded-lg cursor-pointer hover:bg-gray-50">
-                  <span className="text-gray-900">Show my location on map</span>
-                  <input
-                    type="checkbox"
-                    checked={formData.showLocation}
-                    onChange={(e) => setFormData({ ...formData, showLocation: e.target.checked })}
-                    className="w-5 h-5 text-pink-600 rounded"
-                  />
-                </label>
-                <label className="flex items-center justify-between p-4 border rounded-lg cursor-pointer hover:bg-gray-50">
+              </div>
+              
+              <div className="mb-6">
+                <p className="text-sm text-gray-600 mb-4">
+                  This is the heart of MapMingle. You're always in control of who can see you.
+                  Slide to your comfort level - you can change this anytime.
+                </p>
+                
+                <VisibilitySlider
+                  value={formData.visibilityLevel}
+                  onChange={(level) => setFormData({ ...formData, visibilityLevel: level })}
+                  showDetails={true}
+                />
+              </div>
+
+              <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-2xl p-4 border border-purple-100 mb-6">
+                <p className="text-sm text-purple-800">
+                  <strong>🔒 Privacy Promise:</strong> We never sell your location data. 
+                  Your visibility is always in YOUR control.
+                </p>
+              </div>
+
+              <div className="space-y-3">
+                <label className="flex items-center justify-between p-4 bg-white border rounded-xl cursor-pointer hover:bg-gray-50 transition-colors">
                   <span className="text-gray-900">Allow messages from anyone</span>
                   <input
                     type="checkbox"
