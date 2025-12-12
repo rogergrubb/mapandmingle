@@ -122,44 +122,44 @@ export function PinLegend() {
   const cardStyle: React.CSSProperties = {
     background: 'rgba(255, 255, 255, 0.95)',
     backdropFilter: 'blur(12px)',
-    borderRadius: '16px',
-    padding: '16px 14px',
+    borderRadius: '12px',
+    padding: '10px 8px',
     boxShadow: '0 8px 32px rgba(0, 0, 0, 0.12)',
     border: '1px solid rgba(255, 255, 255, 0.8)',
-    minWidth: '160px',
-    maxWidth: '200px',
+    minWidth: '90px',
+    maxWidth: '110px',
     maxHeight: '70vh',
     overflowY: 'auto',
   };
 
   const titleStyle: React.CSSProperties = {
-    fontSize: '12px',
+    fontSize: '9px',
     fontWeight: 700,
     color: '#6b7280',
-    marginBottom: '14px',
+    marginBottom: '8px',
     textTransform: 'uppercase',
-    letterSpacing: '0.5px',
+    letterSpacing: '0.3px',
     textAlign: 'center',
   };
 
   const sectionTitleStyle: React.CSSProperties = {
-    fontSize: '10px',
+    fontSize: '7px',
     fontWeight: 600,
     color: '#9ca3af',
-    marginBottom: '8px',
-    letterSpacing: '0.3px',
+    marginBottom: '4px',
+    letterSpacing: '0.2px',
   };
 
   const itemStyle: React.CSSProperties = {
     display: 'flex',
     alignItems: 'center',
-    gap: '8px',
-    marginBottom: '10px',
+    gap: '4px',
+    marginBottom: '6px',
   };
 
   const iconStyle: React.CSSProperties = {
-    width: '28px',
-    height: '28px',
+    width: '20px',
+    height: '20px',
     borderRadius: '50%',
     border: '2px solid white',
     flexShrink: 0,
@@ -167,37 +167,37 @@ export function PinLegend() {
   };
 
   const textStyle: React.CSSProperties = {
-    fontSize: '11px',
+    fontSize: '8px',
     fontWeight: 600,
     color: '#374151',
-    lineHeight: 1.3,
+    lineHeight: 1.2,
   };
 
   const subtextStyle: React.CSSProperties = {
-    fontSize: '9px',
+    fontSize: '7px',
     color: '#9ca3af',
     fontWeight: 500,
   };
 
   const dividerStyle: React.CSSProperties = {
     borderTop: '1px solid #e5e7eb',
-    paddingTop: '12px',
-    marginTop: '12px',
+    paddingTop: '6px',
+    marginTop: '6px',
   };
 
   const emptyStyle: React.CSSProperties = {
-    fontSize: '10px',
+    fontSize: '7px',
     color: '#9ca3af',
     fontStyle: 'italic',
     textAlign: 'center',
-    padding: '8px 0',
+    padding: '4px 0',
   };
 
   const badgeStyle: React.CSSProperties = {
-    fontSize: '9px',
+    fontSize: '6px',
     fontWeight: 700,
-    padding: '3px 6px',
-    borderRadius: '6px',
+    padding: '2px 3px',
+    borderRadius: '4px',
     border: '1px solid white',
     color: 'white',
     display: 'inline-block',
@@ -271,7 +271,7 @@ export function PinLegend() {
             {/* Where I'll Be Section */}
             <div style={dividerStyle}>
               <div style={sectionTitleStyle}>
-                🗓️ WHERE I'LL BE ({futurePins.length}/5)
+                🗓️ WHERE I'LL BE ({futurePins.length}/2)
               </div>
               {futurePins.length > 0 ? (
                 futurePins.map((pin, index) => (
@@ -337,7 +337,7 @@ export function PinLegend() {
                 <div style={{ ...badgeStyle, background: '#3b82f6', fontSize: '8px' }}>4h+</div>
                 <div style={{ ...badgeStyle, background: '#eab308', fontSize: '8px' }}>2-4h</div>
                 <div style={{ ...badgeStyle, background: '#f97316', fontSize: '8px' }}>&lt;2h</div>
-                <div style={{ ...badgeStyle, background: '#ef4444', fontSize: '8px' }}>Now</div>
+                <div style={{ ...badgeStyle, background: '#ef4444', fontSize: '6px' }}>Now</div>
               </div>
             </div>
           </>
@@ -347,32 +347,33 @@ export function PinLegend() {
         <div style={{
           ...dividerStyle,
           background: 'linear-gradient(135deg, #fdf2f8, #f3e8ff)',
-          margin: '12px -14px -16px -14px',
-          padding: '12px 14px 14px 14px',
-          borderRadius: '0 0 16px 16px',
+          margin: '6px -8px -10px -8px',
+          padding: '6px 6px 8px 6px',
+          borderRadius: '0 0 12px 12px',
           borderTop: '1px solid #e5e7eb',
         }}>
           <div style={{ 
-            fontSize: '10px', 
+            fontSize: '7px', 
             fontWeight: 700, 
             color: '#7c3aed',
-            marginBottom: '8px',
+            marginBottom: '4px',
             textTransform: 'uppercase',
-            letterSpacing: '0.3px',
+            letterSpacing: '0.2px',
+            textAlign: 'center',
           }}>
-            🌍 MINGLERS WORLDWIDE
+            🌍 WORLDWIDE
           </div>
-          <div style={{ display: 'flex', gap: '8px' }}>
+          <div style={{ display: 'flex', gap: '4px' }}>
             <div style={{
               flex: 1,
               background: 'white',
-              borderRadius: '8px',
-              padding: '8px',
+              borderRadius: '6px',
+              padding: '4px',
               textAlign: 'center',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+              boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
             }}>
               <div style={{
-                fontSize: '16px',
+                fontSize: '12px',
                 fontWeight: 700,
                 background: 'linear-gradient(135deg, #22c55e, #16a34a)',
                 WebkitBackgroundClip: 'text',
@@ -380,20 +381,20 @@ export function PinLegend() {
               }}>
                 {globalStats.liveNow}
               </div>
-              <div style={{ fontSize: '8px', color: '#6b7280', fontWeight: 500 }}>
-                Live Now
+              <div style={{ fontSize: '6px', color: '#6b7280', fontWeight: 500 }}>
+                Live
               </div>
             </div>
             <div style={{
               flex: 1,
               background: 'white',
-              borderRadius: '8px',
-              padding: '8px',
+              borderRadius: '6px',
+              padding: '4px',
               textAlign: 'center',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+              boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
             }}>
               <div style={{
-                fontSize: '16px',
+                fontSize: '12px',
                 fontWeight: 700,
                 background: 'linear-gradient(135deg, #ec4899, #a855f7)',
                 WebkitBackgroundClip: 'text',
@@ -401,8 +402,8 @@ export function PinLegend() {
               }}>
                 {globalStats.activeThisMonth}
               </div>
-              <div style={{ fontSize: '8px', color: '#6b7280', fontWeight: 500 }}>
-                This Month
+              <div style={{ fontSize: '6px', color: '#6b7280', fontWeight: 500 }}>
+                Month
               </div>
             </div>
           </div>
