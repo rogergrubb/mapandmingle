@@ -5,9 +5,8 @@ on:
     branches: [main]
     paths:
       - 'apps/backend/**'
-      - 'cloudbuild.yaml'
       - '.github/workflows/deploy-backend.yml'
-  workflow_dispatch: # Allow manual trigger
+  workflow_dispatch:
 
 jobs:
   deploy:
@@ -25,15 +24,22 @@ jobs:
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v2
         with:
-          project_id: ${{ secrets.GCP_PROJECT_ID }}
+          project_id: mapmingle-fa09f
 
-      - name: Trigger Cloud Build
+      - name: Deploy to Cloud Run
         run: |
-          gcloud builds submit \
-            --config=cloudbuild.yaml \
-            --substitutions=COMMIT_SHA=${{ github.sha }}
+          cd apps/backend
+          gcloud run deploy mapandmingle-api \
+            --source . \
+            --region us-west1 \
+            --platform managed \
+            --allow-unauthenticated \
+            --memory 512Mi \
+            --timeout 300 \
+            --port 8080 \
+            --set-env-vars="NODE_ENV=production,DATABASE_URL=${{ secrets.DATABASE_URL }},JWT_SECRET=${{ secrets.JWT_SECRET }},RESEND_API_KEY=${{ secrets.RESEND_API_KEY }}"
           
       - name: Deployment Complete
         run: |
           echo "✅ Backend deployed to Cloud Run!"
-          echo "API URL: https://mapandmingle-api-492171901610.us-west1.run.app"
+          echo "API URL: https://mapandmingle-api-416214751432.us-west1.run.app"
