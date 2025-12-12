@@ -931,6 +931,30 @@ export default function MapPage() {
   const [showInterestsSetup, setShowInterestsSetup] = useState(false);
   const [showLegend, setShowLegend] = useState(false);
   const [visibilityLevel, setVisibilityLevel] = useState<VisibilityLevel>('circles');
+  // Load and sync visibility level
+  useEffect(() => {
+    const loadVisibility = async () => {
+      try {
+        const res = await api.get('/api/visibility');
+        if (res.visibilityLevel) {
+          setVisibilityLevel(res.visibilityLevel);
+        }
+      } catch (err) {
+        console.error('Failed to load visibility:', err);
+      }
+    };
+    if (user) loadVisibility();
+  }, [user]);
+
+  const handleVisibilityLevelChange = async (level: VisibilityLevel) => {
+    setVisibilityLevel(level);
+    try {
+      await api.post('/api/visibility/quick-toggle', { level });
+    } catch (err) {
+      console.error('Failed to update visibility:', err);
+    }
+  };
+
   
   // Delete confirmation state
   const [deleteDialog, setDeleteDialog] = useState<{
@@ -1356,6 +1380,86 @@ export default function MapPage() {
           100% { opacity: 1; transform: scale(1.02); }
         }
       `}</style>
+
+      {/* Visibility Control - TOP OF SCREEN */}
+      {user && (
+        <div className="absolute top-0 left-0 right-0 z-[1001] bg-gradient-to-b from-white/95 to-white/80 backdrop-blur-md border-b border-gray-200/50 safe-area-top">
+          <div className="px-3 py-2">
+            <div className="flex items-center justify-between gap-3">
+              {/* Compact visibility selector */}
+              <div className="flex items-center gap-2 flex-1">
+                <span className="text-xs font-medium text-gray-500 whitespace-nowrap">You're:</span>
+                <div className="flex gap-1 flex-1 max-w-md">
+                  {[
+                    { level: 'ghost' as VisibilityLevel, icon: '👻', label: 'Ghost', color: 'gray' },
+                    { level: 'circles' as VisibilityLevel, icon: '🔵', label: 'Circles', color: 'blue' },
+                    { level: 'fuzzy' as VisibilityLevel, icon: '🟡', label: 'Fuzzy', color: 'yellow' },
+                    { level: 'social' as VisibilityLevel, icon: '🟢', label: 'Social', color: 'green' },
+                    { level: 'discoverable' as VisibilityLevel, icon: '🌍', label: 'Open', color: 'purple' },
+                    { level: 'beacon' as VisibilityLevel, icon: '✨', label: 'Beacon', color: 'pink' },
+                  ].map(({ level, icon, label, color }) => (
+                    <button
+                      key={level}
+                      onClick={() => handleVisibilityLevelChange(level)}
+                      className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-medium transition-all ${
+                        visibilityLevel === level
+                          ? level === 'beacon'
+                            ? 'bg-gradient-to-r from-pink-500 to-purple-500 text-white shadow-lg scale-105'
+                            : `bg-${color}-100 text-${color}-700 border-2 border-${color}-400 shadow-sm`
+                          : 'bg-gray-50 text-gray-500 hover:bg-gray-100'
+                      }`}
+                      style={visibilityLevel === level && level !== 'beacon' ? {
+                        backgroundColor: color === 'gray' ? '#f3f4f6' : 
+                                        color === 'blue' ? '#dbeafe' :
+                                        color === 'yellow' ? '#fef9c3' :
+                                        color === 'green' ? '#dcfce7' :
+                                        color === 'purple' ? '#f3e8ff' : '#fce7f3',
+                        color: color === 'gray' ? '#374151' :
+                               color === 'blue' ? '#1d4ed8' :
+                               color === 'yellow' ? '#a16207' :
+                               color === 'green' ? '#15803d' :
+                               color === 'purple' ? '#7e22ce' : '#be185d',
+                        borderWidth: '2px',
+                        borderColor: color === 'gray' ? '#9ca3af' :
+                                     color === 'blue' ? '#60a5fa' :
+                                     color === 'yellow' ? '#facc15' :
+                                     color === 'green' ? '#4ade80' :
+                                     color === 'purple' ? '#c084fc' : '#f472b6'
+                      } : {}}
+                    >
+                      <span className="hidden sm:inline">{icon}</span>
+                      <span className="sm:ml-1">{label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+              
+              {/* Settings shortcut */}
+              <button
+                onClick={() => navigate('/settings/privacy')}
+                className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
+                title="Privacy Settings"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+              </button>
+            </div>
+            
+            {/* Beacon active indicator */}
+            {visibilityLevel === 'beacon' && (
+              <div className="mt-1.5 flex items-center justify-center gap-2 text-xs">
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-pink-100 text-pink-700 rounded-full animate-pulse">
+                  <span className="w-1.5 h-1.5 bg-pink-500 rounded-full animate-ping"></span>
+                  Broadcasting to nearby users
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
 
       {/* Permanent Pin Legend - Left Side */}
       <PinLegend />
