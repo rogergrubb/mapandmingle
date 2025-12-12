@@ -53,6 +53,16 @@ model User {
   showOnlineStatus      Boolean   @default(true)
   shareData             Boolean   @default(false)
 
+  // Visibility Spectrum (unified privacy system)
+  visibilityLevel       String?   @default("circles") // ghost, circles, fuzzy, social, discoverable, beacon
+  visibilityUpdatedAt   DateTime?
+  beaconExpiresAt       DateTime? // When beacon mode auto-expires
+  beaconDuration        Int?      @default(60) // Beacon duration in minutes
+  locationPrecision     String?   @default("precise") // precise, approximate
+  allowDiscovery        Boolean   @default(true) // Can be found in searches
+  showToCirclesOnly     Boolean   @default(false) // Legacy compat
+
+
   // Notification settings
   notifyMessages        Boolean   @default(true)
   notifyLikes           Boolean   @default(true)
