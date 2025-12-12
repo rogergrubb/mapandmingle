@@ -644,13 +644,13 @@ pinRoutes.post('/auto-create', async (c) => {
     
     if (isPinTypeFuture) {
       // For future pins, always create a new one (users can have multiple future pins)
-      // But limit to max 5 future pins per user
+      // But limit to max 2 future pins per user
       const futureCount = await prisma.pin.count({
         where: { userId, pinType: 'future' }
       });
       
-      if (futureCount >= 5) {
-        return c.json({ error: 'Maximum 5 future pins allowed. Delete an existing one first.' }, 400);
+      if (futureCount >= 2) {
+        return c.json({ error: 'Maximum 2 future pins allowed. Delete an existing one first.' }, 400);
       }
       
       pin = await prisma.pin.create({
