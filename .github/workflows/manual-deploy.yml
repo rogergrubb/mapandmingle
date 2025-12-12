@@ -39,13 +39,14 @@ jobs:
       - name: Deploy to Cloud Run
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
         run: |
           echo "🚀 Deploying backend..."
           echo "Reason: ${{ github.event.inputs.reason || github.event.client_payload.reason || 'API trigger' }}"
           
           cd apps/backend
           
-          # Deploy - update DATABASE_URL but preserve other existing env vars
+          # Deploy with required env vars
           gcloud run deploy mapandmingle-api \
             --source . \
             --region us-west1 \
@@ -54,7 +55,7 @@ jobs:
             --memory 512Mi \
             --timeout 300 \
             --port 8080 \
-            --update-env-vars "DATABASE_URL=${DATABASE_URL}"
+            --update-env-vars "DATABASE_URL=${DATABASE_URL},JWT_SECRET=${JWT_SECRET}"
           
       - name: Deployment Complete
         run: |
