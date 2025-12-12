@@ -37,16 +37,13 @@ jobs:
             --quiet || echo "Repository already exists or creation skipped"
 
       - name: Deploy to Cloud Run
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          JWT_SECRET: ${{ secrets.JWT_SECRET }}
         run: |
           echo "🚀 Deploying backend..."
           echo "Reason: ${{ github.event.inputs.reason || github.event.client_payload.reason || 'API trigger' }}"
           
           cd apps/backend
           
-          # Deploy with required env vars (properly escaped)
+          # Deploy with required env vars
           gcloud run deploy mapandmingle-api \
             --source . \
             --region us-west1 \
@@ -55,9 +52,7 @@ jobs:
             --memory 512Mi \
             --timeout 300 \
             --port 8080 \
-            --set-env-vars "NODE_ENV=production" \
-            --set-env-vars "DATABASE_URL=$DATABASE_URL" \
-            --set-env-vars "JWT_SECRET=$JWT_SECRET"
+            --set-env-vars="NODE_ENV=production,DATABASE_URL=${{ secrets.DATABASE_URL }},JWT_SECRET=${{ secrets.JWT_SECRET }}"
           
       - name: Deployment Complete
         run: |
