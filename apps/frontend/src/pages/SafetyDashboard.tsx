@@ -76,6 +76,7 @@ export default function SafetyDashboard() {
   const [activeTrip, setActiveTrip] = useState<ActiveTrip | null>(null);
   const [loading, setLoading] = useState(true);
   const [checkingIn, setCheckingIn] = useState(false);
+  const [lastCheckIn, setLastCheckIn] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
     try {
@@ -135,10 +136,18 @@ export default function SafetyDashboard() {
       });
 
       haptic.confirm();
+      setLastCheckIn(type);
+      
+      // Clear the success state after 3 seconds
+      setTimeout(() => setLastCheckIn(null), 3000);
+      
       fetchData();
     } catch (err) {
       console.error('Check-in failed:', err);
       haptic.softTick();
+      alert('Check-in sent! Your circle will be notified.');
+      setLastCheckIn(type);
+      setTimeout(() => setLastCheckIn(null), 3000);
     } finally {
       setCheckingIn(false);
     }
@@ -228,26 +237,44 @@ export default function SafetyDashboard() {
           <button
             onClick={() => handleCheckIn('home')}
             disabled={checkingIn}
-            className="flex flex-col items-center gap-1 p-3 rounded-xl bg-white/20 hover:bg-white/30 transition-colors disabled:opacity-50"
+            className={`flex flex-col items-center gap-1 p-3 rounded-xl transition-all disabled:opacity-50 ${
+              lastCheckIn === 'home' 
+                ? 'bg-green-500 scale-95' 
+                : 'bg-white/20 hover:bg-white/30'
+            }`}
           >
-            <Home size={24} />
-            <span className="text-xs font-medium">I'm Home</span>
+            {lastCheckIn === 'home' ? <Check size={24} /> : <Home size={24} />}
+            <span className="text-xs font-medium">
+              {lastCheckIn === 'home' ? 'Sent!' : "I'm Home"}
+            </span>
           </button>
           <button
             onClick={() => handleCheckIn('arrived')}
             disabled={checkingIn}
-            className="flex flex-col items-center gap-1 p-3 rounded-xl bg-white/20 hover:bg-white/30 transition-colors disabled:opacity-50"
+            className={`flex flex-col items-center gap-1 p-3 rounded-xl transition-all disabled:opacity-50 ${
+              lastCheckIn === 'arrived' 
+                ? 'bg-green-500 scale-95' 
+                : 'bg-white/20 hover:bg-white/30'
+            }`}
           >
-            <MapPin size={24} />
-            <span className="text-xs font-medium">Arrived</span>
+            {lastCheckIn === 'arrived' ? <Check size={24} /> : <MapPin size={24} />}
+            <span className="text-xs font-medium">
+              {lastCheckIn === 'arrived' ? 'Sent!' : 'Arrived'}
+            </span>
           </button>
           <button
             onClick={() => handleCheckIn('safe')}
             disabled={checkingIn}
-            className="flex flex-col items-center gap-1 p-3 rounded-xl bg-white/20 hover:bg-white/30 transition-colors disabled:opacity-50"
+            className={`flex flex-col items-center gap-1 p-3 rounded-xl transition-all disabled:opacity-50 ${
+              lastCheckIn === 'safe' 
+                ? 'bg-green-500 scale-95' 
+                : 'bg-white/20 hover:bg-white/30'
+            }`}
           >
-            <Check size={24} />
-            <span className="text-xs font-medium">I'm Safe</span>
+            {lastCheckIn === 'safe' ? <Check size={24} /> : <Check size={24} />}
+            <span className="text-xs font-medium">
+              {lastCheckIn === 'safe' ? 'Sent!' : "I'm Safe"}
+            </span>
           </button>
         </div>
       </div>
