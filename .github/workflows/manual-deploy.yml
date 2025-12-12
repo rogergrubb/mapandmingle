@@ -45,7 +45,7 @@ jobs:
           
           cd apps/backend
           
-          # Deploy with env vars
+          # Deploy - update DATABASE_URL but preserve other existing env vars
           gcloud run deploy mapandmingle-api \
             --source . \
             --region us-west1 \
@@ -54,7 +54,7 @@ jobs:
             --memory 512Mi \
             --timeout 300 \
             --port 8080 \
-            --set-env-vars "NODE_ENV=production,DATABASE_URL=${DATABASE_URL}"
+            --update-env-vars "DATABASE_URL=${DATABASE_URL}"
           
       - name: Deployment Complete
         run: |
