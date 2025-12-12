@@ -225,6 +225,7 @@ pinRoutes.get('/', async (c) => {
     }
     
     const { north, south, east, west, filter, lookingFor } = parsed.data;
+    const zoom = parseFloat(query.zoom || '13');
     
     // Build date filter
     let dateFilter = {};
@@ -234,14 +235,29 @@ pinRoutes.get('/', async (c) => {
       dateFilter = { createdAt: { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) } };
     }
     
-    // Get pins within viewport bounds only (limit to 1000 most recent)
-    // Include pins from users active within the last 30 days
-    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    // Determine pin limit based on zoom level
+    // At world view (zoom <= 5), fetch more pins for clustering
+    // Higher zoom = fewer pins needed (they're spread out)
+    let pinLimit = 100;
+    if (zoom <= 3) {
+      pinLimit = 2000; // World view - get many pins for clustering
+    } else if (zoom <= 5) {
+      pinLimit = 1000; // Continental view
+    } else if (zoom <= 8) {
+      pinLimit = 500; // Country view
+    } else if (zoom <= 11) {
+      pinLimit = 250; // Regional view
+    }
+    
+    // At very low zoom (world view), don't filter by bounds - get all pins
+    const boundsFilter = zoom <= 5 ? {} : {
+      latitude: { gte: south, lte: north },
+      longitude: { gte: west, lte: east },
+    };
     
     const pins = await prisma.pin.findMany({
       where: {
-        latitude: { gte: south, lte: north },
-        longitude: { gte: west, lte: east },
+        ...boundsFilter,
         ...dateFilter,
       },
       include: {
@@ -262,7 +278,7 @@ pinRoutes.get('/', async (c) => {
         },
       },
       orderBy: { createdAt: 'desc' },
-      take: 100, // Limit to 100 most recent pins for performance
+      take: pinLimit,
     });
     
     // Get viewer ID from header
