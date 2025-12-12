@@ -13,6 +13,7 @@ import { PinLegend } from '../components/map/PinLegend';
 import WelcomeCard from '../components/WelcomeCard';
 import haptic from '../lib/haptics';
 import ProfileInterestsSetup from '../components/ProfileInterestsSetup';
+import { VisibilityQuickToggle, VisibilityLevel } from '../components/privacy/VisibilitySlider';
 import api from '../lib/api';
 import { formatCountdown } from '../utils/countdown';
 import 'leaflet/dist/leaflet.css';
@@ -929,6 +930,7 @@ export default function MapPage() {
   const [showWelcomeCard, setShowWelcomeCard] = useState(false);
   const [showInterestsSetup, setShowInterestsSetup] = useState(false);
   const [showLegend, setShowLegend] = useState(false);
+  const [visibilityLevel, setVisibilityLevel] = useState<VisibilityLevel>('circles');
   
   // Delete confirmation state
   const [deleteDialog, setDeleteDialog] = useState<{
