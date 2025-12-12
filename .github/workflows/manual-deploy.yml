@@ -46,7 +46,7 @@ jobs:
           
           cd apps/backend
           
-          # Deploy with required env vars
+          # Deploy with required env vars (properly escaped)
           gcloud run deploy mapandmingle-api \
             --source . \
             --region us-west1 \
@@ -55,7 +55,9 @@ jobs:
             --memory 512Mi \
             --timeout 300 \
             --port 8080 \
-            --update-env-vars "DATABASE_URL=${DATABASE_URL},JWT_SECRET=${JWT_SECRET}"
+            --set-env-vars "NODE_ENV=production" \
+            --set-env-vars "DATABASE_URL=$DATABASE_URL" \
+            --set-env-vars "JWT_SECRET=$JWT_SECRET"
           
       - name: Deployment Complete
         run: |
