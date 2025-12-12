@@ -59,6 +59,7 @@ import photos from './routes/photos';
 import { circleRoutes } from './routes/circles';
 import { tripRoutes } from './routes/trips';
 import { safetyRoutes as safetyFeaturesRoutes } from './routes/safety-features';
+import visibility from './routes/visibility';
 
 // Import trial & usage middleware
 import { rateLimitMiddleware as trialRateLimitMiddleware } from './middleware/rateLimit';
@@ -280,6 +281,7 @@ app.get('/privacy', async (c) => {
 // API Routes
 app.route('/api/auth', authRoutes);
 app.route('/api/profile', profileRoutes);
+app.route('/api/visibility', visibility);
 app.route('/api/pins', pinRoutes);
 app.route('/api/migrations', migrationRoutes);
 // app.route('/api/conversations', conversationRoutes); // Disabled - using new messages API
@@ -313,6 +315,7 @@ app.route('/api/location', locationRoutes);
 app.route('/api/analytics', analytics);
 app.route('/api/push', push);
 app.route('/api/settings', settingsRoutes);
+app.route('/api/visibility', visibility);
 app.route('/api/admin', admin);
 app.route('/api/connections', connections);
 app.route('/api/photos', photos);
