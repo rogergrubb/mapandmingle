@@ -45,7 +45,7 @@ jobs:
           
           cd apps/backend
           
-          # Deploy with env vars preserved from existing service
+          # Deploy with env vars
           gcloud run deploy mapandmingle-api \
             --source . \
             --region us-west1 \
@@ -54,8 +54,7 @@ jobs:
             --memory 512Mi \
             --timeout 300 \
             --port 8080 \
-            --set-env-vars "NODE_ENV=production" \
-            --update-env-vars "DATABASE_URL=${DATABASE_URL}" \
+            --set-env-vars "NODE_ENV=production,DATABASE_URL=${DATABASE_URL}" \
             --set-env-vars "DATABASE_URL=postgresql://postgres.oebwitesfxypypqzrunz:xm4q40xkb1uT1WCt@aws-0-us-west-1.pooler.supabase.com:6543/postgres"
           
       - name: Deployment Complete
