@@ -781,32 +781,54 @@ function MapController() {
   }, [map]);
 
   useEffect(() => {
+    let debounceTimer: NodeJS.Timeout | null = null;
+    
     const handleMoveEnd = () => {
       const bounds = map.getBounds();
       const center = map.getCenter();
       const zoom = map.getZoom();
       
-      // Save current position to localStorage
+      // Save current position to localStorage immediately
       localStorage.setItem('mapandmingle_map_position', JSON.stringify({
         lat: center.lat,
         lng: center.lng,
         zoom: zoom
       }));
       
-      fetchPins({
-        north: bounds.getNorth(),
-        south: bounds.getSouth(),
-        east: bounds.getEast(),
-        west: bounds.getWest(),
-        zoom: zoom,
-      });
+      // Debounce the API call to prevent flooding during rapid zoom/pan
+      if (debounceTimer) {
+        clearTimeout(debounceTimer);
+      }
+      
+      debounceTimer = setTimeout(() => {
+        fetchPins({
+          north: bounds.getNorth(),
+          south: bounds.getSouth(),
+          east: bounds.getEast(),
+          west: bounds.getWest(),
+          zoom: zoom,
+        });
+      }, 300); // Wait 300ms after last move before fetching
     };
 
     map.on('moveend', handleMoveEnd);
-    handleMoveEnd();
+    
+    // Initial fetch without debounce
+    const bounds = map.getBounds();
+    const zoom = map.getZoom();
+    fetchPins({
+      north: bounds.getNorth(),
+      south: bounds.getSouth(),
+      east: bounds.getEast(),
+      west: bounds.getWest(),
+      zoom: zoom,
+    });
 
     return () => {
       map.off('moveend', handleMoveEnd);
+      if (debounceTimer) {
+        clearTimeout(debounceTimer);
+      }
     };
   }, [map, fetchPins]);
 
