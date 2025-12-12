@@ -307,7 +307,7 @@ function ClusteredMarkers({
     if (!clusterGroupRef.current) {
       clusterGroupRef.current = (L as any).markerClusterGroup({
         chunkedLoading: true,
-        maxClusterRadius: 60,
+        maxClusterRadius: 80, // Increased for better clustering at world view
         spiderfyOnMaxZoom: true,
         showCoverageOnHover: false,
         zoomToBoundsOnClick: true,
@@ -315,7 +315,28 @@ function ClusteredMarkers({
         spiderfyDistanceMultiplier: 1.5,
         iconCreateFunction: (cluster: any) => {
           const count = cluster.getChildCount();
-          let size = count >= 100 ? 60 : count >= 50 ? 52 : count >= 20 ? 44 : 36;
+          // Size scales: 10+, 50+, 100+, 500+, 1000+
+          let size = 36;
+          let fontSize = '14px';
+          if (count >= 1000) {
+            size = 72;
+            fontSize = '20px';
+          } else if (count >= 500) {
+            size = 64;
+            fontSize = '18px';
+          } else if (count >= 100) {
+            size = 56;
+            fontSize = '17px';
+          } else if (count >= 50) {
+            size = 48;
+            fontSize = '16px';
+          } else if (count >= 20) {
+            size = 42;
+            fontSize = '15px';
+          }
+          
+          // Format count: 1.2k for 1200+
+          const displayCount = count >= 1000 ? `${(count / 1000).toFixed(1)}k` : count.toString();
           
           return L.divIcon({
             html: `
@@ -339,9 +360,9 @@ function ClusteredMarkers({
                   <span style="
                     color: white;
                     font-weight: bold;
-                    font-size: ${size > 50 ? '18px' : size > 40 ? '16px' : '14px'};
+                    font-size: ${fontSize};
                     text-shadow: 0 1px 2px rgba(0,0,0,0.2);
-                  ">${count}</span>
+                  ">${displayCount}</span>
                 </div>
               </div>
             `,
@@ -777,6 +798,7 @@ function MapController() {
         south: bounds.getSouth(),
         east: bounds.getEast(),
         west: bounds.getWest(),
+        zoom: zoom,
       });
     };
 
@@ -909,11 +931,13 @@ export default function MapPage() {
     // Refetch pins with new filter
     if (mapRef.current) {
       const bounds = mapRef.current.getBounds();
+      const zoom = mapRef.current.getZoom();
       fetchPins({
         north: bounds.getNorth(),
         south: bounds.getSouth(),
         east: bounds.getEast(),
         west: bounds.getWest(),
+        zoom: zoom,
       });
     }
   };
@@ -925,11 +949,13 @@ export default function MapPage() {
     setIsRefreshing(true);
     try {
       const bounds = mapRef.current.getBounds();
+      const zoom = mapRef.current.getZoom();
       await fetchPins({
         north: bounds.getNorth(),
         south: bounds.getSouth(),
         east: bounds.getEast(),
         west: bounds.getWest(),
+        zoom: zoom,
       });
     } finally {
       // Minimum 500ms spin for visual feedback
@@ -1057,12 +1083,14 @@ export default function MapPage() {
       
       // Refresh pins
       const bounds = mapRef.current?.getBounds();
+      const zoom = mapRef.current?.getZoom() || 13;
       if (bounds) {
         useMapStore.getState().fetchPins({
           north: bounds.getNorth(),
           south: bounds.getSouth(),
           east: bounds.getEast(),
           west: bounds.getWest(),
+          zoom: zoom,
         });
       }
     } catch (err: any) {
@@ -1120,12 +1148,14 @@ export default function MapPage() {
       
       // Refresh pins
       const bounds = mapRef.current?.getBounds();
+      const zoom = mapRef.current?.getZoom() || 13;
       if (bounds) {
         useMapStore.getState().fetchPins({
           north: bounds.getNorth(),
           south: bounds.getSouth(),
           east: bounds.getEast(),
           west: bounds.getWest(),
+          zoom: zoom,
         });
       }
     } catch (err: any) {
@@ -1168,12 +1198,14 @@ export default function MapPage() {
       
       // Refresh pins
       const bounds = mapRef.current?.getBounds();
+      const zoom = mapRef.current?.getZoom() || 13;
       if (bounds) {
         useMapStore.getState().fetchPins({
           north: bounds.getNorth(),
           south: bounds.getSouth(),
           east: bounds.getEast(),
           west: bounds.getWest(),
+          zoom: zoom,
         });
       }
     } catch (err: any) {
@@ -1216,12 +1248,14 @@ export default function MapPage() {
       
       // Refresh pins from server
       const bounds = mapRef.current?.getBounds();
+      const zoom = mapRef.current?.getZoom() || 13;
       if (bounds) {
         useMapStore.getState().fetchPins({
           north: bounds.getNorth(),
           south: bounds.getSouth(),
           east: bounds.getEast(),
           west: bounds.getWest(),
+          zoom: zoom,
         });
       }
       
@@ -1231,12 +1265,14 @@ export default function MapPage() {
       
       // Refresh to ensure consistency
       const bounds = mapRef.current?.getBounds();
+      const zoom = mapRef.current?.getZoom() || 13;
       if (bounds) {
         useMapStore.getState().fetchPins({
           north: bounds.getNorth(),
           south: bounds.getSouth(),
           east: bounds.getEast(),
           west: bounds.getWest(),
+          zoom: zoom,
         });
       }
     } finally {
