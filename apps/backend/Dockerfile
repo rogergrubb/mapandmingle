@@ -41,11 +41,15 @@ RUN npx prisma generate
 # Copy built files from builder
 COPY --from=builder /app/dist ./dist
 
+# Copy startup script
+COPY start.sh ./start.sh
+RUN chmod +x ./start.sh
+
 # Set environment
 ENV NODE_ENV=production
 
 # Expose port
 EXPOSE 8080
 
-# Use start:prod script which does db push then starts server
-CMD ["npm", "run", "start:prod"]
+# Run startup script
+CMD ["./start.sh"]
