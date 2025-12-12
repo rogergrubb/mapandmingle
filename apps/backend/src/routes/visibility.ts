@@ -253,7 +253,7 @@ visibility.get('/visible-users', async (c) => {
     const userPins = await prisma.pin.findMany({
       where: {
         userId: { in: users.map(u => u.id) },
-        type: 'live',
+        pinType: 'current',
       },
       select: {
         userId: true,
