@@ -614,7 +614,7 @@ pinRoutes.get('/incoming', async (c) => {
                 displayName: true,
                 bio: true,
                 lookingFor: true,
-                homeCity: true,
+                location: true,
               },
             },
           },
@@ -685,7 +685,7 @@ pinRoutes.get('/incoming', async (c) => {
           bio: pin.user.profile?.bio || pin.user.bio,
           interests: pin.user.interests || [],
           lookingFor: pin.user.profile?.lookingFor || [],
-          homeCity: pin.user.profile?.homeCity || null,
+          location: pin.user.profile?.location || null,
           isConnected: viewerConnections.has(pin.userId),
         },
       };
