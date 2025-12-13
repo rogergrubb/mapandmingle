@@ -1,12 +1,36 @@
 // Emergency Safety Routes v3.0 - Using raw SQL
 import { Hono } from 'hono';
 import { prisma, broadcastToUser } from '../index';
+import * as jwt from 'jsonwebtoken';
+import { config } from '../config';
 
 export const safetyRoutes = new Hono();
 
 // Helper to execute raw SQL
 const rawQuery = async (query: string, params: any[] = []) => {
   return await prisma.$queryRawUnsafe(query, ...params);
+};
+
+// Helper to get user ID from either x-user-id header OR Bearer token
+const getUserIdFromRequest = (c: any): string | null => {
+  // First check x-user-id header (for direct API calls)
+  const headerUserId = c.req.header('x-user-id');
+  if (headerUserId) return headerUserId;
+  
+  // Then check Authorization Bearer token
+  const authHeader = c.req.header('Authorization');
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    try {
+      const token = authHeader.substring(7);
+      const decoded = jwt.verify(token, config.jwtSecret) as { userId: string };
+      return decoded.userId;
+    } catch (e) {
+      console.error('JWT verification failed:', e);
+      return null;
+    }
+  }
+  
+  return null;
 };
 
 // ============================================================================
@@ -16,7 +40,7 @@ const rawQuery = async (query: string, params: any[] = []) => {
 // GET /api/safety/emergency-contacts - Get user's emergency contacts
 safetyRoutes.get('/emergency-contacts', async (c) => {
   try {
-    const userId = c.req.header('x-user-id');
+    const userId = getUserIdFromRequest(c);
     if (!userId) return c.json({ error: 'Unauthorized' }, 401);
 
     const contacts = await rawQuery(`
@@ -56,7 +80,7 @@ safetyRoutes.get('/emergency-contacts', async (c) => {
 // POST /api/safety/emergency-contacts - Add emergency contact
 safetyRoutes.post('/emergency-contacts', async (c) => {
   try {
-    const userId = c.req.header('x-user-id');
+    const userId = getUserIdFromRequest(c);
     if (!userId) return c.json({ error: 'Unauthorized' }, 401);
 
     const { name, phone, email, relationship, notifyViaCall, notifyViaSms, notifyViaApp, notifyViaEmail } = await c.req.json();
@@ -106,7 +130,7 @@ safetyRoutes.post('/emergency-contacts', async (c) => {
 // PUT /api/safety/emergency-contacts/:id - Update emergency contact
 safetyRoutes.put('/emergency-contacts/:id', async (c) => {
   try {
-    const userId = c.req.header('x-user-id');
+    const userId = getUserIdFromRequest(c);
     if (!userId) return c.json({ error: 'Unauthorized' }, 401);
 
     const contactId = c.req.param('id');
@@ -139,7 +163,7 @@ safetyRoutes.put('/emergency-contacts/:id', async (c) => {
 // DELETE /api/safety/emergency-contacts/:id - Delete emergency contact
 safetyRoutes.delete('/emergency-contacts/:id', async (c) => {
   try {
-    const userId = c.req.header('x-user-id');
+    const userId = getUserIdFromRequest(c);
     if (!userId) return c.json({ error: 'Unauthorized' }, 401);
 
     const contactId = c.req.param('id');
@@ -175,7 +199,7 @@ safetyRoutes.delete('/emergency-contacts/:id', async (c) => {
 // POST /api/safety/emergency-contacts/reorder - Reorder contacts
 safetyRoutes.post('/emergency-contacts/reorder', async (c) => {
   try {
-    const userId = c.req.header('x-user-id');
+    const userId = getUserIdFromRequest(c);
     if (!userId) return c.json({ error: 'Unauthorized' }, 401);
 
     const { contactIds } = await c.req.json();
@@ -199,7 +223,7 @@ safetyRoutes.post('/emergency-contacts/reorder', async (c) => {
 // GET /api/safety/emergency-setup - Get setup status
 safetyRoutes.get('/emergency-setup', async (c) => {
   try {
-    const userId = c.req.header('x-user-id');
+    const userId = getUserIdFromRequest(c);
     if (!userId) return c.json({ error: 'Unauthorized' }, 401);
 
     const [contactCount, profile, circleCount] = await Promise.all([
@@ -238,7 +262,7 @@ safetyRoutes.get('/emergency-setup', async (c) => {
 // POST /api/safety/emergency-alert - Trigger emergency alert
 safetyRoutes.post('/emergency-alert', async (c) => {
   try {
-    const userId = c.req.header('x-user-id');
+    const userId = getUserIdFromRequest(c);
     if (!userId) return c.json({ error: 'Unauthorized' }, 401);
 
     const { latitude, longitude, message, alertType, batteryLevel } = await c.req.json();
@@ -347,7 +371,7 @@ safetyRoutes.post('/emergency-alert', async (c) => {
 // POST /api/safety/emergency-alert/:id/resolve - Resolve an alert
 safetyRoutes.post('/emergency-alert/:id/resolve', async (c) => {
   try {
-    const userId = c.req.header('x-user-id');
+    const userId = getUserIdFromRequest(c);
     if (!userId) return c.json({ error: 'Unauthorized' }, 401);
 
     const alertId = c.req.param('id');
@@ -399,7 +423,7 @@ safetyRoutes.post('/emergency-alert/:id/resolve', async (c) => {
 // GET /api/safety/emergency-alerts - Get user's alert history
 safetyRoutes.get('/emergency-alerts', async (c) => {
   try {
-    const userId = c.req.header('x-user-id');
+    const userId = getUserIdFromRequest(c);
     if (!userId) return c.json({ error: 'Unauthorized' }, 401);
 
     const alerts = await rawQuery(`
@@ -422,7 +446,7 @@ safetyRoutes.get('/emergency-alerts', async (c) => {
 
 safetyRoutes.post('/block/:userId', async (c) => {
   try {
-    const blockerId = c.req.header('x-user-id');
+    const blockerId = getUserIdFromRequest(c);
     if (!blockerId) return c.json({ error: 'Unauthorized' }, 401);
 
     const blockedUserId = c.req.param('userId');
@@ -446,7 +470,7 @@ safetyRoutes.post('/block/:userId', async (c) => {
 
 safetyRoutes.delete('/block/:userId', async (c) => {
   try {
-    const blockerId = c.req.header('x-user-id');
+    const blockerId = getUserIdFromRequest(c);
     if (!blockerId) return c.json({ error: 'Unauthorized' }, 401);
 
     const blockedUserId = c.req.param('userId');
@@ -464,7 +488,7 @@ safetyRoutes.delete('/block/:userId', async (c) => {
 
 safetyRoutes.get('/blocks', async (c) => {
   try {
-    const userId = c.req.header('x-user-id');
+    const userId = getUserIdFromRequest(c);
     if (!userId) return c.json({ error: 'Unauthorized' }, 401);
 
     const blocks = await prisma.block.findMany({
@@ -497,7 +521,7 @@ safetyRoutes.get('/blocks', async (c) => {
 
 safetyRoutes.post('/report', async (c) => {
   try {
-    const reporterId = c.req.header('x-user-id');
+    const reporterId = getUserIdFromRequest(c);
     if (!reporterId) return c.json({ error: 'Unauthorized' }, 401);
 
     const { reportedUserId, reason, details, eventId, eventCommentId } = await c.req.json();
