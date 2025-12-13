@@ -3,6 +3,28 @@ import { prisma, broadcastToUser } from '../index';
 
 export const circleRoutes = new Hono();
 
+// Enhanced emoji/icon list for circles
+const CIRCLE_ICONS = [
+  // Family
+  '👨‍👩‍👧‍👦', '👨‍👩‍👧', '👨‍👩‍👦', '👨‍👨‍👧', '👩‍👩‍👧', '👨‍👧', '👩‍👧', '👨‍👦', '👩‍👦',
+  // People
+  '👫', '👬', '👭', '🧑‍🤝‍🧑', '💑', '👪',
+  // Places & Activities  
+  '🏠', '🏡', '🏢', '🏫', '⛪', '🏥',
+  // Transport
+  '🚗', '🚕', '🚌', '✈️', '🚴', '🛵',
+  // Activities
+  '⚽', '🏀', '🎾', '🏊', '🎮', '🎬', '🎵', '📚', '💼', '🎓',
+  // Hearts & Love
+  '❤️', '💕', '💖', '💝', '💗', '💓',
+  // Nature
+  '🌳', '🏔️', '🏖️', '🌅', '🌸',
+  // Groups & Social
+  '👥', '🤝', '🎉', '🎊', '✨', '⭐', '🌟',
+  // Safety & Care
+  '🛡️', '🔒', '🏥', '🩺', '💊',
+];
+
 // GET /api/circles - Get user's circles
 circleRoutes.get('/', async (c) => {
   try {
@@ -21,6 +43,14 @@ circleRoutes.get('/', async (c) => {
                 name: true,
                 displayName: true,
                 image: true,
+                profile: {
+                  select: {
+                    avatar: true,
+                    currentLocationLat: true,
+                    currentLocationLng: true,
+                    lastActiveAt: true,
+                  }
+                }
               },
             },
           },
@@ -50,6 +80,14 @@ circleRoutes.get('/', async (c) => {
                     name: true,
                     displayName: true,
                     image: true,
+                    profile: {
+                      select: {
+                        avatar: true,
+                        currentLocationLat: true,
+                        currentLocationLng: true,
+                        lastActiveAt: true,
+                      }
+                    }
                   },
                 },
               },
@@ -70,9 +108,12 @@ circleRoutes.get('/', async (c) => {
         members: c.members.map(m => ({
           id: m.user.id,
           name: m.user.displayName || m.user.name,
-          image: m.user.image,
+          image: m.user.profile?.avatar || m.user.image,
           role: m.role,
+          lastActiveAt: m.user.profile?.lastActiveAt,
+          hasLocation: !!(m.user.profile?.currentLocationLat && m.user.profile?.currentLocationLng),
         })),
+        createdAt: c.createdAt,
       })),
       ...memberCircles.map(m => ({
         id: m.circle.id,
@@ -86,9 +127,12 @@ circleRoutes.get('/', async (c) => {
         members: m.circle.members.map(cm => ({
           id: cm.user.id,
           name: cm.user.displayName || cm.user.name,
-          image: cm.user.image,
+          image: cm.user.profile?.avatar || cm.user.image,
           role: cm.role,
+          lastActiveAt: cm.user.profile?.lastActiveAt,
+          hasLocation: !!(cm.user.profile?.currentLocationLat && cm.user.profile?.currentLocationLng),
         })),
+        createdAt: m.circle.createdAt,
       })),
     ];
 
@@ -99,48 +143,239 @@ circleRoutes.get('/', async (c) => {
   }
 });
 
-// POST /api/circles - Create a new circle
+// GET /api/circles/icons - Get available icons for circles
+circleRoutes.get('/icons', async (c) => {
+  return c.json({ icons: CIRCLE_ICONS });
+});
+
+// GET /api/circles/connections - Get user's accepted connections for circle invites
+circleRoutes.get('/connections', async (c) => {
+  try {
+    const userId = c.req.header('x-user-id');
+    if (!userId) return c.json({ error: 'Unauthorized' }, 401);
+
+    const connections = await prisma.connection.findMany({
+      where: {
+        status: 'accepted',
+        OR: [
+          { requesterId: userId },
+          { addresseeId: userId },
+        ],
+      },
+      include: {
+        requester: {
+          select: {
+            id: true,
+            name: true,
+            displayName: true,
+            image: true,
+            profile: {
+              select: { avatar: true }
+            }
+          },
+        },
+        addressee: {
+          select: {
+            id: true,
+            name: true,
+            displayName: true,
+            image: true,
+            profile: {
+              select: { avatar: true }
+            }
+          },
+        },
+      },
+    });
+
+    // Map to get the "other" user in each connection
+    const friends = connections.map(conn => {
+      const friend = conn.requesterId === userId ? conn.addressee : conn.requester;
+      return {
+        id: friend.id,
+        name: friend.displayName || friend.name,
+        image: friend.profile?.avatar || friend.image,
+        connectionId: conn.id,
+        connectedAt: conn.createdAt,
+      };
+    });
+
+    return c.json({ connections: friends });
+  } catch (error) {
+    console.error('Error fetching connections:', error);
+    return c.json({ error: 'Failed to fetch connections' }, 500);
+  }
+});
+
+// POST /api/circles - Create new circle
 circleRoutes.post('/', async (c) => {
   try {
     const userId = c.req.header('x-user-id');
     if (!userId) return c.json({ error: 'Unauthorized' }, 401);
 
-    const { name, emoji, color } = await c.req.json();
+    const { name, emoji, color, memberIds } = await c.req.json();
 
-    if (!name || name.trim().length === 0) {
+    if (!name?.trim()) {
       return c.json({ error: 'Circle name is required' }, 400);
     }
 
-    // Check limit (max 10 circles per user)
-    const count = await prisma.circle.count({ where: { ownerId: userId } });
-    if (count >= 10) {
-      return c.json({ error: 'Maximum 10 circles allowed' }, 400);
-    }
-
+    // Create circle
     const circle = await prisma.circle.create({
       data: {
         name: name.trim(),
         emoji: emoji || '👨‍👩‍👧‍👦',
         color: color || '#3B82F6',
         ownerId: userId,
+      },
+    });
+
+    // Add owner as first member
+    await prisma.circleMember.create({
+      data: {
+        circleId: circle.id,
+        userId: userId,
+        role: 'owner',
+      },
+    });
+
+    // Add initial members if provided (must be connections)
+    if (memberIds && Array.isArray(memberIds) && memberIds.length > 0) {
+      // Verify these are actual connections
+      const validConnections = await prisma.connection.findMany({
+        where: {
+          status: 'accepted',
+          OR: [
+            { requesterId: userId, addresseeId: { in: memberIds } },
+            { addresseeId: userId, requesterId: { in: memberIds } },
+          ],
+        },
+      });
+
+      const validUserIds = validConnections.map(conn => 
+        conn.requesterId === userId ? conn.addresseeId : conn.requesterId
+      );
+
+      // Add valid members
+      for (const memberId of validUserIds) {
+        await prisma.circleMember.create({
+          data: {
+            circleId: circle.id,
+            userId: memberId,
+            role: 'member',
+          },
+        });
+
+        // Notify the added member
+        broadcastToUser(memberId, {
+          type: 'circle_added',
+          circleId: circle.id,
+          circleName: circle.name,
+        });
+      }
+    }
+
+    return c.json({ 
+      success: true, 
+      circle: {
+        id: circle.id,
+        name: circle.name,
+        emoji: circle.emoji,
+        color: circle.color,
+      }
+    });
+  } catch (error) {
+    console.error('Error creating circle:', error);
+    return c.json({ error: 'Failed to create circle' }, 500);
+  }
+});
+
+// GET /api/circles/:id - Get single circle details
+circleRoutes.get('/:id', async (c) => {
+  try {
+    const userId = c.req.header('x-user-id');
+    if (!userId) return c.json({ error: 'Unauthorized' }, 401);
+
+    const circleId = c.req.param('id');
+
+    // Verify membership
+    const membership = await prisma.circleMember.findFirst({
+      where: { circleId, userId },
+    });
+
+    if (!membership) {
+      return c.json({ error: 'Not a member of this circle' }, 403);
+    }
+
+    const circle = await prisma.circle.findUnique({
+      where: { id: circleId },
+      include: {
+        owner: {
+          select: {
+            id: true,
+            name: true,
+            displayName: true,
+            image: true,
+          },
+        },
         members: {
-          create: {
-            userId,
-            role: 'owner',
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                displayName: true,
+                image: true,
+                profile: {
+                  select: {
+                    avatar: true,
+                    currentLocationLat: true,
+                    currentLocationLng: true,
+                    lastActiveAt: true,
+                  }
+                }
+              },
+            },
           },
         },
       },
     });
 
-    return c.json({ 
-      id: circle.id,
-      name: circle.name,
-      emoji: circle.emoji,
-      color: circle.color,
-    }, 201);
+    if (!circle) {
+      return c.json({ error: 'Circle not found' }, 404);
+    }
+
+    return c.json({
+      circle: {
+        id: circle.id,
+        name: circle.name,
+        emoji: circle.emoji,
+        color: circle.color,
+        isOwner: circle.ownerId === userId,
+        owner: {
+          id: circle.owner.id,
+          name: circle.owner.displayName || circle.owner.name,
+          image: circle.owner.image,
+        },
+        members: circle.members.map(m => ({
+          id: m.user.id,
+          name: m.user.displayName || m.user.name,
+          image: m.user.profile?.avatar || m.user.image,
+          role: m.role,
+          canSeeLocation: m.canSeeLocation,
+          canRequestLocation: m.canRequestLocation,
+          lastActiveAt: m.user.profile?.lastActiveAt,
+          location: m.canSeeLocation ? {
+            lat: m.user.profile?.currentLocationLat,
+            lng: m.user.profile?.currentLocationLng,
+          } : null,
+        })),
+        memberCount: circle.members.length,
+        createdAt: circle.createdAt,
+      },
+    });
   } catch (error) {
-    console.error('Error creating circle:', error);
-    return c.json({ error: 'Failed to create circle' }, 500);
+    console.error('Error fetching circle:', error);
+    return c.json({ error: 'Failed to fetch circle' }, 500);
   }
 });
 
@@ -159,15 +394,15 @@ circleRoutes.put('/:id', async (c) => {
     });
 
     if (!circle) {
-      return c.json({ error: 'Circle not found or not authorized' }, 404);
+      return c.json({ error: 'Not authorized to edit this circle' }, 403);
     }
 
     const updated = await prisma.circle.update({
       where: { id: circleId },
       data: {
-        name: name?.trim() || circle.name,
-        emoji: emoji || circle.emoji,
-        color: color || circle.color,
+        ...(name && { name: name.trim() }),
+        ...(emoji && { emoji }),
+        ...(color && { color }),
       },
     });
 
@@ -186,9 +421,28 @@ circleRoutes.delete('/:id', async (c) => {
 
     const circleId = c.req.param('id');
 
-    await prisma.circle.deleteMany({
+    // Verify ownership
+    const circle = await prisma.circle.findFirst({
       where: { id: circleId, ownerId: userId },
     });
+
+    if (!circle) {
+      return c.json({ error: 'Not authorized to delete this circle' }, 403);
+    }
+
+    // Notify members before deletion
+    const members = await prisma.circleMember.findMany({
+      where: { circleId, userId: { not: userId } },
+    });
+
+    for (const member of members) {
+      broadcastToUser(member.userId, {
+        type: 'circle_deleted',
+        circleName: circle.name,
+      });
+    }
+
+    await prisma.circle.delete({ where: { id: circleId } });
 
     return c.json({ success: true });
   } catch (error) {
@@ -197,7 +451,92 @@ circleRoutes.delete('/:id', async (c) => {
   }
 });
 
-// POST /api/circles/:id/invite - Invite user to circle
+// POST /api/circles/:id/members - Add specific members to circle
+circleRoutes.post('/:id/members', async (c) => {
+  try {
+    const userId = c.req.header('x-user-id');
+    if (!userId) return c.json({ error: 'Unauthorized' }, 401);
+
+    const circleId = c.req.param('id');
+    const { memberIds } = await c.req.json();
+
+    if (!memberIds || !Array.isArray(memberIds) || memberIds.length === 0) {
+      return c.json({ error: 'memberIds array required' }, 400);
+    }
+
+    // Verify ownership or admin
+    const membership = await prisma.circleMember.findFirst({
+      where: {
+        circleId,
+        userId,
+        role: { in: ['owner', 'admin'] },
+      },
+      include: { circle: true },
+    });
+
+    if (!membership) {
+      return c.json({ error: 'Not authorized to add members' }, 403);
+    }
+
+    // Verify these are actual connections
+    const validConnections = await prisma.connection.findMany({
+      where: {
+        status: 'accepted',
+        OR: [
+          { requesterId: userId, addresseeId: { in: memberIds } },
+          { addresseeId: userId, requesterId: { in: memberIds } },
+        ],
+      },
+    });
+
+    const validUserIds = validConnections.map(conn => 
+      conn.requesterId === userId ? conn.addresseeId : conn.requesterId
+    );
+
+    const added: string[] = [];
+    const alreadyMembers: string[] = [];
+
+    for (const memberId of validUserIds) {
+      // Check if already member
+      const existing = await prisma.circleMember.findUnique({
+        where: { circleId_userId: { circleId, userId: memberId } },
+      });
+
+      if (existing) {
+        alreadyMembers.push(memberId);
+        continue;
+      }
+
+      await prisma.circleMember.create({
+        data: {
+          circleId,
+          userId: memberId,
+          role: 'member',
+        },
+      });
+
+      added.push(memberId);
+
+      // Notify the added member
+      broadcastToUser(memberId, {
+        type: 'circle_added',
+        circleId,
+        circleName: membership.circle.name,
+      });
+    }
+
+    return c.json({ 
+      success: true, 
+      added: added.length,
+      alreadyMembers: alreadyMembers.length,
+    });
+  } catch (error) {
+    console.error('Error adding members:', error);
+    return c.json({ error: 'Failed to add members' }, 500);
+  }
+});
+
+// POST /api/circles/:id/invite - Invite by email (legacy)
 circleRoutes.post('/:id/invite', async (c) => {
   try {
     const userId = c.req.header('x-user-id');
@@ -352,6 +691,7 @@ circleRoutes.get('/:id/locations', async (c) => {
             image: true,
             profile: {
               select: {
+                avatar: true,
                 currentLocationLat: true,
                 currentLocationLng: true,
                 lastActiveAt: true,
@@ -372,7 +712,7 @@ circleRoutes.get('/:id/locations', async (c) => {
       return {
         userId: m.user.id,
         name: m.user.displayName || m.user.name,
-        image: m.user.image,
+        image: m.user.profile?.avatar || m.user.image,
         hasActiveTrip: !!activeTrip,
         trip: activeTrip ? {
           id: activeTrip.id,
@@ -397,5 +737,45 @@ circleRoutes.get('/:id/locations', async (c) => {
   } catch (error) {
     console.error('Error fetching circle locations:', error);
     return c.json({ error: 'Failed to fetch locations' }, 500);
+  }
+});
+
+// PATCH /api/circles/:id/members/:memberId/role - Update member role
+circleRoutes.patch('/:id/members/:memberId/role', async (c) => {
+  try {
+    const userId = c.req.header('x-user-id');
+    if (!userId) return c.json({ error: 'Unauthorized' }, 401);
+
+    const circleId = c.req.param('id');
+    const memberId = c.req.param('memberId');
+    const { role } = await c.req.json();
+
+    if (!['admin', 'member'].includes(role)) {
+      return c.json({ error: 'Invalid role. Must be admin or member' }, 400);
+    }
+
+    // Verify ownership
+    const circle = await prisma.circle.findFirst({
+      where: { id: circleId, ownerId: userId },
+    });
+
+    if (!circle) {
+      return c.json({ error: 'Only circle owner can change roles' }, 403);
+    }
+
+    // Can't change owner role
+    if (memberId === userId) {
+      return c.json({ error: 'Cannot change your own role' }, 400);
+    }
+
+    await prisma.circleMember.updateMany({
+      where: { circleId, userId: memberId },
+      data: { role },
+    });
+
+    return c.json({ success: true });
+  } catch (error) {
+    console.error('Error updating role:', error);
+    return c.json({ error: 'Failed to update role' }, 500);
   }
 });
