@@ -10,6 +10,7 @@ import { TimePickerModal } from '../components/map/TimePickerModal';
 import { LegendModal } from '../components/map/LegendModal';
 import { ConfirmDialog } from '../components/map/ConfirmDialog';
 import { PinLegend } from '../components/map/PinLegend';
+import { IncomingVisitors } from '../components/map/IncomingVisitors';
 import WelcomeCard from '../components/WelcomeCard';
 import haptic from '../lib/haptics';
 import ProfileInterestsSetup from '../components/ProfileInterestsSetup';
@@ -923,6 +924,9 @@ export default function MapPage() {
   const [placementType, setPlacementType] = useState<'here' | 'there' | null>(null);
   // Location choice modal for "Where I'm At"
   const [showLocationChoiceModal, setShowLocationChoiceModal] = useState(false);
+  // Map bounds for incoming visitors
+  const [mapBounds, setMapBounds] = useState<{north: number; south: number; east: number; west: number} | null>(null);
+
 
   const [isPopupOpen, setIsPopupOpen] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -1105,6 +1109,22 @@ export default function MapPage() {
       console.error('Failed to toggle visibility:', err);
     }
   };
+
+
+  // Update bounds when map moves
+  const updateMapBounds = useCallback(() => {
+    if (mapRef.current) {
+      const bounds = mapRef.current.getBounds();
+      if (bounds) {
+        setMapBounds({
+          north: bounds.getNorth(),
+          south: bounds.getSouth(),
+          east: bounds.getEast(),
+          west: bounds.getWest(),
+        });
+      }
+    }
+  }, []);
 
   // Show location choice modal when "Where I'm At" is clicked
   const handleDropPin = async () => {
@@ -1402,6 +1422,21 @@ export default function MapPage() {
 
       {/* Permanent Pin Legend - Left Side */}
       <PinLegend />
+
+      {/* Incoming Visitors - Right Side */}
+      <div className="absolute top-20 right-3 z-[999]">
+        <IncomingVisitors
+          bounds={mapBounds}
+          onVisitorClick={(visitor) => {
+            // Pan to visitor's future location
+            if (mapRef.current) {
+              mapRef.current.flyTo([visitor.latitude, visitor.longitude], 14);
+            }
+          }}
+        />
+      </div>
+
+
 
       {/* Top Control Bar with Visibility + Stats */}
       <MapControlBar
