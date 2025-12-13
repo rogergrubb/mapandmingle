@@ -1451,45 +1451,13 @@ export default function MapPage() {
         onVisibilityChange={handleVisibilityLevelChange}
       />
 
-      {/* Legend Info Button - Top Right */}
-      <button
-        onClick={() => setShowLegend(true)}
-        style={{
-          position: 'absolute',
-          top: '16px',
-          right: '16px',
-          zIndex: 1000,
-          width: '48px',
-          height: '48px',
-          borderRadius: '50%',
-          background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.98))',
-          backdropFilter: 'blur(20px)',
-          border: '2px solid rgba(168, 85, 247, 0.2)',
-          boxShadow: '0 4px 20px rgba(168, 85, 247, 0.2)',
-          cursor: 'pointer',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-        }}
-        onMouseOver={(e) => {
-          e.currentTarget.style.transform = 'scale(1.1)';
-          e.currentTarget.style.boxShadow = '0 8px 30px rgba(168, 85, 247, 0.4)';
-        }}
-        onMouseOut={(e) => {
-          e.currentTarget.style.transform = 'scale(1)';
-          e.currentTarget.style.boxShadow = '0 4px 20px rgba(168, 85, 247, 0.2)';
-        }}
-      >
-        <Info size={24} style={{ color: '#a855f7' }} />
-      </button>
-
       {/* Two-Button Presence Row - directly below top bar */}
       <PresenceButtonRow
         isPlacementMode={isPlacementMode}
         placementType={placementType}
         hasGPS={hasGPS}
         hidden={isPopupOpen}
+        visibilityLevel={visibilityLevel}
         onWhereImAt={handleDropPin}
         onWhereIllBe={() => {
           setPlacementType('there');
