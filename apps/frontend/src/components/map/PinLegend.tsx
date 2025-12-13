@@ -148,7 +148,7 @@ export function PinLegend({ onPinClick, onPinDeleted }: PinLegendProps) {
 
   const containerStyle: React.CSSProperties = {
     position: 'absolute',
-    left: '12px',
+    right: '12px',  // Changed from left to right
     top: '50%',
     transform: 'translateY(-50%)',
     zIndex: 999,
