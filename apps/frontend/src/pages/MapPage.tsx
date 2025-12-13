@@ -1451,6 +1451,14 @@ export default function MapPage() {
         isRefreshing={isRefreshing}
       />
 
+      {/* 5-Level Visibility Slider - Positioned below top bar */}
+      <div className="absolute top-16 left-3 z-[1001]">
+        <VisibilityQuickToggle
+          value={visibilityLevel}
+          onChange={handleVisibilityLevelChange}
+        />
+      </div>
+
       {/* Legend Info Button - Top Right */}
       <button
         onClick={() => setShowLegend(true)}
