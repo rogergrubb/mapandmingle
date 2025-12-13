@@ -1421,7 +1421,7 @@ export default function MapPage() {
       `}</style>
 
       {/* Permanent Pin Legend - Left Side */}
-      <PinLegend onPinClick={(pin) => { if (mapRef.current) { mapRef.current.flyTo({ center: [pin.longitude, pin.latitude], zoom: 15, duration: 1500 }); } }} onPinDeleted={() => { fetchPins(); }} />
+      <PinLegend onPinClick={(pin) => { if (mapRef.current) { mapRef.current.flyTo([pin.latitude, pin.longitude], 15); } }} onPinDeleted={() => { fetchPins(); }} />
 
       {/* Incoming Visitors - Right Side */}
       <div className="absolute top-20 right-3 z-[999]">
