@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import api from '../../lib/api';
-import { Trash2, X } from 'lucide-react';
+import { Trash2, X, GripVertical, Maximize2, Minimize2 } from 'lucide-react';
 
 interface UserPin {
   id: string;
@@ -24,10 +24,12 @@ interface PinLegendProps {
   onPinDeleted?: () => void;
 }
 
+type PanelSize = 'compact' | 'normal' | 'expanded';
+
 /**
  * PinLegend - Dynamic visual guide showing YOUR pins + global mingler stats
  * Shows "Where I'm At" + multiple "Where I'll Be" with actual countdowns
- * Clickable to navigate to pins, with delete functionality
+ * Draggable left/right, resizable (compact/normal/expanded)
  */
 
 export function PinLegend({ onPinClick, onPinDeleted }: PinLegendProps) {
@@ -36,11 +38,32 @@ export function PinLegend({ onPinClick, onPinDeleted }: PinLegendProps) {
   const [loading, setLoading] = useState(true);
   const [deletingPinId, setDeletingPinId] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  
+  // Draggable & Resizable state
+  const [position, setPosition] = useState<'left' | 'right'>(() => {
+    const saved = localStorage.getItem('pinLegendPosition');
+    return (saved === 'left' || saved === 'right') ? saved : 'right';
+  });
+  const [size, setSize] = useState<PanelSize>(() => {
+    const saved = localStorage.getItem('pinLegendSize');
+    return (saved === 'compact' || saved === 'normal' || saved === 'expanded') ? saved : 'normal';
+  });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStartX, setDragStartX] = useState(0);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Save preferences
+  useEffect(() => {
+    localStorage.setItem('pinLegendPosition', position);
+  }, [position]);
+
+  useEffect(() => {
+    localStorage.setItem('pinLegendSize', size);
+  }, [size]);
 
   useEffect(() => {
     fetchMyPins();
     fetchGlobalStats();
-    // Refresh every minute to update countdowns
     const interval = setInterval(() => {
       fetchMyPins();
       fetchGlobalStats();
@@ -72,10 +95,57 @@ export function PinLegend({ onPinClick, onPinDeleted }: PinLegendProps) {
     }
   };
 
+  // Drag handling
+  const handleDragStart = useCallback((e: React.MouseEvent | React.TouchEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    setDragStartX(clientX);
+  }, []);
+
+  const handleDragMove = useCallback((e: MouseEvent | TouchEvent) => {
+    if (!isDragging) return;
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    const windowWidth = window.innerWidth;
+    const threshold = windowWidth / 2;
+    
+    // Switch sides based on drag position
+    if (clientX < threshold && position === 'right') {
+      setPosition('left');
+    } else if (clientX > threshold && position === 'left') {
+      setPosition('right');
+    }
+  }, [isDragging, position]);
+
+  const handleDragEnd = useCallback(() => {
+    setIsDragging(false);
+  }, []);
+
+  useEffect(() => {
+    if (isDragging) {
+      window.addEventListener('mousemove', handleDragMove);
+      window.addEventListener('mouseup', handleDragEnd);
+      window.addEventListener('touchmove', handleDragMove);
+      window.addEventListener('touchend', handleDragEnd);
+      return () => {
+        window.removeEventListener('mousemove', handleDragMove);
+        window.removeEventListener('mouseup', handleDragEnd);
+        window.removeEventListener('touchmove', handleDragMove);
+        window.removeEventListener('touchend', handleDragEnd);
+      };
+    }
+  }, [isDragging, handleDragMove, handleDragEnd]);
+
+  const cycleSize = () => {
+    const sizes: PanelSize[] = ['compact', 'normal', 'expanded'];
+    const currentIndex = sizes.indexOf(size);
+    const nextIndex = (currentIndex + 1) % sizes.length;
+    setSize(sizes[nextIndex]);
+  };
+
   const handleDeletePin = async (pinId: string, e: React.MouseEvent) => {
     e.stopPropagation();
     if (confirmDelete === pinId) {
-      // Second click - actually delete
       setDeletingPinId(pinId);
       try {
         await api.delete(`/api/pins/${pinId}`);
@@ -88,94 +158,115 @@ export function PinLegend({ onPinClick, onPinDeleted }: PinLegendProps) {
         setConfirmDelete(null);
       }
     } else {
-      // First click - show confirm
       setConfirmDelete(pinId);
-      // Auto-reset after 3 seconds
       setTimeout(() => setConfirmDelete(null), 3000);
     }
   };
 
-  const handlePinClick = (pin: UserPin) => {
-    onPinClick?.(pin);
-  };
-
-  const formatCountdown = (arrivalTime: string) => {
-    const now = new Date();
+  const formatCountdown = (arrivalTime: string | null): { text: string; color: string; hours: number } => {
+    if (!arrivalTime) return { text: 'Now', color: '#ef4444', hours: 0 };
+    
     const arrival = new Date(arrivalTime);
+    const now = new Date();
     const diff = arrival.getTime() - now.getTime();
     
-    if (diff <= 0) {
-      const hoursSince = Math.abs(diff) / (1000 * 60 * 60);
-      if (hoursSince < 1) return 'Now!';
-      return `${Math.floor(hoursSince)}h ago`;
+    if (diff <= 0) return { text: 'Now', color: '#ef4444', hours: 0 };
+    
+    const hours = diff / (1000 * 60 * 60);
+    const days = Math.floor(hours / 24);
+    const remainingHours = Math.floor(hours % 24);
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    
+    let text = '';
+    if (days > 0) {
+      text = `${days}d ${remainingHours}h`;
+    } else if (remainingHours > 0) {
+      text = `${remainingHours}h ${minutes}m`;
+    } else {
+      text = `${minutes}m`;
     }
     
-    const minutes = Math.floor(diff / (1000 * 60));
-    const hours = Math.floor(minutes / 60);
-    const days = Math.floor(hours / 24);
-    
-    if (days > 0) return `${days}d ${hours % 24}h`;
-    if (hours > 0) return `${hours}h ${minutes % 60}m`;
-    return `${minutes}m`;
+    return { text, color: getCountdownColor(hours), hours };
   };
 
-  const formatDateTime = (arrivalTime: string) => {
-    const date = new Date(arrivalTime);
-    return date.toLocaleString('en-US', {
-      weekday: 'short',
-      month: 'short',
-      day: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit',
-    });
-  };
-
-  const getCountdownColor = (arrivalTime: string) => {
-    const now = new Date();
-    const arrival = new Date(arrivalTime);
-    const diff = arrival.getTime() - now.getTime();
-    const hours = diff / (1000 * 60 * 60);
-    
-    if (hours <= 0) return '#ef4444'; // Red - arrived
-    if (hours <= 0.25) return '#ef4444'; // Red - 15 min
-    if (hours <= 2) return '#f97316'; // Orange - 2h
-    if (hours <= 4) return '#eab308'; // Yellow - 4h
-    return '#3b82f6'; // Blue - 4h+
+  const getCountdownColor = (hours: number) => {
+    if (hours <= 0.25) return '#ef4444';
+    if (hours <= 2) return '#f97316';
+    if (hours <= 4) return '#eab308';
+    return '#3b82f6';
   };
 
   const currentPin = myPins.find(p => p.pinType === 'current');
   const futurePins = myPins.filter(p => p.pinType === 'future');
 
+  // Size-based dimensions
+  const sizeConfig = {
+    compact: { width: 80, padding: '6px 4px', titleSize: '7px', itemGap: '4px', showStats: false },
+    normal: { width: 120, padding: '10px 8px', titleSize: '9px', itemGap: '6px', showStats: true },
+    expanded: { width: 180, padding: '12px 10px', titleSize: '10px', itemGap: '8px', showStats: true },
+  };
+
+  const config = sizeConfig[size];
+
   const containerStyle: React.CSSProperties = {
     position: 'absolute',
-    right: '12px',  // Changed from left to right
+    [position]: '12px',
     top: '50%',
     transform: 'translateY(-50%)',
     zIndex: 999,
     pointerEvents: 'auto',
+    transition: isDragging ? 'none' : 'left 0.3s ease, right 0.3s ease',
   };
 
   const cardStyle: React.CSSProperties = {
     background: 'rgba(255, 255, 255, 0.95)',
     backdropFilter: 'blur(12px)',
     borderRadius: '12px',
-    padding: '10px 8px',
-    boxShadow: '0 8px 32px rgba(0, 0, 0, 0.12)',
+    padding: config.padding,
+    boxShadow: isDragging ? '0 12px 48px rgba(0, 0, 0, 0.2)' : '0 8px 32px rgba(0, 0, 0, 0.12)',
     border: '1px solid rgba(255, 255, 255, 0.8)',
-    minWidth: '100px',
-    maxWidth: '120px',
+    minWidth: `${config.width}px`,
+    maxWidth: `${config.width + 20}px`,
     maxHeight: '70vh',
     overflowY: 'auto',
+    transform: isDragging ? 'scale(1.02)' : 'scale(1)',
+    transition: 'transform 0.2s, box-shadow 0.2s, width 0.3s',
+  };
+
+  const headerStyle: React.CSSProperties = {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: '6px',
+    cursor: 'grab',
+    userSelect: 'none',
   };
 
   const titleStyle: React.CSSProperties = {
-    fontSize: '9px',
+    fontSize: config.titleSize,
     fontWeight: 700,
     color: '#6b7280',
-    marginBottom: '8px',
     textTransform: 'uppercase',
     letterSpacing: '0.3px',
-    textAlign: 'center',
+  };
+
+  const controlsStyle: React.CSSProperties = {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '2px',
+  };
+
+  const controlButtonStyle: React.CSSProperties = {
+    padding: '2px',
+    borderRadius: '4px',
+    background: 'transparent',
+    border: 'none',
+    cursor: 'pointer',
+    color: '#9ca3af',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    transition: 'color 0.2s, background 0.2s',
   };
 
   const sectionTitleStyle: React.CSSProperties = {
@@ -193,7 +284,7 @@ export function PinLegend({ onPinClick, onPinDeleted }: PinLegendProps) {
   const itemStyle: React.CSSProperties = {
     display: 'flex',
     alignItems: 'center',
-    gap: '8px',
+    gap: config.itemGap,
     cursor: 'pointer',
     padding: '4px',
     borderRadius: '8px',
@@ -202,15 +293,15 @@ export function PinLegend({ onPinClick, onPinDeleted }: PinLegendProps) {
   };
 
   const iconStyle: React.CSSProperties = {
-    width: '24px',
-    height: '24px',
+    width: size === 'compact' ? '20px' : '24px',
+    height: size === 'compact' ? '20px' : '24px',
     borderRadius: '50%',
     position: 'relative',
     flexShrink: 0,
   };
 
   const textStyle: React.CSSProperties = {
-    fontSize: '9px',
+    fontSize: size === 'compact' ? '8px' : '9px',
     fontWeight: 600,
     color: '#1f2937',
     lineHeight: 1.2,
@@ -248,7 +339,7 @@ export function PinLegend({ onPinClick, onPinDeleted }: PinLegendProps) {
     right: '2px',
     top: '50%',
     transform: 'translateY(-50%)',
-    padding: '3px',
+    padding: '2px',
     borderRadius: '4px',
     border: 'none',
     cursor: 'pointer',
@@ -258,258 +349,265 @@ export function PinLegend({ onPinClick, onPinDeleted }: PinLegendProps) {
     transition: 'all 0.2s',
   };
 
-  return (
-    <div style={containerStyle}>
-      <div style={cardStyle}>
-        {/* Title */}
-        <div style={titleStyle}>My Pins</div>
+  const formatDate = (dateStr: string) => {
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+  };
 
-        {loading ? (
+  const formatTime = (dateStr: string) => {
+    const date = new Date(dateStr);
+    return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  };
+
+  const getTimeAgo = (dateStr: string) => {
+    const date = new Date(dateStr);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    if (diffDays === 0) return 'Today';
+    if (diffDays === 1) return '1d ago';
+    return `${diffDays}d ago`;
+  };
+
+  if (loading) {
+    return (
+      <div ref={containerRef} style={containerStyle}>
+        <div style={cardStyle}>
+          <div style={titleStyle}>MY PINS</div>
           <div style={emptyStyle}>Loading...</div>
-        ) : myPins.length === 0 ? (
-          <div style={emptyStyle}>
-            No pins yet!<br />
-            Drop a pin to get started
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div ref={containerRef} style={containerStyle}>
+      <div style={cardStyle}>
+        {/* Header with drag handle and controls */}
+        <div 
+          style={headerStyle}
+          onMouseDown={handleDragStart}
+          onTouchStart={handleDragStart}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <GripVertical size={12} style={{ color: '#d1d5db', cursor: 'grab' }} />
+            <span style={titleStyle}>MY PINS</span>
+          </div>
+          <div style={controlsStyle}>
+            <button
+              style={controlButtonStyle}
+              onClick={(e) => { e.stopPropagation(); cycleSize(); }}
+              onMouseDown={(e) => e.stopPropagation()}
+              title={`Size: ${size}`}
+            >
+              {size === 'compact' ? <Maximize2 size={10} /> : <Minimize2 size={10} />}
+            </button>
+          </div>
+        </div>
+
+        {/* Where I'm At */}
+        <div style={sectionTitleStyle}>
+          <span style={{ color: '#ef4444' }}>📍</span> WHERE I'M AT
+        </div>
+        
+        {currentPin ? (
+          <div 
+            style={itemStyle} 
+            onClick={() => onPinClick?.(currentPin)}
+            onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(0,0,0,0.05)')}
+            onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+          >
+            <div style={{ ...iconStyle, background: 'linear-gradient(135deg, #ec4899 0%, #8b5cf6 100%)' }}>
+              <div style={{
+                position: 'absolute',
+                top: '50%',
+                left: '50%',
+                transform: 'translate(-50%, -50%)',
+                width: '8px',
+                height: '8px',
+                borderRadius: '50%',
+                background: 'white',
+                boxShadow: '0 0 4px rgba(0,0,0,0.2)',
+              }} />
+            </div>
+            <div>
+              <div style={textStyle}>Current Location</div>
+              <div style={subtextStyle}>{getTimeAgo(currentPin.createdAt)}</div>
+            </div>
+            <button
+              style={{
+                ...deleteButtonStyle,
+                background: confirmDelete === currentPin.id ? '#fee2e2' : 'transparent',
+                color: confirmDelete === currentPin.id ? '#dc2626' : '#d1d5db',
+              }}
+              onClick={(e) => handleDeletePin(currentPin.id, e)}
+              disabled={deletingPinId === currentPin.id}
+            >
+              {confirmDelete === currentPin.id ? <X size={12} /> : <Trash2 size={10} />}
+            </button>
           </div>
         ) : (
-          <>
-            {/* Where I'm At Section */}
-            <div>
-              <div style={sectionTitleStyle}>📍 WHERE I'M AT</div>
-              {currentPin ? (
+          <div style={emptyStyle}>No current pin</div>
+        )}
+
+        {/* Where I'll Be */}
+        <div style={{ ...dividerStyle }}>
+          <div style={sectionTitleStyle}>
+            <span>🗓️</span> WHERE I'LL BE ({futurePins.length}/5)
+          </div>
+          
+          {futurePins.length > 0 ? (
+            futurePins.map((pin) => {
+              const countdown = formatCountdown(pin.arrivalTime);
+              return (
                 <div 
-                  style={itemStyle}
-                  onClick={() => handlePinClick(currentPin)}
-                  onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(236, 72, 153, 0.1)'}
-                  onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                  key={pin.id}
+                  style={{ ...itemStyle, marginBottom: '4px' }}
+                  onClick={() => onPinClick?.(pin)}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(0,0,0,0.05)')}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                 >
-                  <div
-                    style={{
-                      ...iconStyle,
-                      background: 'linear-gradient(135deg, #ec4899, #a855f7)',
-                      boxShadow: '0 3px 8px rgba(236, 72, 153, 0.4)',
-                    }}
-                  >
+                  <div style={{ position: 'relative' }}>
+                    <span 
+                      style={{ 
+                        ...badgeStyle, 
+                        background: countdown.color,
+                        fontSize: '7px',
+                        padding: '2px 4px',
+                      }}
+                    >
+                      {countdown.text}
+                    </span>
                     <div style={{
-                      width: '10px',
-                      height: '10px',
-                      background: 'white',
-                      borderRadius: '50%',
-                      position: 'absolute',
-                      top: '50%',
-                      left: '50%',
-                      transform: 'translate(-50%, -50%)',
-                    }} />
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={textStyle}>Current Location</div>
-                    <div style={subtextStyle}>
-                      {currentPin.ageHours < 1 
-                        ? 'Just now' 
-                        : currentPin.ageHours < 24 
-                          ? `${Math.floor(currentPin.ageHours)}h ago`
-                          : `${Math.floor(currentPin.ageHours / 24)}d ago`
-                      }
+                      ...iconStyle,
+                      background: `linear-gradient(135deg, ${countdown.color} 0%, ${countdown.color}88 100%)`,
+                      marginTop: '2px',
+                      width: '20px',
+                      height: '20px',
+                    }}>
+                      <div style={{
+                        position: 'absolute',
+                        top: '-6px',
+                        right: '-6px',
+                        width: '14px',
+                        height: '14px',
+                        borderRadius: '50%',
+                        background: countdown.color,
+                        border: '2px solid white',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}>
+                        <span style={{ fontSize: '8px' }}>✈️</span>
+                      </div>
                     </div>
                   </div>
-                  {/* Delete button */}
+                  <div>
+                    <div style={textStyle}>
+                      {pin.arrivalTime ? formatDate(pin.arrivalTime) : 'Scheduled'}
+                    </div>
+                    <div style={subtextStyle}>
+                      {pin.arrivalTime ? formatTime(pin.arrivalTime) : 'Upcoming'}
+                    </div>
+                  </div>
                   <button
                     style={{
                       ...deleteButtonStyle,
-                      background: confirmDelete === currentPin.id ? '#ef4444' : '#f3f4f6',
-                      color: confirmDelete === currentPin.id ? 'white' : '#6b7280',
+                      background: confirmDelete === pin.id ? '#fee2e2' : 'transparent',
+                      color: confirmDelete === pin.id ? '#dc2626' : '#d1d5db',
                     }}
-                    onClick={(e) => handleDeletePin(currentPin.id, e)}
-                    title={confirmDelete === currentPin.id ? 'Click again to confirm' : 'Delete pin'}
+                    onClick={(e) => handleDeletePin(pin.id, e)}
+                    disabled={deletingPinId === pin.id}
                   >
-                    {deletingPinId === currentPin.id ? (
-                      <div style={{ width: 12, height: 12, border: '2px solid', borderRadius: '50%', borderTopColor: 'transparent', animation: 'spin 1s linear infinite' }} />
-                    ) : confirmDelete === currentPin.id ? (
-                      <X size={12} />
-                    ) : (
-                      <Trash2 size={12} />
-                    )}
+                    {confirmDelete === pin.id ? <X size={12} /> : <Trash2 size={10} />}
                   </button>
                 </div>
-              ) : (
-                <div style={emptyStyle}>Not checked in</div>
-              )}
-            </div>
+              );
+            })
+          ) : (
+            <div style={emptyStyle}>No upcoming pins</div>
+          )}
+        </div>
 
-            {/* Where I'll Be Section */}
-            <div style={dividerStyle}>
-              <div style={sectionTitleStyle}>
-                🗓️ WHERE I'LL BE ({futurePins.length}/5)
-              </div>
-              {futurePins.length > 0 ? (
-                futurePins.map((pin, index) => (
-                  <div 
-                    key={pin.id} 
-                    style={{ ...itemStyle, marginBottom: index === futurePins.length - 1 ? 0 : 10 }}
-                    onClick={() => handlePinClick(pin)}
-                    onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(234, 179, 8, 0.1)'}
-                    onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                  >
-                    <div
-                      style={{
-                        ...iconStyle,
-                        background: 'linear-gradient(135deg, #eab308, #f59e0b)',
-                        boxShadow: '0 3px 8px rgba(234, 179, 8, 0.4)',
-                      }}
-                    >
-                      {pin.arrivalTime && (
-                        <div
-                          style={{
-                            position: 'absolute',
-                            top: '-6px',
-                            right: '-6px',
-                            background: getCountdownColor(pin.arrivalTime),
-                            color: 'white',
-                            fontSize: '7px',
-                            fontWeight: 700,
-                            padding: '2px 4px',
-                            borderRadius: '6px',
-                            border: '1px solid white',
-                            whiteSpace: 'nowrap',
-                          }}
-                        >
-                          {formatCountdown(pin.arrivalTime)}
-                        </div>
-                      )}
-                      <div style={{
-                        position: 'absolute',
-                        top: '50%',
-                        left: '50%',
-                        transform: 'translate(-50%, -50%)',
-                        fontSize: '12px',
-                      }}>📍</div>
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ ...textStyle, fontSize: '10px' }}>
-                        {pin.arrivalTime ? formatDateTime(pin.arrivalTime) : 'Scheduled'}
-                      </div>
-                      <div style={subtextStyle}>
-                        {pin.arrivalTime && new Date(pin.arrivalTime) > new Date() 
-                          ? 'Upcoming' 
-                          : 'Arrived'
-                        }
-                      </div>
-                    </div>
-                    {/* Delete button */}
-                    <button
-                      style={{
-                        ...deleteButtonStyle,
-                        background: confirmDelete === pin.id ? '#ef4444' : '#f3f4f6',
-                        color: confirmDelete === pin.id ? 'white' : '#6b7280',
-                      }}
-                      onClick={(e) => handleDeletePin(pin.id, e)}
-                      title={confirmDelete === pin.id ? 'Click again to confirm' : 'Delete pin'}
-                    >
-                      {deletingPinId === pin.id ? (
-                        <div style={{ width: 12, height: 12, border: '2px solid', borderRadius: '50%', borderTopColor: 'transparent', animation: 'spin 1s linear infinite' }} />
-                      ) : confirmDelete === pin.id ? (
-                        <X size={12} />
-                      ) : (
-                        <Trash2 size={12} />
-                      )}
-                    </button>
-                  </div>
-                ))
-              ) : (
-                <div style={emptyStyle}>
-                  No upcoming pins
-                </div>
-              )}
+        {/* Arrival Color Legend - only show in normal/expanded */}
+        {config.showStats && (
+          <div style={dividerStyle}>
+            <div style={sectionTitleStyle}>
+              <span>🎨</span> ARRIVAL COLORS
             </div>
-
-            {/* Countdown Color Guide */}
-            <div style={dividerStyle}>
-              <div style={sectionTitleStyle}>⏰ ARRIVAL COLORS</div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-                <div style={{ ...badgeStyle, background: '#3b82f6', fontSize: '8px' }}>4h+</div>
-                <div style={{ ...badgeStyle, background: '#eab308', fontSize: '8px' }}>2-4h</div>
-                <div style={{ ...badgeStyle, background: '#f97316', fontSize: '8px' }}>&lt;2h</div>
-                <div style={{ ...badgeStyle, background: '#ef4444', fontSize: '6px' }}>Now</div>
-              </div>
+            <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', justifyContent: 'center' }}>
+              {[
+                { color: '#3b82f6', label: '4h+' },
+                { color: '#eab308', label: '2-4h' },
+                { color: '#f97316', label: '<2h' },
+                { color: '#ef4444', label: 'Now' },
+              ].map(({ color, label }) => (
+                <span
+                  key={label}
+                  style={{
+                    ...badgeStyle,
+                    background: color,
+                    fontSize: '7px',
+                    padding: '2px 6px',
+                  }}
+                >
+                  {label}
+                </span>
+              ))}
             </div>
-          </>
+          </div>
         )}
 
-        {/* Global Mingler Stats */}
-        <div style={{
-          ...dividerStyle,
-          background: 'linear-gradient(135deg, #fdf2f8, #f3e8ff)',
-          margin: '6px -8px -10px -8px',
-          padding: '6px 6px 8px 6px',
-          borderRadius: '0 0 12px 12px',
-          borderTop: '1px solid #e5e7eb',
+        {/* Global Stats - only show in normal/expanded */}
+        {config.showStats && (
+          <div style={dividerStyle}>
+            <div style={sectionTitleStyle}>
+              <span>🌍</span> WORLDWIDE
+            </div>
+            <div style={{ 
+              display: 'flex', 
+              gap: '8px', 
+              justifyContent: 'center',
+              marginTop: '4px',
+            }}>
+              <div style={{ 
+                textAlign: 'center',
+                padding: '6px 12px',
+                background: 'rgba(59, 130, 246, 0.1)',
+                borderRadius: '8px',
+                border: '1px solid rgba(59, 130, 246, 0.2)',
+              }}>
+                <div style={{ fontSize: '14px', fontWeight: 700, color: '#3b82f6' }}>
+                  {globalStats.liveNow}
+                </div>
+                <div style={{ fontSize: '7px', color: '#6b7280' }}>Live</div>
+              </div>
+              <div style={{ 
+                textAlign: 'center',
+                padding: '6px 12px',
+                background: 'rgba(168, 85, 247, 0.1)',
+                borderRadius: '8px',
+                border: '1px solid rgba(168, 85, 247, 0.2)',
+              }}>
+                <div style={{ fontSize: '14px', fontWeight: 700, color: '#a855f7' }}>
+                  {globalStats.activeThisMonth}
+                </div>
+                <div style={{ fontSize: '7px', color: '#6b7280' }}>Month</div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Position indicator */}
+        <div style={{ 
+          marginTop: '8px', 
+          textAlign: 'center', 
+          fontSize: '7px', 
+          color: '#d1d5db',
         }}>
-          <div style={{ 
-            fontSize: '7px', 
-            fontWeight: 700, 
-            color: '#7c3aed',
-            marginBottom: '4px',
-            textTransform: 'uppercase',
-            letterSpacing: '0.2px',
-            textAlign: 'center',
-          }}>
-            🌍 WORLDWIDE
-          </div>
-          <div style={{ display: 'flex', gap: '4px' }}>
-            <div style={{
-              flex: 1,
-              background: 'white',
-              borderRadius: '6px',
-              padding: '4px',
-              textAlign: 'center',
-              boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
-            }}>
-              <div style={{
-                fontSize: '12px',
-                fontWeight: 700,
-                background: 'linear-gradient(135deg, #22c55e, #16a34a)',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-              }}>
-                {globalStats.liveNow}
-              </div>
-              <div style={{ fontSize: '6px', color: '#6b7280', fontWeight: 500 }}>
-                Live
-              </div>
-            </div>
-            <div style={{
-              flex: 1,
-              background: 'white',
-              borderRadius: '6px',
-              padding: '4px',
-              textAlign: 'center',
-              boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
-            }}>
-              <div style={{
-                fontSize: '12px',
-                fontWeight: 700,
-                background: 'linear-gradient(135deg, #ec4899, #a855f7)',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-              }}>
-                {globalStats.activeThisMonth}
-              </div>
-              <div style={{ fontSize: '6px', color: '#6b7280', fontWeight: 500 }}>
-                Month
-              </div>
-            </div>
-          </div>
+          Drag to move • Click resize
         </div>
       </div>
-      
-      {/* CSS for spinner animation */}
-      <style>{`
-        @keyframes spin {
-          to { transform: translateY(-50%) rotate(360deg); }
-        }
-      `}</style>
     </div>
   );
 }
-
-export default PinLegend;
