@@ -18,6 +18,19 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Run Prisma DB Push
+        run: |
+          cd apps/backend
+          npm install prisma --save-dev
+          npx prisma db push --accept-data-loss --skip-generate
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
       - name: Google Auth
         uses: google-github-actions/auth@v2
         with:
