@@ -1,8 +1,13 @@
-// Emergency Safety Routes v2.0
+// Emergency Safety Routes v3.0 - Using raw SQL
 import { Hono } from 'hono';
 import { prisma, broadcastToUser } from '../index';
 
 export const safetyRoutes = new Hono();
+
+// Helper to execute raw SQL
+const rawQuery = async (query: string, params: any[] = []) => {
+  return await prisma.$queryRawUnsafe(query, ...params);
+};
 
 // ============================================================================
 // EMERGENCY CONTACTS
@@ -14,20 +19,14 @@ safetyRoutes.get('/emergency-contacts', async (c) => {
     const userId = c.req.header('x-user-id');
     if (!userId) return c.json({ error: 'Unauthorized' }, 401);
 
-    const contacts = await prisma.emergencyContact.findMany({
-      where: { userId },
-      orderBy: { priority: 'asc' },
-      include: {
-        linkedUser: {
-          select: {
-            id: true,
-            name: true,
-            displayName: true,
-            image: true,
-          }
-        }
-      }
-    });
+    const contacts = await rawQuery(`
+      SELECT ec.*, u.id as "linkedUserId", u.name as "linkedUserName", 
+             u."displayName" as "linkedUserDisplayName", u.image as "linkedUserImage"
+      FROM "EmergencyContact" ec
+      LEFT JOIN "User" u ON ec."linkedUserId" = u.id
+      WHERE ec."userId" = $1
+      ORDER BY ec.priority ASC
+    `, [userId]) as any[];
 
     return c.json({ 
       contacts: contacts.map(contact => ({
@@ -41,10 +40,10 @@ safetyRoutes.get('/emergency-contacts', async (c) => {
         notifyViaSms: contact.notifyViaSms,
         notifyViaApp: contact.notifyViaApp,
         notifyViaEmail: contact.notifyViaEmail,
-        linkedUser: contact.linkedUser ? {
-          id: contact.linkedUser.id,
-          name: contact.linkedUser.displayName || contact.linkedUser.name,
-          image: contact.linkedUser.image,
+        linkedUser: contact.linkedUserId ? {
+          id: contact.linkedUserId,
+          name: contact.linkedUserDisplayName || contact.linkedUserName,
+          image: contact.linkedUserImage,
         } : null,
       }))
     });
@@ -71,53 +70,36 @@ safetyRoutes.post('/emergency-contacts', async (c) => {
     }
 
     // Get current max priority
-    const maxPriority = await prisma.emergencyContact.aggregate({
-      where: { userId },
-      _max: { priority: true }
-    });
+    const maxResult = await rawQuery(`
+      SELECT COALESCE(MAX(priority), 0) as max FROM "EmergencyContact" WHERE "userId" = $1
+    `, [userId]) as any[];
+    const priority = (maxResult[0]?.max || 0) + 1;
 
-    const priority = (maxPriority._max.priority || 0) + 1;
-
-    // Check if linked user exists (by email or phone)
-    let linkedUserId: string | undefined;
+    // Check if linked user exists (by email)
+    let linkedUserId: string | null = null;
     if (email) {
-      const linkedUser = await prisma.user.findUnique({
-        where: { email },
-        select: { id: true }
-      });
-      if (linkedUser) linkedUserId = linkedUser.id;
+      const linkedUser = await rawQuery(`
+        SELECT id FROM "User" WHERE email = $1 LIMIT 1
+      `, [email.trim()]) as any[];
+      if (linkedUser.length > 0) linkedUserId = linkedUser[0].id;
     }
 
-    const contact = await prisma.emergencyContact.create({
-      data: {
-        userId,
-        name: name.trim(),
-        phone: phone?.trim() || null,
-        email: email?.trim().toLowerCase() || null,
-        relationship: relationship?.trim() || null,
-        priority,
-        notifyViaCall: notifyViaCall ?? true,
-        notifyViaSms: notifyViaSms ?? true,
-        notifyViaApp: notifyViaApp ?? false,
-        notifyViaEmail: notifyViaEmail ?? true,
-        linkedUserId,
-      },
-    });
+    const id = `ec_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    await rawQuery(`
+      INSERT INTO "EmergencyContact" 
+      (id, "userId", name, phone, email, relationship, "notifyViaCall", "notifyViaSms", "notifyViaApp", "notifyViaEmail", "linkedUserId", priority, "createdAt", "updatedAt")
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW(), NOW())
+    `, [id, userId, name.trim(), phone?.trim() || null, email?.trim() || null, relationship || null, 
+        notifyViaCall !== false, notifyViaSms !== false, notifyViaApp === true, notifyViaEmail !== false,
+        linkedUserId, priority]);
 
     return c.json({ 
       success: true, 
-      contact: {
-        id: contact.id,
-        name: contact.name,
-        phone: contact.phone,
-        email: contact.email,
-        relationship: contact.relationship,
-        priority: contact.priority,
-      }
+      contact: { id, name: name.trim(), priority }
     });
   } catch (error) {
-    console.error('Error adding emergency contact:', error);
-    return c.json({ error: 'Failed to add contact' }, 500);
+    console.error('Error creating emergency contact:', error);
+    return c.json({ error: 'Failed to save contact' }, 500);
   }
 });
 
@@ -128,33 +110,26 @@ safetyRoutes.put('/emergency-contacts/:id', async (c) => {
     if (!userId) return c.json({ error: 'Unauthorized' }, 401);
 
     const contactId = c.req.param('id');
-    const updates = await c.req.json();
+    const { name, phone, email, relationship, notifyViaCall, notifyViaSms, notifyViaApp, notifyViaEmail } = await c.req.json();
 
     // Verify ownership
-    const existing = await prisma.emergencyContact.findFirst({
-      where: { id: contactId, userId }
-    });
-
-    if (!existing) {
+    const existing = await rawQuery(`
+      SELECT id FROM "EmergencyContact" WHERE id = $1 AND "userId" = $2
+    `, [contactId, userId]) as any[];
+    if (existing.length === 0) {
       return c.json({ error: 'Contact not found' }, 404);
     }
 
-    const contact = await prisma.emergencyContact.update({
-      where: { id: contactId },
-      data: {
-        ...(updates.name && { name: updates.name.trim() }),
-        ...(updates.phone !== undefined && { phone: updates.phone?.trim() || null }),
-        ...(updates.email !== undefined && { email: updates.email?.trim().toLowerCase() || null }),
-        ...(updates.relationship !== undefined && { relationship: updates.relationship?.trim() || null }),
-        ...(updates.priority !== undefined && { priority: updates.priority }),
-        ...(updates.notifyViaCall !== undefined && { notifyViaCall: updates.notifyViaCall }),
-        ...(updates.notifyViaSms !== undefined && { notifyViaSms: updates.notifyViaSms }),
-        ...(updates.notifyViaApp !== undefined && { notifyViaApp: updates.notifyViaApp }),
-        ...(updates.notifyViaEmail !== undefined && { notifyViaEmail: updates.notifyViaEmail }),
-      },
-    });
+    await rawQuery(`
+      UPDATE "EmergencyContact" 
+      SET name = $1, phone = $2, email = $3, relationship = $4, 
+          "notifyViaCall" = $5, "notifyViaSms" = $6, "notifyViaApp" = $7, "notifyViaEmail" = $8, "updatedAt" = NOW()
+      WHERE id = $9 AND "userId" = $10
+    `, [name?.trim(), phone?.trim() || null, email?.trim() || null, relationship || null,
+        notifyViaCall !== false, notifyViaSms !== false, notifyViaApp === true, notifyViaEmail !== false,
+        contactId, userId]);
 
-    return c.json({ success: true, contact });
+    return c.json({ success: true });
   } catch (error) {
     console.error('Error updating emergency contact:', error);
     return c.json({ error: 'Failed to update contact' }, 500);
@@ -170,27 +145,24 @@ safetyRoutes.delete('/emergency-contacts/:id', async (c) => {
     const contactId = c.req.param('id');
 
     // Verify ownership
-    const existing = await prisma.emergencyContact.findFirst({
-      where: { id: contactId, userId }
-    });
-
-    if (!existing) {
+    const existing = await rawQuery(`
+      SELECT id FROM "EmergencyContact" WHERE id = $1 AND "userId" = $2
+    `, [contactId, userId]) as any[];
+    if (existing.length === 0) {
       return c.json({ error: 'Contact not found' }, 404);
     }
 
-    await prisma.emergencyContact.delete({ where: { id: contactId } });
+    await rawQuery(`DELETE FROM "EmergencyContact" WHERE id = $1`, [contactId]);
 
     // Reorder remaining contacts
-    const remaining = await prisma.emergencyContact.findMany({
-      where: { userId },
-      orderBy: { priority: 'asc' }
-    });
-
+    const remaining = await rawQuery(`
+      SELECT id FROM "EmergencyContact" WHERE "userId" = $1 ORDER BY priority
+    `, [userId]) as any[];
+    
     for (let i = 0; i < remaining.length; i++) {
-      await prisma.emergencyContact.update({
-        where: { id: remaining[i].id },
-        data: { priority: i + 1 }
-      });
+      await rawQuery(`
+        UPDATE "EmergencyContact" SET priority = $1 WHERE id = $2
+      `, [i + 1, remaining[i].id]);
     }
 
     return c.json({ success: true });
@@ -207,17 +179,14 @@ safetyRoutes.post('/emergency-contacts/reorder', async (c) => {
     if (!userId) return c.json({ error: 'Unauthorized' }, 401);
 
     const { contactIds } = await c.req.json();
-
     if (!Array.isArray(contactIds)) {
-      return c.json({ error: 'contactIds array required' }, 400);
+      return c.json({ error: 'Invalid contact IDs' }, 400);
     }
 
-    // Update priorities
     for (let i = 0; i < contactIds.length; i++) {
-      await prisma.emergencyContact.updateMany({
-        where: { id: contactIds[i], userId },
-        data: { priority: i + 1 }
-      });
+      await rawQuery(`
+        UPDATE "EmergencyContact" SET priority = $1 WHERE id = $2 AND "userId" = $3
+      `, [i + 1, contactIds[i], userId]);
     }
 
     return c.json({ success: true });
@@ -227,49 +196,42 @@ safetyRoutes.post('/emergency-contacts/reorder', async (c) => {
   }
 });
 
-// ============================================================================
-// EMERGENCY ALERTS
-// ============================================================================
-
-// GET /api/safety/emergency-setup - Check if user has emergency setup complete
+// GET /api/safety/emergency-setup - Get setup status
 safetyRoutes.get('/emergency-setup', async (c) => {
   try {
     const userId = c.req.header('x-user-id');
     if (!userId) return c.json({ error: 'Unauthorized' }, 401);
 
-    const [contacts, profile, circles] = await Promise.all([
-      prisma.emergencyContact.count({ where: { userId } }),
-      prisma.profile.findUnique({
-        where: { userId },
-        select: {
-          phoneNumber: true,
-          phoneVerified: true,
-        }
-      }),
-      prisma.circleMember.count({ where: { userId } })
+    const [contactCount, profile, circleCount] = await Promise.all([
+      rawQuery(`SELECT COUNT(*) as count FROM "EmergencyContact" WHERE "userId" = $1`, [userId]).then((r: any) => Number(r[0]?.count || 0)),
+      rawQuery(`SELECT phone, "phoneVerified" FROM "Profile" WHERE "userId" = $1`, [userId]).then((r: any) => r[0]),
+      rawQuery(`SELECT COUNT(*) as count FROM "CircleMember" WHERE "userId" = $1`, [userId]).then((r: any) => Number(r[0]?.count || 0))
     ]);
 
-    const hasContacts = contacts > 0;
-    const hasPhone = !!profile?.phoneNumber;
+    const hasContacts = contactCount > 0;
+    const hasPhone = !!profile?.phone;
     const phoneVerified = !!profile?.phoneVerified;
-    const hasCircle = circles > 0;
+    const hasCircle = circleCount > 0;
 
-    const setupComplete = hasContacts && hasPhone;
-    const setupPercentage = [hasContacts, hasPhone, hasCircle].filter(Boolean).length / 3 * 100;
+    const setupPercentage = Math.round(
+      (hasContacts ? 50 : 0) + 
+      (hasPhone ? 30 : 0) + 
+      (hasCircle ? 20 : 0)
+    );
 
     return c.json({
-      setupComplete,
-      setupPercentage: Math.round(setupPercentage),
       hasContacts,
-      contactCount: contacts,
+      contactCount,
       hasPhone,
       phoneVerified,
       hasCircle,
-      circleCount: circles,
+      circleCount,
+      setupComplete: hasContacts && hasPhone,
+      setupPercentage,
     });
   } catch (error) {
-    console.error('Error checking emergency setup:', error);
-    return c.json({ error: 'Failed to check setup' }, 500);
+    console.error('Error getting emergency setup:', error);
+    return c.json({ error: 'Failed to get setup status' }, 500);
   }
 });
 
@@ -279,213 +241,151 @@ safetyRoutes.post('/emergency-alert', async (c) => {
     const userId = c.req.header('x-user-id');
     if (!userId) return c.json({ error: 'Unauthorized' }, 401);
 
-    const { latitude, longitude, message, alertType = 'manual', batteryLevel } = await c.req.json();
+    const { latitude, longitude, message, alertType, batteryLevel } = await c.req.json();
 
     // Get user info
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: {
-        name: true,
-        displayName: true,
-        phone: true,
-        profile: {
-          select: { phoneNumber: true }
-        }
-      }
-    });
+    const users = await rawQuery(`SELECT name, "displayName" FROM "User" WHERE id = $1`, [userId]) as any[];
+    const user = users[0];
+    if (!user) return c.json({ error: 'User not found' }, 404);
 
-    const userName = user?.displayName || user?.name || 'A MapMingle user';
+    const userName = user.displayName || user.name || 'MapMingle User';
 
-    // Create alert record
-    const alert = await prisma.emergencyAlert.create({
-      data: {
-        userId,
-        latitude: latitude || 0,
-        longitude: longitude || 0,
-        message,
-        alertType,
-        batteryLevel,
-        status: 'active',
-        notificationsSent: [],
-      },
-    });
+    // Create alert
+    const alertId = `alert_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    await rawQuery(`
+      INSERT INTO "EmergencyAlert" 
+      (id, "userId", latitude, longitude, message, "alertType", "batteryLevel", status, "createdAt")
+      VALUES ($1, $2, $3, $4, $5, $6, $7, 'active', NOW())
+    `, [alertId, userId, latitude || 0, longitude || 0, message || null, alertType || 'manual', batteryLevel || null]);
 
     // Get emergency contacts
-    const contacts = await prisma.emergencyContact.findMany({
-      where: { userId },
-      orderBy: { priority: 'asc' },
-      include: {
-        linkedUser: { select: { id: true } }
-      }
-    });
-
-    // Get circle members
-    const circleMemberships = await prisma.circleMember.findMany({
-      where: { userId },
-      include: {
-        circle: {
-          include: {
-            members: {
-              where: { userId: { not: userId } },
-              include: {
-                user: { select: { id: true, name: true, displayName: true } }
-              }
-            }
-          }
-        }
-      }
-    });
+    const contacts = await rawQuery(`
+      SELECT * FROM "EmergencyContact" WHERE "userId" = $1 ORDER BY priority
+    `, [userId]) as any[];
 
     const notificationsSent: any[] = [];
+    const mapsUrl = latitude && longitude ? `https://www.google.com/maps?q=${latitude},${longitude}` : '';
 
-    // Notify emergency contacts
+    // Notify each contact
     for (const contact of contacts) {
       // In-app notification for linked users
       if (contact.notifyViaApp && contact.linkedUserId) {
-        broadcastToUser(contact.linkedUserId, {
-          type: 'emergency_alert',
-          alertId: alert.id,
-          userName,
-          latitude,
-          longitude,
-          message,
-          batteryLevel,
-          timestamp: new Date().toISOString(),
-        });
-        notificationsSent.push({
-          contactId: contact.id,
-          method: 'app',
-          sentAt: new Date().toISOString(),
-          status: 'sent'
-        });
-      }
-
-      // TODO: Implement Twilio SMS
-      if (contact.notifyViaSms && contact.phone) {
-        console.log(`[EMERGENCY] Would send SMS to ${contact.phone}: "${userName} has triggered an emergency alert!"`);
-        notificationsSent.push({
-          contactId: contact.id,
-          method: 'sms',
-          sentAt: new Date().toISOString(),
-          status: 'pending' // Would be 'sent' with actual Twilio integration
-        });
-      }
-
-      // TODO: Implement Twilio voice call
-      if (contact.notifyViaCall && contact.phone) {
-        console.log(`[EMERGENCY] Would call ${contact.phone}`);
-        notificationsSent.push({
-          contactId: contact.id,
-          method: 'call',
-          sentAt: new Date().toISOString(),
-          status: 'pending'
-        });
-      }
-
-      // TODO: Implement email
-      if (contact.notifyViaEmail && contact.email) {
-        console.log(`[EMERGENCY] Would email ${contact.email}`);
-        notificationsSent.push({
-          contactId: contact.id,
-          method: 'email',
-          sentAt: new Date().toISOString(),
-          status: 'pending'
-        });
-      }
-    }
-
-    // Notify circle members via in-app
-    const circleMembers = new Set<string>();
-    for (const membership of circleMemberships) {
-      for (const member of membership.circle.members) {
-        if (!circleMembers.has(member.user.id)) {
-          circleMembers.add(member.user.id);
-          broadcastToUser(member.user.id, {
+        try {
+          broadcastToUser(contact.linkedUserId, {
             type: 'emergency_alert',
-            alertId: alert.id,
-            userName,
+            alertId,
+            fromUserId: userId,
+            fromUserName: userName,
             latitude,
             longitude,
             message,
-            batteryLevel,
-            circleName: membership.circle.name,
             timestamp: new Date().toISOString(),
           });
-          notificationsSent.push({
-            userId: member.user.id,
-            method: 'app',
-            sentAt: new Date().toISOString(),
-            status: 'sent'
-          });
+          notificationsSent.push({ contactId: contact.id, method: 'app', sentAt: new Date(), status: 'sent' });
+        } catch (e) {
+          console.error('Failed to send in-app notification:', e);
         }
+      }
+
+      // SMS notification (TODO: Twilio integration)
+      if (contact.notifyViaSms && contact.phone) {
+        console.log(`[SMS] Would send to ${contact.phone}: EMERGENCY from ${userName}. ${mapsUrl}`);
+        notificationsSent.push({ contactId: contact.id, method: 'sms', sentAt: new Date(), status: 'pending_integration' });
+      }
+
+      // Voice call (TODO: Twilio integration)
+      if (contact.notifyViaCall && contact.phone) {
+        console.log(`[CALL] Would call ${contact.phone} for emergency alert`);
+        notificationsSent.push({ contactId: contact.id, method: 'call', sentAt: new Date(), status: 'pending_integration' });
+      }
+
+      // Email notification (TODO: email integration)
+      if (contact.notifyViaEmail && contact.email) {
+        console.log(`[EMAIL] Would email ${contact.email}: EMERGENCY from ${userName}. ${mapsUrl}`);
+        notificationsSent.push({ contactId: contact.id, method: 'email', sentAt: new Date(), status: 'pending_integration' });
       }
     }
 
-    // Update alert with notifications sent
-    await prisma.emergencyAlert.update({
-      where: { id: alert.id },
-      data: { notificationsSent }
-    });
+    // Notify circle members
+    const circleMembers = await rawQuery(`
+      SELECT DISTINCT cm."userId" 
+      FROM "CircleMember" cm
+      INNER JOIN "Circle" c ON cm."circleId" = c.id
+      WHERE c."ownerId" = $1 AND cm."userId" != $1
+    `, [userId]) as any[];
+
+    for (const member of circleMembers) {
+      try {
+        broadcastToUser(member.userId, {
+          type: 'emergency_alert',
+          alertId,
+          fromUserId: userId,
+          fromUserName: userName,
+          latitude,
+          longitude,
+          message,
+          timestamp: new Date().toISOString(),
+        });
+      } catch (e) {
+        console.error('Failed to notify circle member:', e);
+      }
+    }
 
     return c.json({
       success: true,
-      alertId: alert.id,
+      alertId,
       notificationsSent: notificationsSent.length,
       contactsNotified: contacts.length,
-      circleMembersNotified: circleMembers.size,
+      circleMembersNotified: circleMembers.length,
     });
   } catch (error) {
-    console.error('Error triggering emergency alert:', error);
-    return c.json({ error: 'Failed to send alert' }, 500);
+    console.error('Error creating emergency alert:', error);
+    return c.json({ error: 'Failed to create alert' }, 500);
   }
 });
 
-// POST /api/safety/emergency-alert/:id/resolve - Resolve emergency alert
+// POST /api/safety/emergency-alert/:id/resolve - Resolve an alert
 safetyRoutes.post('/emergency-alert/:id/resolve', async (c) => {
   try {
     const userId = c.req.header('x-user-id');
     if (!userId) return c.json({ error: 'Unauthorized' }, 401);
 
     const alertId = c.req.param('id');
-    const { status = 'resolved' } = await c.req.json();
+    const { status } = await c.req.json();
 
-    // Verify ownership or circle membership
-    const alert = await prisma.emergencyAlert.findUnique({
-      where: { id: alertId },
-      select: { userId: true }
-    });
-
-    if (!alert) {
+    // Verify ownership
+    const alerts = await rawQuery(`
+      SELECT * FROM "EmergencyAlert" WHERE id = $1 AND "userId" = $2
+    `, [alertId, userId]) as any[];
+    
+    if (alerts.length === 0) {
       return c.json({ error: 'Alert not found' }, 404);
     }
 
-    // Only alert owner can resolve
-    if (alert.userId !== userId) {
-      return c.json({ error: 'Only alert owner can resolve' }, 403);
-    }
+    await rawQuery(`
+      UPDATE "EmergencyAlert" 
+      SET status = $1, "resolvedAt" = NOW(), "resolvedBy" = $2
+      WHERE id = $3
+    `, [status || 'resolved', userId, alertId]);
 
-    await prisma.emergencyAlert.update({
-      where: { id: alertId },
-      data: {
-        status,
-        resolvedAt: new Date(),
-        resolvedBy: userId
-      }
-    });
-
-    // Notify all that alert is resolved
-    const contacts = await prisma.emergencyContact.findMany({
-      where: { userId: alert.userId },
-      select: { linkedUserId: true }
-    });
+    // Notify contacts that alert was resolved
+    const contacts = await rawQuery(`
+      SELECT * FROM "EmergencyContact" WHERE "userId" = $1
+    `, [userId]) as any[];
 
     for (const contact of contacts) {
-      if (contact.linkedUserId) {
-        broadcastToUser(contact.linkedUserId, {
-          type: 'emergency_resolved',
-          alertId,
-          status,
-        });
+      if (contact.notifyViaApp && contact.linkedUserId) {
+        try {
+          broadcastToUser(contact.linkedUserId, {
+            type: 'emergency_resolved',
+            alertId,
+            fromUserId: userId,
+            status: status || 'resolved',
+            timestamp: new Date().toISOString(),
+          });
+        } catch (e) {
+          console.error('Failed to notify resolution:', e);
+        }
       }
     }
 
@@ -502,11 +402,12 @@ safetyRoutes.get('/emergency-alerts', async (c) => {
     const userId = c.req.header('x-user-id');
     if (!userId) return c.json({ error: 'Unauthorized' }, 401);
 
-    const alerts = await prisma.emergencyAlert.findMany({
-      where: { userId },
-      orderBy: { createdAt: 'desc' },
-      take: 20,
-    });
+    const alerts = await rawQuery(`
+      SELECT * FROM "EmergencyAlert" 
+      WHERE "userId" = $1 
+      ORDER BY "createdAt" DESC 
+      LIMIT 20
+    `, [userId]) as any[];
 
     return c.json({ alerts });
   } catch (error) {
@@ -516,25 +417,28 @@ safetyRoutes.get('/emergency-alerts', async (c) => {
 });
 
 // ============================================================================
-// BLOCKING & REPORTING (existing functionality)
+// BLOCKING / REPORTING (keep using Prisma since these models work)
 // ============================================================================
 
 safetyRoutes.post('/block/:userId', async (c) => {
   try {
-    const currentUserId = c.req.header('x-user-id');
-    if (!currentUserId) return c.json({ error: 'Unauthorized' }, 401);
+    const blockerId = c.req.header('x-user-id');
+    if (!blockerId) return c.json({ error: 'Unauthorized' }, 401);
 
-    const targetUserId = c.req.param('userId');
+    const blockedId = c.req.param('userId');
+    if (blockerId === blockedId) {
+      return c.json({ error: 'Cannot block yourself' }, 400);
+    }
 
     await prisma.block.create({
-      data: {
-        blockerId: currentUserId,
-        blockedId: targetUserId,
-      },
+      data: { blockerId, blockedId }
     });
 
     return c.json({ success: true });
-  } catch (error) {
+  } catch (error: any) {
+    if (error.code === 'P2002') {
+      return c.json({ success: true, message: 'Already blocked' });
+    }
     console.error('Error blocking user:', error);
     return c.json({ error: 'Failed to block user' }, 500);
   }
@@ -542,16 +446,13 @@ safetyRoutes.post('/block/:userId', async (c) => {
 
 safetyRoutes.delete('/block/:userId', async (c) => {
   try {
-    const currentUserId = c.req.header('x-user-id');
-    if (!currentUserId) return c.json({ error: 'Unauthorized' }, 401);
+    const blockerId = c.req.header('x-user-id');
+    if (!blockerId) return c.json({ error: 'Unauthorized' }, 401);
 
-    const targetUserId = c.req.param('userId');
+    const blockedId = c.req.param('userId');
 
     await prisma.block.deleteMany({
-      where: {
-        blockerId: currentUserId,
-        blockedId: targetUserId,
-      },
+      where: { blockerId, blockedId }
     });
 
     return c.json({ success: true });
@@ -561,7 +462,7 @@ safetyRoutes.delete('/block/:userId', async (c) => {
   }
 });
 
-safetyRoutes.get('/blocked', async (c) => {
+safetyRoutes.get('/blocks', async (c) => {
   try {
     const userId = c.req.header('x-user-id');
     if (!userId) return c.json({ error: 'Unauthorized' }, 401);
@@ -575,45 +476,52 @@ safetyRoutes.get('/blocked', async (c) => {
             name: true,
             displayName: true,
             image: true,
-          },
-        },
-      },
+          }
+        }
+      }
     });
 
-    return c.json({
-      blockedUsers: blocks.map((b) => ({
-        id: b.blocked.id,
+    return c.json({ 
+      blocks: blocks.map(b => ({
+        id: b.blockedId,
         name: b.blocked.displayName || b.blocked.name,
         image: b.blocked.image,
         blockedAt: b.createdAt,
-      })),
+      }))
     });
   } catch (error) {
-    console.error('Error fetching blocked users:', error);
-    return c.json({ error: 'Failed to fetch blocked users' }, 500);
+    console.error('Error fetching blocks:', error);
+    return c.json({ error: 'Failed to fetch blocks' }, 500);
   }
 });
 
-safetyRoutes.post('/report/:userId', async (c) => {
+safetyRoutes.post('/report', async (c) => {
   try {
-    const currentUserId = c.req.header('x-user-id');
-    if (!currentUserId) return c.json({ error: 'Unauthorized' }, 401);
+    const reporterId = c.req.header('x-user-id');
+    if (!reporterId) return c.json({ error: 'Unauthorized' }, 401);
 
-    const targetUserId = c.req.param('userId');
-    const { reason, details } = await c.req.json();
+    const { reportedUserId, reason, details, pinId, eventId, eventCommentId, messageId } = await c.req.json();
+
+    if (!reportedUserId || !reason) {
+      return c.json({ error: 'User ID and reason required' }, 400);
+    }
 
     await prisma.report.create({
       data: {
-        reporterId: currentUserId,
-        targetId: targetUserId,
-        reason: reason || 'other',
-        details: details || '',
-      },
+        reporterId,
+        reportedUserId,
+        reason,
+        details,
+        pinId,
+        eventId,
+        eventCommentId,
+        messageId,
+      }
     });
 
     return c.json({ success: true });
   } catch (error) {
-    console.error('Error reporting user:', error);
-    return c.json({ error: 'Failed to report user' }, 500);
+    console.error('Error creating report:', error);
+    return c.json({ error: 'Failed to create report' }, 500);
   }
 });
