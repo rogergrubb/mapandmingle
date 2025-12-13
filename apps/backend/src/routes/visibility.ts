@@ -40,11 +40,11 @@ visibility.get('/', async (c) => {
         await prisma.user.update({
           where: { id: userId },
           data: { 
-            visibilityLevel: 'discoverable',
+            visibilityLevel: 'visible',
             beaconExpiresAt: null,
           },
         });
-        visibilityLevel = 'discoverable';
+        visibilityLevel = 'visible';
       }
     }
 
@@ -73,7 +73,7 @@ visibility.put('/', async (c) => {
   const { level, beaconDuration } = body;
 
   // Validate level
-  const validLevels = ['ghost', 'circles', 'fuzzy', 'social', 'discoverable', 'beacon'];
+  const validLevels = ['ghost', 'circles', 'connections', 'visible', 'beacon'];
   if (level && !validLevels.includes(level)) {
     return c.json({ error: 'Invalid visibility level' }, 400);
   }
@@ -153,7 +153,7 @@ visibility.post('/quick-toggle', async (c) => {
   const body = await c.req.json();
   const { level } = body;
 
-  const validLevels = ['ghost', 'circles', 'fuzzy', 'social', 'discoverable', 'beacon'];
+  const validLevels = ['ghost', 'circles', 'connections', 'visible', 'beacon'];
   if (!validLevels.includes(level)) {
     return c.json({ error: 'Invalid visibility level' }, 400);
   }
@@ -307,7 +307,7 @@ visibility.get('/visible-users', async (c) => {
           // Visible to connections and their connections
           visible = isCircleMember || isConnected;
           break;
-        case 'discoverable':
+        case 'visible':
         case 'beacon':
           // Visible to everyone
           visible = true;
