@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { 
   Ghost, 
   Users, 
-  Eye, 
+  UserCheck,
   Globe, 
   Sparkles, 
   Shield,
@@ -10,10 +10,13 @@ import {
   Clock,
   ChevronDown,
   ChevronUp,
-  Info
+  Info,
+  Zap,
+  Heart,
+  Bell
 } from 'lucide-react';
 
-export type VisibilityLevel = 'ghost' | 'circles' | 'fuzzy' | 'social' | 'discoverable' | 'beacon';
+export type VisibilityLevel = 'ghost' | 'circles' | 'connections' | 'visible' | 'beacon';
 
 interface VisibilityConfig {
   level: VisibilityLevel;
@@ -39,98 +42,83 @@ const VISIBILITY_LEVELS: VisibilityConfig[] = [
     bgColor: 'bg-gray-100',
     borderColor: 'border-gray-300',
     glowColor: 'shadow-gray-200',
-    description: 'Completely invisible',
+    description: 'Complete invisibility',
     details: [
       'No one can see your location',
       'You can still browse the map',
       'Perfect for taking a break'
     ],
-    whoCanSee: 'No one'
+    whoCanSee: 'Nobody'
   },
   {
     level: 'circles',
-    label: 'Circles Only',
-    shortLabel: 'Circles',
-    icon: <Users className="w-5 h-5" />,
+    label: 'Inner Circle',
+    shortLabel: 'Circle',
+    icon: <Shield className="w-5 h-5" />,
     color: 'text-blue-600',
     bgColor: 'bg-blue-100',
     borderColor: 'border-blue-300',
     glowColor: 'shadow-blue-200',
-    description: 'Family & trusted friends',
+    description: 'Family & trusted friends only',
     details: [
-      'Your circles see your precise location',
-      'Perfect for family safety',
-      'Invisible to everyone else'
+      'Pre-approved trusted contacts only',
+      'Real-time location for safety',
+      'Perfect for family tracking',
+      'Location history available'
     ],
-    whoCanSee: 'Only your circles'
+    whoCanSee: 'Your trusted circles only'
   },
   {
-    level: 'fuzzy',
-    label: 'Fuzzy Social',
-    shortLabel: 'Fuzzy',
-    icon: <Eye className="w-5 h-5" />,
-    color: 'text-yellow-600',
-    bgColor: 'bg-yellow-100',
-    borderColor: 'border-yellow-300',
-    glowColor: 'shadow-yellow-200',
-    description: 'Approximate location to others',
-    details: [
-      'Circles see precise location',
-      'Others see your neighborhood only',
-      'Can appear in "nearby" searches'
-    ],
-    whoCanSee: 'Circles (precise) + Others (area only)'
-  },
-  {
-    level: 'social',
-    label: 'Social',
-    shortLabel: 'Social',
-    icon: <MapPin className="w-5 h-5" />,
+    level: 'connections',
+    label: 'Known Connections',
+    shortLabel: 'Friends',
+    icon: <UserCheck className="w-5 h-5" />,
     color: 'text-green-600',
     bgColor: 'bg-green-100',
     borderColor: 'border-green-300',
     glowColor: 'shadow-green-200',
-    description: 'Visible to connections',
+    description: 'People you\'ve connected with',
     details: [
-      'Friends & friends-of-friends can see you',
-      'Appear in "nearby" suggestions',
-      'Good for casual networking'
+      'Matched and messaged users can see you',
+      'Approved connections only',
+      'Social but controlled - no strangers'
     ],
-    whoCanSee: 'Your network + nearby searches'
+    whoCanSee: 'People you\'ve connected with'
   },
   {
-    level: 'discoverable',
-    label: 'Discoverable',
-    shortLabel: 'Open',
+    level: 'visible',
+    label: 'Full Visibility',
+    shortLabel: 'Visible',
     icon: <Globe className="w-5 h-5" />,
     color: 'text-purple-600',
     bgColor: 'bg-purple-100',
     borderColor: 'border-purple-300',
     glowColor: 'shadow-purple-200',
-    description: 'Visible on public map',
+    description: 'Visible to all users',
     details: [
-      'Anyone can see your pin',
-      'Maximum exposure for meeting people',
-      'Great for events & travel'
+      'All MapMingle users in your area',
+      'Standard discovery mode',
+      'Great for meeting new people'
     ],
-    whoCanSee: 'Everyone on MapMingle'
+    whoCanSee: 'All MapMingle users nearby'
   },
   {
     level: 'beacon',
     label: 'Beacon Mode',
     shortLabel: 'Beacon',
-    icon: <Sparkles className="w-5 h-5" />,
+    icon: <Zap className="w-5 h-5" />,
     color: 'text-pink-600',
-    bgColor: 'bg-gradient-to-r from-pink-100 to-purple-100',
-    borderColor: 'border-pink-300',
+    bgColor: 'bg-gradient-to-r from-pink-100 to-orange-100',
+    borderColor: 'border-pink-400',
     glowColor: 'shadow-pink-300',
-    description: 'Highlighted & broadcasting',
+    description: 'Highlighted & broadcasting NOW',
     details: [
-      'Featured prominently on map',
-      'Nearby users get notified',
-      'Time-limited (auto-expires)'
+      'Glowing/pulsing pin on map',
+      'Higher in search results',
+      'Shows "Open to Mingle NOW"',
+      'Auto-expires after 2 hours'
     ],
-    whoCanSee: 'Everyone + Push notifications nearby'
+    whoCanSee: 'Everyone + Promoted visibility'
   }
 ];
 
@@ -148,191 +136,148 @@ export default function VisibilitySlider({
   onChange, 
   compact = false,
   showDetails = true,
-  beaconDuration = 60,
-  onBeaconDurationChange
+  beaconDuration = 120,
+  onBeaconDurationChange 
 }: VisibilitySliderProps) {
-  const [expanded, setExpanded] = useState(!compact);
-  const [showAllDetails, setShowAllDetails] = useState(false);
-  
   const currentIndex = VISIBILITY_LEVELS.findIndex(l => l.level === value);
-  const currentConfig = VISIBILITY_LEVELS[currentIndex];
+  const currentConfig = VISIBILITY_LEVELS[currentIndex] || VISIBILITY_LEVELS[0];
+  const [showBeaconOptions, setShowBeaconOptions] = useState(false);
 
-  const handleSliderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const index = parseInt(e.target.value);
-    onChange(VISIBILITY_LEVELS[index].level);
+  const handleSliderChange = (index: number) => {
+    const newLevel = VISIBILITY_LEVELS[index].level;
+    onChange(newLevel);
   };
 
-  const handleLevelClick = (level: VisibilityLevel) => {
-    onChange(level);
-  };
-
-  // Beacon duration options
-  const beaconDurations = [30, 60, 120, 240];
+  if (compact) {
+    return (
+      <div className="flex items-center gap-2">
+        {VISIBILITY_LEVELS.map((level, index) => (
+          <button
+            key={level.level}
+            onClick={() => handleSliderChange(index)}
+            className={`
+              p-2 rounded-full transition-all duration-200
+              ${value === level.level 
+                ? `${level.bgColor} ${level.borderColor} border-2 scale-110 ${level.glowColor} shadow-lg` 
+                : 'bg-white/80 border border-gray-200 hover:scale-105'
+              }
+            `}
+            title={level.label}
+          >
+            <span className={value === level.level ? level.color : 'text-gray-400'}>
+              {level.icon}
+            </span>
+          </button>
+        ))}
+      </div>
+    );
+  }
 
   return (
-    <div className={`rounded-3xl overflow-hidden transition-all duration-300 ${
-      currentConfig.bgColor
-    } border-2 ${currentConfig.borderColor} ${
-      value === 'beacon' ? 'animate-pulse-subtle shadow-lg ' + currentConfig.glowColor : ''
-    }`}>
-      {/* Header - Always visible */}
-      <div 
-        className={`p-4 cursor-pointer ${compact ? 'pb-4' : ''}`}
-        onClick={() => compact && setExpanded(!expanded)}
-      >
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className={`p-2.5 rounded-2xl ${currentConfig.bgColor} ${currentConfig.color} border ${currentConfig.borderColor}`}>
-              {currentConfig.icon}
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className={`font-semibold ${currentConfig.color}`}>
-                  {currentConfig.label}
-                </h3>
-                {value === 'beacon' && (
-                  <span className="px-2 py-0.5 bg-pink-500 text-white text-xs rounded-full animate-pulse">
-                    LIVE
-                  </span>
-                )}
-              </div>
-              <p className="text-sm text-gray-600">{currentConfig.description}</p>
-            </div>
-          </div>
-          {compact && (
-            <button className="p-2 hover:bg-white/50 rounded-full transition-colors">
-              {expanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
-            </button>
-          )}
+    <div className="bg-white rounded-2xl shadow-xl p-4 space-y-4">
+      {/* Current Level Display */}
+      <div className={`flex items-center gap-3 p-3 rounded-xl ${currentConfig.bgColor} ${currentConfig.borderColor} border`}>
+        <span className={currentConfig.color}>{currentConfig.icon}</span>
+        <div>
+          <div className={`font-semibold ${currentConfig.color}`}>{currentConfig.label}</div>
+          <div className="text-sm text-gray-600">{currentConfig.description}</div>
         </div>
       </div>
 
-      {/* Expandable content */}
-      {(expanded || !compact) && (
-        <div className="px-4 pb-4 space-y-4">
-          {/* Visual Slider */}
-          <div className="relative pt-2">
-            {/* Track background with gradient */}
-            <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-3 rounded-full bg-gradient-to-r from-gray-200 via-yellow-200 via-green-200 via-purple-200 to-pink-300" />
-            
-            {/* Level markers */}
-            <div className="relative flex justify-between px-1">
-              {VISIBILITY_LEVELS.map((level, index) => (
-                <button
-                  key={level.level}
-                  onClick={() => handleLevelClick(level.level)}
-                  className={`relative z-10 w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200 ${
-                    index === currentIndex 
-                      ? `${level.bgColor} ${level.color} border-2 ${level.borderColor} scale-125 shadow-lg`
-                      : 'bg-white/80 text-gray-400 hover:scale-110 border border-gray-200'
-                  }`}
-                  title={level.label}
-                >
-                  {level.icon}
-                </button>
-              ))}
-            </div>
-
-            {/* Hidden range input for accessibility */}
-            <input
-              type="range"
-              min="0"
-              max={VISIBILITY_LEVELS.length - 1}
-              value={currentIndex}
-              onChange={handleSliderChange}
-              className="absolute inset-0 w-full opacity-0 cursor-pointer"
-            />
-          </div>
-
-          {/* Level labels */}
-          <div className="flex justify-between text-xs text-gray-500 px-1">
-            <span>Private</span>
-            <span>Social</span>
-            <span>Public</span>
-          </div>
-
-          {/* Who can see you */}
-          <div className={`flex items-center gap-2 p-3 rounded-2xl bg-white/60 border ${currentConfig.borderColor}`}>
-            <Shield className={`w-4 h-4 ${currentConfig.color}`} />
-            <span className="text-sm">
-              <strong>Who sees you:</strong> {currentConfig.whoCanSee}
-            </span>
-          </div>
-
-          {/* Beacon duration selector */}
-          {value === 'beacon' && onBeaconDurationChange && (
-            <div className="p-3 rounded-2xl bg-white/60 border border-pink-200">
-              <div className="flex items-center gap-2 mb-2">
-                <Clock className="w-4 h-4 text-pink-600" />
-                <span className="text-sm font-medium">Beacon duration</span>
-              </div>
-              <div className="flex gap-2">
-                {beaconDurations.map(duration => (
-                  <button
-                    key={duration}
-                    onClick={() => onBeaconDurationChange(duration)}
-                    className={`flex-1 py-2 px-3 rounded-xl text-sm font-medium transition-all ${
-                      beaconDuration === duration
-                        ? 'bg-pink-500 text-white'
-                        : 'bg-white text-gray-600 hover:bg-pink-50'
-                    }`}
-                  >
-                    {duration < 60 ? `${duration}m` : `${duration/60}h`}
-                  </button>
-                ))}
-              </div>
-              <p className="text-xs text-gray-500 mt-2">
-                Beacon automatically turns off after this time
-              </p>
-            </div>
-          )}
-
-          {/* Details toggle */}
-          {showDetails && (
+      {/* Slider Track */}
+      <div className="relative px-2">
+        <div className="flex justify-between items-center mb-2">
+          {VISIBILITY_LEVELS.map((level, index) => (
             <button
-              onClick={() => setShowAllDetails(!showAllDetails)}
-              className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700"
+              key={level.level}
+              onClick={() => handleSliderChange(index)}
+              className={`
+                flex flex-col items-center gap-1 p-2 rounded-xl transition-all duration-200
+                ${value === level.level 
+                  ? `${level.bgColor} ${level.color} scale-110 ${level.glowColor} shadow-lg` 
+                  : 'hover:bg-gray-100 text-gray-400 hover:text-gray-600'
+                }
+              `}
             >
-              <Info className="w-4 h-4" />
-              {showAllDetails ? 'Hide details' : 'What does each level do?'}
+              {level.icon}
+              <span className="text-xs font-medium">{level.shortLabel}</span>
             </button>
-          )}
+          ))}
+        </div>
+        
+        {/* Track line */}
+        <div className="relative h-2 bg-gray-200 rounded-full mx-4">
+          <div 
+            className={`absolute h-full rounded-full transition-all duration-300 ${
+              currentConfig.level === 'beacon' 
+                ? 'bg-gradient-to-r from-pink-400 to-orange-400' 
+                : currentConfig.level === 'visible'
+                ? 'bg-purple-400'
+                : currentConfig.level === 'connections'
+                ? 'bg-green-400'
+                : currentConfig.level === 'circles'
+                ? 'bg-blue-400'
+                : 'bg-gray-400'
+            }`}
+            style={{ 
+              width: `${(currentIndex / (VISIBILITY_LEVELS.length - 1)) * 100}%` 
+            }}
+          />
+        </div>
+      </div>
 
-          {/* All levels detail view */}
-          {showAllDetails && (
-            <div className="space-y-2 pt-2">
-              {VISIBILITY_LEVELS.map((level) => (
-                <div 
-                  key={level.level}
-                  onClick={() => handleLevelClick(level.level)}
-                  className={`p-3 rounded-2xl cursor-pointer transition-all ${
-                    level.level === value 
-                      ? `${level.bgColor} border-2 ${level.borderColor}`
-                      : 'bg-white/40 border border-gray-200 hover:bg-white/60'
-                  }`}
-                >
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className={level.color}>{level.icon}</span>
-                    <span className={`font-medium ${level.level === value ? level.color : 'text-gray-700'}`}>
-                      {level.label}
-                    </span>
-                  </div>
-                  <ul className="text-xs text-gray-600 space-y-0.5 ml-7">
-                    {level.details.map((detail, i) => (
-                      <li key={i}>• {detail}</li>
-                    ))}
-                  </ul>
-                </div>
-              ))}
-            </div>
-          )}
+      {/* Beacon Duration Options */}
+      {value === 'beacon' && (
+        <div className="mt-4 p-3 bg-gradient-to-r from-pink-50 to-orange-50 rounded-xl border border-pink-200">
+          <div className="flex items-center gap-2 mb-2">
+            <Clock className="w-4 h-4 text-pink-500" />
+            <span className="text-sm font-medium text-pink-700">Beacon Duration</span>
+          </div>
+          <div className="flex gap-2">
+            {[30, 60, 120].map((mins) => (
+              <button
+                key={mins}
+                onClick={() => onBeaconDurationChange?.(mins)}
+                className={`
+                  px-3 py-1 rounded-full text-sm font-medium transition-all
+                  ${beaconDuration === mins 
+                    ? 'bg-pink-500 text-white' 
+                    : 'bg-white text-pink-600 border border-pink-300 hover:bg-pink-50'
+                  }
+                `}
+              >
+                {mins >= 60 ? `${mins / 60}h` : `${mins}m`}
+              </button>
+            ))}
+          </div>
+          <p className="text-xs text-pink-600 mt-2">
+            ⚡ Your pin will glow and pulse to attract attention
+          </p>
+        </div>
+      )}
+
+      {/* Details */}
+      {showDetails && (
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 text-sm text-gray-500">
+            <Info className="w-4 h-4" />
+            <span>Who can see you: <strong className={currentConfig.color}>{currentConfig.whoCanSee}</strong></span>
+          </div>
+          <ul className="text-sm text-gray-600 space-y-1">
+            {currentConfig.details.map((detail, i) => (
+              <li key={i} className="flex items-start gap-2">
+                <span className={`mt-1 ${currentConfig.color}`}>•</span>
+                {detail}
+              </li>
+            ))}
+          </ul>
         </div>
       )}
     </div>
   );
 }
 
-// Compact version for map overlay
+// Quick Toggle Component for MapPage header
 export function VisibilityQuickToggle({ 
   value, 
   onChange 
@@ -340,14 +285,14 @@ export function VisibilityQuickToggle({
   value: VisibilityLevel; 
   onChange: (level: VisibilityLevel) => void;
 }) {
-  const currentConfig = VISIBILITY_LEVELS.find(l => l.level === value)!;
+  const currentConfig = VISIBILITY_LEVELS.find(l => l.level === value) || VISIBILITY_LEVELS[0];
   const [showMenu, setShowMenu] = useState(false);
 
   return (
     <div className="relative">
       <button
         onClick={() => setShowMenu(!showMenu)}
-        className={`flex items-center gap-2 px-3 py-2 rounded-full ${currentConfig.bgColor} ${currentConfig.color} border ${currentConfig.borderColor} shadow-lg transition-all hover:scale-105`}
+        className={`flex items-center gap-2 px-3 py-2 rounded-full ${currentConfig.bgColor} ${currentConfig.color} border ${currentConfig.borderColor} shadow-lg transition-all hover:scale-105 backdrop-blur-sm`}
       >
         {currentConfig.icon}
         <span className="text-sm font-medium">{currentConfig.shortLabel}</span>
@@ -360,7 +305,10 @@ export function VisibilityQuickToggle({
             className="fixed inset-0 z-40" 
             onClick={() => setShowMenu(false)} 
           />
-          <div className="absolute bottom-full mb-2 right-0 z-50 bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden min-w-[200px]">
+          <div className="absolute top-full mt-2 left-0 z-50 bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden min-w-[240px]">
+            <div className="px-4 py-2 bg-gray-50 border-b border-gray-200">
+              <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Visibility Level</span>
+            </div>
             {VISIBILITY_LEVELS.map((level) => (
               <button
                 key={level.level}
@@ -373,17 +321,28 @@ export function VisibilityQuickToggle({
                 }`}
               >
                 <span className={level.color}>{level.icon}</span>
-                <div className="text-left">
+                <div className="text-left flex-1">
                   <div className={`font-medium ${level.level === value ? level.color : 'text-gray-700'}`}>
                     {level.label}
                   </div>
                   <div className="text-xs text-gray-500">{level.description}</div>
                 </div>
+                {level.level === value && (
+                  <div className={`w-2 h-2 rounded-full ${level.color.replace('text-', 'bg-')}`} />
+                )}
               </button>
             ))}
+            <div className="px-4 py-2 bg-gray-50 border-t border-gray-200">
+              <p className="text-xs text-gray-500">
+                Safety first - control who sees your location
+              </p>
+            </div>
           </div>
         </>
       )}
     </div>
   );
 }
+
+// Export the levels for use elsewhere
+export { VISIBILITY_LEVELS };
