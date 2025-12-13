@@ -446,6 +446,25 @@ export default function SafetyDashboard() {
         </div>
       )}
 
+      {/* Emergency Setup Card */}
+      <div className="px-4 mt-4">
+        <div 
+          onClick={() => navigate('/safety/emergency-setup')}
+          className="bg-gradient-to-r from-red-500 to-orange-500 rounded-xl p-4 text-white cursor-pointer hover:opacity-95 transition-opacity"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
+              <Shield size={24} />
+            </div>
+            <div className="flex-1">
+              <div className="font-semibold">Emergency Setup</div>
+              <div className="text-sm opacity-90">Configure contacts & alerts</div>
+            </div>
+            <ChevronRight size={20} className="opacity-70" />
+          </div>
+        </div>
+      </div>
+
       {/* Emergency Button */}
       <div className="px-4 mt-6 mb-8">
         <button
