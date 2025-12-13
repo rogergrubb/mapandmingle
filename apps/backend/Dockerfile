@@ -12,14 +12,19 @@ COPY prisma ./prisma/
 # Install dependencies
 RUN npm install
 
-# Generate Prisma client
-RUN npx prisma generate
+# Generate Prisma client with verbose output
+RUN echo "=== Generating Prisma client ===" && npx prisma generate && echo "=== Prisma generate complete ==="
 
 # Copy source code
 COPY . .
 
-# Build TypeScript
-RUN npm run build
+# List source files for debugging
+RUN echo "=== Source files ===" && ls -la src/routes/
+
+# Build TypeScript with verbose output
+RUN echo "=== Starting TypeScript build ===" && npm run build 2>&1 || (echo "=== BUILD FAILED ===" && exit 1)
+
+RUN echo "=== Build output ===" && ls -la dist/ && ls -la dist/routes/
 
 # Production stage
 FROM node:20-slim AS production
