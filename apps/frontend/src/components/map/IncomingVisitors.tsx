@@ -23,7 +23,7 @@ interface Visitor {
     bio: string | null;
     interests: string[];
     lookingFor: string[];
-    homeCity: string | null;
+    location: string | null;
     isConnected: boolean;
   };
 }
@@ -237,10 +237,10 @@ function VisitorCard({ visitor, onClick }: { visitor: Visitor; onClick?: (v: Vis
             </span>
           )}
         </div>
-        {visitor.user.homeCity && (
+        {visitor.user.location && (
           <p className="text-xs text-gray-500 flex items-center gap-1">
             <MapPin size={10} />
-            From {visitor.user.homeCity}
+            From {visitor.user.location}
           </p>
         )}
         {visitor.user.interests.length > 0 && (
