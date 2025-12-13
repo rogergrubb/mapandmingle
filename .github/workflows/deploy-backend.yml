@@ -11,7 +11,7 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 20
     
     steps:
       - name: Checkout code
@@ -30,9 +30,8 @@ jobs:
       - name: Deploy to Cloud Run
         run: |
           cd apps/backend
-          gcloud builds submit --timeout=1800s --machine-type=e2-highcpu-8 --tag gcr.io/mapmingle-fa09f/mapandmingle-api:${{ github.sha }}
           gcloud run deploy mapandmingle-api \
-            --image gcr.io/mapmingle-fa09f/mapandmingle-api:${{ github.sha }} \
+            --source . \
             --region us-west1 \
             --platform managed \
             --allow-unauthenticated \
