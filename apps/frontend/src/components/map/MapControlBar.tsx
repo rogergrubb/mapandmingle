@@ -1,10 +1,14 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   Heart, Users, Briefcase, Calendar, Plane, 
   ChevronDown, Globe, Locate, RefreshCw,
-  Ghost, Eye, UserCheck, Zap, Shield
+  Ghost, Eye, UserCheck, Zap, Shield,
+  Bell, MessageCircle
 } from 'lucide-react';
 import haptic from '../../lib/haptics';
+import { useAuthStore } from '../../stores/authStore';
+import api from '../../lib/api';
 
 export type MingleMode = 'everybody' | 'dating' | 'friends' | 'networking' | 'events' | 'travel';
 export type DistanceFilter = 'nearby' | 'walking' | 'city' | 'anywhere';
@@ -22,6 +26,12 @@ interface MapControlBarProps {
   // Visibility props
   visibilityLevel: VisibilityLevel;
   onVisibilityChange: (level: VisibilityLevel) => void;
+}
+
+interface NotificationCounts {
+  unreadMessages: number;
+  pendingRequests: number;
+  totalNotifications: number;
 }
 
 const modeConfig = {
@@ -84,44 +94,44 @@ const visibilityConfig: Record<VisibilityLevel, {
     label: 'Circles Only',
     shortLabel: 'Circles',
     color: 'text-blue-600',
-    bgColor: 'bg-blue-100 border-blue-300',
-    description: 'Family & trusted friends',
+    bgColor: 'bg-blue-50 border-blue-200',
+    description: 'Only trusted circles',
   },
   fuzzy: {
     icon: Eye,
     label: 'Fuzzy Location',
     shortLabel: 'Fuzzy',
-    color: 'text-yellow-600',
-    bgColor: 'bg-yellow-100 border-yellow-400',
-    description: 'Approximate location',
+    color: 'text-amber-600',
+    bgColor: 'bg-amber-50 border-amber-200',
+    description: 'Approximate area only',
   },
   social: {
     icon: UserCheck,
-    label: 'Social Mode',
+    label: 'Connections',
     shortLabel: 'Social',
-    color: 'text-green-600',
-    bgColor: 'bg-green-100 border-green-400',
-    description: 'Your connections',
+    color: 'text-purple-600',
+    bgColor: 'bg-purple-50 border-purple-200',
+    description: 'Friends & connections',
   },
   discoverable: {
     icon: Globe,
     label: 'Discoverable',
     shortLabel: 'Visible',
-    color: 'text-purple-600',
-    bgColor: 'bg-purple-100 border-purple-400',
-    description: 'Visible to all',
+    color: 'text-green-600',
+    bgColor: 'bg-green-50 border-green-200',
+    description: 'Open to all users',
   },
   beacon: {
     icon: Zap,
     label: 'Beacon Mode',
     shortLabel: 'Beacon',
-    color: 'text-pink-600',
-    bgColor: 'bg-gradient-to-r from-pink-100 to-orange-100 border-pink-400',
-    description: 'Broadcasting NOW',
+    color: 'text-orange-600',
+    bgColor: 'bg-orange-50 border-orange-200',
+    description: 'Broadcasting location',
   },
 };
 
-export function MapControlBar({
+export default function MapControlBar({
   currentMode,
   onModeChange,
   onMyLocation,
@@ -132,21 +142,60 @@ export function MapControlBar({
   visibilityLevel,
   onVisibilityChange,
 }: MapControlBarProps) {
+  const navigate = useNavigate();
+  const { user } = useAuthStore();
   const [showModeSelector, setShowModeSelector] = useState(false);
   const [showVisibilitySelector, setShowVisibilitySelector] = useState(false);
+  const [notifications, setNotifications] = useState<NotificationCounts>({
+    unreadMessages: 0,
+    pendingRequests: 0,
+    totalNotifications: 0,
+  });
 
   const modeConf = modeConfig[currentMode];
-  const ModeIcon = modeConf.icon;
-  
   const visConf = visibilityConfig[visibilityLevel];
+  const ModeIcon = modeConf.icon;
   const VisIcon = visConf.icon;
+
+  // Fetch notification counts
+  useEffect(() => {
+    const fetchNotifications = async () => {
+      try {
+        const [messagesRes, connectionsRes] = await Promise.all([
+          api.get('/api/conversations').catch(() => ({ data: { conversations: [] } })),
+          api.get('/api/connections/pending').catch(() => ({ data: { connections: [] } })),
+        ]);
+
+        const conversations = messagesRes.data?.conversations || messagesRes.conversations || [];
+        const pendingConnections = connectionsRes.data?.connections || connectionsRes.connections || [];
+
+        const unreadMessages = conversations.filter((c: any) => c.unreadCount > 0).length;
+        const pendingRequests = pendingConnections.length;
+
+        setNotifications({
+          unreadMessages,
+          pendingRequests,
+          totalNotifications: unreadMessages + pendingRequests,
+        });
+      } catch (err) {
+        console.error('Failed to fetch notifications:', err);
+      }
+    };
+
+    fetchNotifications();
+    // Refresh every 30 seconds
+    const interval = setInterval(fetchNotifications, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const totalBadgeCount = notifications.unreadMessages + notifications.pendingRequests;
 
   return (
     <>
-      {/* Backdrop for dropdowns */}
+      {/* Click outside to close dropdowns */}
       {(showModeSelector || showVisibilitySelector) && (
         <div 
-          className="fixed inset-0 z-[1001]"
+          className="fixed inset-0 z-[1000]" 
           onClick={() => {
             setShowModeSelector(false);
             setShowVisibilitySelector(false);
@@ -154,17 +203,12 @@ export function MapControlBar({
         />
       )}
 
-      {/* Top Control Bar */}
-      <div className="absolute top-3 left-3 right-3 z-[1000]">
-        <div className="flex items-center justify-between">
-          
-          {/* Left: Refresh + My Location + Looking For + Visibility */}
-          <div className="flex items-center gap-1.5">
+      <div className="absolute top-3 left-3 right-3 z-[1001]">
+        <div className="flex items-center justify-between gap-2">
+          {/* Left: Main Controls */}
+          <div className="flex items-center gap-2">
             <button
-              onClick={() => {
-                haptic.softTick();
-                onRefresh();
-              }}
+              onClick={onRefresh}
               disabled={isRefreshing}
               className="w-9 h-9 rounded-full bg-white/90 backdrop-blur-sm shadow-md flex items-center justify-center hover:shadow-lg transition-all hover:scale-105 active:scale-95 disabled:opacity-50"
               title="Refresh map"
@@ -273,10 +317,10 @@ export function MapControlBar({
             </div>
           </div>
 
-          {/* Right: Activity Stats */}
-          <div className="flex items-center gap-3">
+          {/* Right: Notifications, Messages & Profile */}
+          <div className="flex items-center gap-2">
             {/* Visibility Status Badge */}
-            <div className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-semibold ${
+            <div className={`hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-semibold ${
               visibilityLevel === 'ghost' 
                 ? 'bg-gray-200 text-gray-600' 
                 : 'bg-green-500 text-white shadow-sm'
@@ -290,8 +334,8 @@ export function MapControlBar({
               <span>{visibilityLevel === 'ghost' ? 'Hidden' : 'Visible'}</span>
             </div>
 
-            {/* Activity Stats */}
-            <div className="flex items-center gap-2 text-xs">
+            {/* Live Stats - Hidden on mobile */}
+            <div className="hidden lg:flex items-center gap-2 text-xs">
               <div className="flex items-center gap-1">
                 <span className="relative flex h-1.5 w-1.5">
                   {liveNow > 0 && (
@@ -301,14 +345,56 @@ export function MapControlBar({
                 </span>
                 <span className="text-gray-600 font-medium">{liveNow} live</span>
               </div>
-              <span className="text-gray-300">•</span>
-              <div className="flex items-center gap-1">
-                <span className="relative flex h-1.5 w-1.5">
-                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-blue-400"></span>
-                </span>
-                <span className="text-gray-600 font-medium">{inView} in view</span>
-              </div>
             </div>
+
+            {/* Messages Button with Badge */}
+            <button
+              onClick={() => navigate('/messages')}
+              className="relative w-9 h-9 rounded-full bg-white/90 backdrop-blur-sm shadow-md flex items-center justify-center hover:shadow-lg transition-all hover:scale-105 active:scale-95"
+              title="Messages"
+            >
+              <MessageCircle size={18} className="text-gray-600" />
+              {notifications.unreadMessages > 0 && (
+                <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1 shadow-sm animate-pulse">
+                  {notifications.unreadMessages > 99 ? '99+' : notifications.unreadMessages}
+                </span>
+              )}
+            </button>
+
+            {/* Notifications Button with Badge (Friend Requests) */}
+            <button
+              onClick={() => navigate('/activity')}
+              className="relative w-9 h-9 rounded-full bg-white/90 backdrop-blur-sm shadow-md flex items-center justify-center hover:shadow-lg transition-all hover:scale-105 active:scale-95"
+              title="Notifications & Friend Requests"
+            >
+              <Bell size={18} className="text-gray-600" />
+              {notifications.pendingRequests > 0 && (
+                <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-purple-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center px-1 shadow-sm animate-pulse">
+                  {notifications.pendingRequests > 99 ? '99+' : notifications.pendingRequests}
+                </span>
+              )}
+            </button>
+
+            {/* Mini Profile Avatar */}
+            <button
+              onClick={() => navigate('/profile')}
+              className="relative w-9 h-9 rounded-full bg-white/90 backdrop-blur-sm shadow-md flex items-center justify-center hover:shadow-lg transition-all hover:scale-105 active:scale-95 overflow-hidden"
+              title="My Profile"
+            >
+              {user?.image ? (
+                <img 
+                  src={user.image} 
+                  alt="Profile" 
+                  className="w-full h-full object-cover rounded-full"
+                />
+              ) : (
+                <div className="w-full h-full bg-gradient-to-br from-purple-400 to-pink-500 flex items-center justify-center text-white text-sm font-bold">
+                  {user?.name?.charAt(0).toUpperCase() || user?.displayName?.charAt(0).toUpperCase() || '?'}
+                </div>
+              )}
+              {/* Online indicator */}
+              <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 border-2 border-white rounded-full"></span>
+            </button>
           </div>
 
         </div>
