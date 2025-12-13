@@ -622,6 +622,32 @@ async function runSafetyMigration() {
       await prisma.$executeRawUnsafe(fk).catch(() => {});
     }
 
+    // Create EmergencyContact table
+    await prisma.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "EmergencyContact" (
+        "id" TEXT NOT NULL,
+        "userId" TEXT NOT NULL,
+        "name" VARCHAR(100) NOT NULL,
+        "phone" VARCHAR(20),
+        "email" VARCHAR(255),
+        "relationship" VARCHAR(50),
+        "notifyViaCall" BOOLEAN NOT NULL DEFAULT true,
+        "notifyViaSms" BOOLEAN NOT NULL DEFAULT true,
+        "notifyViaApp" BOOLEAN NOT NULL DEFAULT false,
+        "notifyViaEmail" BOOLEAN NOT NULL DEFAULT true,
+        "linkedUserId" TEXT,
+        "priority" INTEGER NOT NULL DEFAULT 1,
+        "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT "EmergencyContact_pkey" PRIMARY KEY ("id")
+      )
+    `);
+
+    // Add columns to EmergencyAlert if missing
+    await prisma.$executeRawUnsafe(`ALTER TABLE "EmergencyAlert" ADD COLUMN IF NOT EXISTS "locationName" TEXT`).catch(() => {});
+    await prisma.$executeRawUnsafe(`ALTER TABLE "EmergencyAlert" ADD COLUMN IF NOT EXISTS "alertType" TEXT DEFAULT 'manual'`).catch(() => {});
+    await prisma.$executeRawUnsafe(`ALTER TABLE "EmergencyAlert" ADD COLUMN IF NOT EXISTS "notificationsSent" JSONB`).catch(() => {});
+
     console.log('✅ Safety tables migration complete');
   } catch (error) {
     console.error('⚠️ Safety migration error (may be OK if tables exist):', error);
