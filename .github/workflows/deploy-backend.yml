@@ -11,6 +11,7 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     
     steps:
       - name: Checkout code
@@ -29,17 +30,19 @@ jobs:
       - name: Deploy to Cloud Run
         run: |
           cd apps/backend
+          gcloud builds submit --timeout=1800s --machine-type=e2-highcpu-8 --tag gcr.io/mapmingle-fa09f/mapandmingle-api:${{ github.sha }}
           gcloud run deploy mapandmingle-api \
-            --source . \
+            --image gcr.io/mapmingle-fa09f/mapandmingle-api:${{ github.sha }} \
             --region us-west1 \
             --platform managed \
             --allow-unauthenticated \
-            --memory 512Mi \
+            --memory 1Gi \
             --timeout 300 \
             --port 8080 \
-            --set-env-vars="NODE_ENV=production,DATABASE_URL=${{ secrets.DATABASE_URL }},JWT_SECRET=${{ secrets.JWT_SECRET }},RESEND_API_KEY=${{ secrets.RESEND_API_KEY }},GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }},GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }},GOOGLE_REDIRECT_URI=https://mapandmingle-api-416214751432.us-west1.run.app/api/auth/google/callback,FRONTEND_URL=https://www.mapandmingle.com"
+            --set-env-vars="NODE_ENV=production,DATABASE_URL=${{ secrets.DATABASE_URL }},JWT_SECRET=${{ secrets.JWT_SECRET }},RESEND_API_KEY=${{ secrets.RESEND_API_KEY }},GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }},GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }},GOOGLE_REDIRECT_URI=https://mapandmingle-api-492171901610.us-west1.run.app/api/auth/google/callback,FRONTEND_URL=https://www.mapandmingle.com"
           
       - name: Deployment Complete
         run: |
           echo "✅ Backend deployed to Cloud Run!"
-          echo "API URL: https://mapandmingle-api-416214751432.us-west1.run.app"
+          echo "API URL: https://mapandmingle-api-492171901610.us-west1.run.app"
+
