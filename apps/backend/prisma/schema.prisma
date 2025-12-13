@@ -136,9 +136,6 @@ model User {
   watchedByAlerts       ArrivalAlert[]   @relation("WatchedArrivalAlerts")
 }
 
-  // Messaging and call relations
-
-
 model Session {
   id        String   @id @default(cuid())
   sessionToken String @unique
