@@ -46,13 +46,15 @@ export function IncomingVisitors({ bounds, onVisitorClick, onClose }: IncomingVi
     tomorrow: Visitor[];
     thisWeek: Visitor[];
   }>({ today: [], tomorrow: [], thisWeek: [] });
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  const [hasFetched, setHasFetched] = useState(false);
 
   useEffect(() => {
     if (!bounds) return;
 
     const fetchIncoming = async () => {
+      setLoading(true);
       try {
         const res = await api.get('/api/pins/incoming', {
           params: {
@@ -67,8 +69,10 @@ export function IncomingVisitors({ bounds, onVisitorClick, onClose }: IncomingVi
         setGrouped(res.grouped || { today: [], tomorrow: [], thisWeek: [] });
       } catch (err) {
         console.error('Failed to fetch incoming visitors:', err);
+        setVisitors([]);
       } finally {
         setLoading(false);
+        setHasFetched(true);
       }
     };
 
@@ -78,17 +82,10 @@ export function IncomingVisitors({ bounds, onVisitorClick, onClose }: IncomingVi
   const totalCount = visitors.length;
   const todayCount = grouped.today.length;
 
-  if (loading) {
-    return (
-      <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-lg p-4 animate-pulse">
-        <div className="h-6 bg-gray-200 rounded w-32 mb-2"></div>
-        <div className="h-4 bg-gray-100 rounded w-24"></div>
-      </div>
-    );
-  }
-
-  if (totalCount === 0) {
-    return null; // Don't show if no incoming visitors
+  // Don't render anything until we've fetched AND have visitors
+  // This prevents the loading skeleton from showing
+  if (!hasFetched || totalCount === 0) {
+    return null;
   }
 
   // Collapsed view - just a badge
@@ -98,104 +95,103 @@ export function IncomingVisitors({ bounds, onVisitorClick, onClose }: IncomingVi
         onClick={() => setExpanded(true)}
         className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-amber-400 to-orange-500 text-white rounded-full shadow-lg hover:shadow-xl transition-all hover:scale-105 group"
       >
-        <div className="relative">
-          <Plane size={18} className="transform -rotate-45" />
-          {todayCount > 0 && (
-            <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full animate-ping" />
-          )}
-        </div>
+        <Plane className="w-4 h-4" />
         <span className="font-semibold">{totalCount} Coming</span>
         {todayCount > 0 && (
-          <span className="text-xs bg-white/20 px-1.5 py-0.5 rounded-full">
-            {todayCount} today!
+          <span className="bg-white/30 px-2 py-0.5 rounded-full text-xs font-bold">
+            {todayCount} today
           </span>
         )}
-        <ChevronRight size={16} className="group-hover:translate-x-0.5 transition-transform" />
+        <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
       </button>
     );
   }
 
-  // Expanded view
+  // Expanded panel
   return (
-    <div className="bg-white rounded-2xl shadow-2xl overflow-hidden max-w-sm w-full animate-in slide-in-from-right duration-300">
+    <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-xl overflow-hidden w-80 max-h-96">
       {/* Header */}
-      <div className="bg-gradient-to-r from-amber-400 via-orange-500 to-pink-500 px-4 py-3">
+      <div className="bg-gradient-to-r from-amber-400 to-orange-500 p-4 text-white">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 text-white">
-            <Plane size={20} className="transform -rotate-45" />
-            <h3 className="font-bold text-lg">Visitors Incoming!</h3>
+          <div className="flex items-center gap-2">
+            <Plane className="w-5 h-5" />
+            <h3 className="font-bold">Incoming Visitors</h3>
           </div>
           <button
             onClick={() => setExpanded(false)}
             className="p-1 hover:bg-white/20 rounded-full transition-colors"
           >
-            <X size={18} className="text-white" />
+            <X className="w-5 h-5" />
           </button>
         </div>
-        <p className="text-white/80 text-sm mt-1">
+        <p className="text-sm text-white/80 mt-1">
           {totalCount} {totalCount === 1 ? 'person' : 'people'} heading to your area
         </p>
       </div>
 
-      {/* Content */}
-      <div className="max-h-80 overflow-y-auto">
-        {/* Today Section */}
+      {/* Visitor List */}
+      <div className="overflow-y-auto max-h-64 p-2">
         {grouped.today.length > 0 && (
-          <div className="p-3 border-b border-gray-100">
-            <div className="flex items-center gap-2 mb-2">
-              <span className="px-2 py-0.5 bg-red-100 text-red-700 text-xs font-bold rounded-full animate-pulse">
-                🔥 TODAY
-              </span>
-              <span className="text-xs text-gray-500">{grouped.today.length} arriving</span>
-            </div>
-            {grouped.today.map(visitor => (
-              <VisitorCard key={visitor.id} visitor={visitor} onClick={onVisitorClick} />
-            ))}
-          </div>
+          <VisitorSection
+            title="TODAY"
+            visitors={grouped.today}
+            urgencyColor="text-red-500 bg-red-50"
+            onVisitorClick={onVisitorClick}
+          />
         )}
-
-        {/* Tomorrow Section */}
         {grouped.tomorrow.length > 0 && (
-          <div className="p-3 border-b border-gray-100">
-            <div className="flex items-center gap-2 mb-2">
-              <span className="px-2 py-0.5 bg-orange-100 text-orange-700 text-xs font-bold rounded-full">
-                ⏰ TOMORROW
-              </span>
-              <span className="text-xs text-gray-500">{grouped.tomorrow.length} arriving</span>
-            </div>
-            {grouped.tomorrow.map(visitor => (
-              <VisitorCard key={visitor.id} visitor={visitor} onClick={onVisitorClick} />
-            ))}
-          </div>
+          <VisitorSection
+            title="TOMORROW"
+            visitors={grouped.tomorrow}
+            urgencyColor="text-orange-500 bg-orange-50"
+            onVisitorClick={onVisitorClick}
+          />
         )}
-
-        {/* This Week Section */}
         {grouped.thisWeek.length > 0 && (
-          <div className="p-3">
-            <div className="flex items-center gap-2 mb-2">
-              <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-bold rounded-full">
-                📅 THIS WEEK
-              </span>
-              <span className="text-xs text-gray-500">{grouped.thisWeek.length} arriving</span>
-            </div>
-            {grouped.thisWeek.map(visitor => (
-              <VisitorCard key={visitor.id} visitor={visitor} onClick={onVisitorClick} />
-            ))}
-          </div>
+          <VisitorSection
+            title="THIS WEEK"
+            visitors={grouped.thisWeek}
+            urgencyColor="text-blue-500 bg-blue-50"
+            onVisitorClick={onVisitorClick}
+          />
         )}
-      </div>
-
-      {/* Footer */}
-      <div className="px-4 py-3 bg-gray-50 border-t">
-        <p className="text-xs text-gray-500 text-center">
-          💡 Connect with travelers before they arrive!
-        </p>
       </div>
     </div>
   );
 }
 
-function VisitorCard({ visitor, onClick }: { visitor: Visitor; onClick?: (v: Visitor) => void }) {
+interface VisitorSectionProps {
+  title: string;
+  visitors: Visitor[];
+  urgencyColor: string;
+  onVisitorClick?: (visitor: Visitor) => void;
+}
+
+function VisitorSection({ title, visitors, urgencyColor, onVisitorClick }: VisitorSectionProps) {
+  return (
+    <div className="mb-3">
+      <div className={`text-xs font-bold px-2 py-1 rounded ${urgencyColor} mb-2`}>
+        {title}
+      </div>
+      <div className="space-y-2">
+        {visitors.map((visitor) => (
+          <VisitorCard
+            key={visitor.id}
+            visitor={visitor}
+            onClick={() => onVisitorClick?.(visitor)}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+interface VisitorCardProps {
+  visitor: Visitor;
+  onClick: () => void;
+}
+
+function VisitorCard({ visitor, onClick }: VisitorCardProps) {
   const urgencyStyles = {
     imminent: 'bg-red-500 animate-pulse',
     soon: 'bg-orange-500',
@@ -205,8 +201,8 @@ function VisitorCard({ visitor, onClick }: { visitor: Visitor; onClick?: (v: Vis
 
   return (
     <button
-      onClick={() => onClick?.(visitor)}
-      className="w-full flex items-center gap-3 p-2 rounded-xl hover:bg-gray-50 transition-colors text-left group"
+      onClick={onClick}
+      className="w-full flex items-center gap-3 p-2 rounded-xl hover:bg-gray-50 transition-colors text-left"
     >
       {/* Avatar with countdown badge */}
       <div className="relative flex-shrink-0">
@@ -214,51 +210,51 @@ function VisitorCard({ visitor, onClick }: { visitor: Visitor; onClick?: (v: Vis
           <img
             src={visitor.user.avatar}
             alt={visitor.user.name}
-            className="w-12 h-12 rounded-full object-cover ring-2 ring-amber-200"
+            className="w-12 h-12 rounded-full object-cover border-2 border-amber-200"
           />
         ) : (
-          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white font-bold text-lg">
+          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white font-bold text-lg border-2 border-amber-200">
             {visitor.user.name.charAt(0).toUpperCase()}
           </div>
         )}
         {/* Countdown badge */}
-        <div className={`absolute -bottom-1 -right-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold text-white ${urgencyStyles[visitor.countdown.urgency]}`}>
+        <div
+          className={`absolute -bottom-1 -right-1 px-1.5 py-0.5 rounded-full text-white text-xs font-bold ${urgencyStyles[visitor.countdown.urgency]}`}
+        >
           {visitor.countdown.label}
         </div>
       </div>
 
       {/* Info */}
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1">
           <span className="font-semibold text-gray-900 truncate">{visitor.user.name}</span>
           {visitor.user.isConnected && (
-            <span className="text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full">
-              Connected
-            </span>
+            <Sparkles className="w-3 h-3 text-amber-500" />
           )}
         </div>
         {visitor.user.location && (
-          <p className="text-xs text-gray-500 flex items-center gap-1">
-            <MapPin size={10} />
-            From {visitor.user.location}
-          </p>
+          <div className="flex items-center gap-1 text-xs text-gray-500">
+            <MapPin className="w-3 h-3" />
+            <span className="truncate">from {visitor.user.location}</span>
+          </div>
         )}
-        {visitor.user.interests.length > 0 && (
+        {visitor.user.interests && visitor.user.interests.length > 0 && (
           <div className="flex gap-1 mt-1 flex-wrap">
             {visitor.user.interests.slice(0, 2).map((interest, i) => (
-              <span key={i} className="text-[10px] bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded">
+              <span
+                key={i}
+                className="text-xs px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded-full"
+              >
                 {interest}
               </span>
             ))}
-            {visitor.user.interests.length > 2 && (
-              <span className="text-[10px] text-gray-400">+{visitor.user.interests.length - 2}</span>
-            )}
           </div>
         )}
       </div>
 
       {/* Arrow */}
-      <ChevronRight size={16} className="text-gray-300 group-hover:text-amber-500 transition-colors flex-shrink-0" />
+      <ChevronRight className="w-4 h-4 text-gray-400 flex-shrink-0" />
     </button>
   );
 }
