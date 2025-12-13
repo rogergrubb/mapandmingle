@@ -150,6 +150,9 @@ async function canViewPin(pin: any, viewerId: string | null): Promise<boolean> {
   // If no viewer (anonymous), they can see public pins only
   if (!viewerId) return true;
   
+  // ALWAYS show user's own pins to themselves
+  if (pin.userId === viewerId) return true;
+  
   // Get pin creator's profile
   const creatorProfile = await prisma.profile.findUnique({
     where: { userId: pin.userId },
@@ -157,7 +160,7 @@ async function canViewPin(pin: any, viewerId: string | null): Promise<boolean> {
   
   if (!creatorProfile) return true;
   
-  // Check ghost mode
+  // Check ghost mode (doesn't apply to own pins - handled above)
   if (creatorProfile.ghostMode) return false;
   
   // Check selective visibility
