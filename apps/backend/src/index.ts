@@ -60,6 +60,7 @@ import { circleRoutes } from './routes/circles';
 import { tripRoutes } from './routes/trips';
 import { safetyRoutes as safetyFeaturesRoutes } from './routes/safety-features';
 import visibility from './routes/visibility';
+import { invitesRoutes } from './routes/invites';
 
 // Import trial & usage middleware
 import { rateLimitMiddleware as trialRateLimitMiddleware } from './middleware/rateLimit';
@@ -323,6 +324,7 @@ app.route('/api/photos', photos);
 app.route('/api/circles', circleRoutes);
 app.route('/api/trips', tripRoutes);
 app.route('/api/safety/features', safetyFeaturesRoutes);
+app.route('/api/invites', invitesRoutes);
 app.route('/webhook', stripeWebhookRoutes);
 
 // Start server
