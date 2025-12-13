@@ -1,5 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuthStore } from './stores/authStore';
 import MainLayout from './components/layout/MainLayout';
 import AuthLayout from './components/layout/AuthLayout';
@@ -52,6 +52,7 @@ import { VideoCall, CallNotificationChecker } from './components/VideoCall';
 import branding from './config/branding';
 import { ToastNotificationContainer } from './components/ToastNotification';
 import NotificationListener from './components/NotificationListener';
+import TellAFriendPrompt, { shouldShowTellAFriendPrompt, incrementVisitCount } from './components/TellAFriendPrompt';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
@@ -65,12 +66,29 @@ function HomeRoute() {
 
 function App() {
   const fetchUser = useAuthStore((state) => state.fetchUser);
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const { showInterestsSetup, closeInterestsSetup } = useProfileSetup();
+  const [showTellAFriend, setShowTellAFriend] = useState(false);
 
   // Set dynamic document title from branding
   useEffect(() => {
     document.title = `${branding.appName} — ${branding.tagline}`;
   }, []);
+
+  // Track visits and show Tell a Friend prompt after 3 visits
+  useEffect(() => {
+    incrementVisitCount();
+    
+    // Only show to authenticated users, with a small delay
+    if (isAuthenticated) {
+      const timer = setTimeout(() => {
+        if (shouldShowTellAFriendPrompt()) {
+          setShowTellAFriend(true);
+        }
+      }, 3000); // 3 second delay after page load
+      return () => clearTimeout(timer);
+    }
+  }, [isAuthenticated]);
 
   useEffect(() => {
     // Don't run fetchUser on auth callback page - let that page handle auth
@@ -87,6 +105,7 @@ function App() {
       <ProfileInterestsSetup isOpen={showInterestsSetup} onComplete={closeInterestsSetup} />
       <VideoCall />
       <CallNotificationChecker />
+      {showTellAFriend && <TellAFriendPrompt onClose={() => setShowTellAFriend(false)} />}
       <Routes>
         <Route element={<AuthLayout />}>
           <Route path="/login" element={<Login />} />
