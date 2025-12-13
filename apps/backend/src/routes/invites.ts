@@ -7,7 +7,7 @@ import { Resend } from 'resend';
 
 export const invitesRoutes = new Hono();
 
-const resend = new Resend(config.resendApiKey);
+const resend = new Resend(config.email.resendApiKey);
 
 // Helper to get user ID from either x-user-id header OR Bearer token
 const getUserIdFromRequest = (c: any): string | null => {
