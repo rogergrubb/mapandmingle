@@ -1421,7 +1421,7 @@ export default function MapPage() {
       `}</style>
 
       {/* Permanent Pin Legend - Left Side */}
-      <PinLegend onPinClick={(pin) => { if (mapRef.current) { mapRef.current.flyTo([pin.latitude, pin.longitude], 15); } }} onPinDeleted={() => { fetchPins(); }} />
+      <PinLegend onPinClick={(pin) => { if (mapRef.current) { mapRef.current.flyTo([pin.latitude, pin.longitude], 15); } }} onPinDeleted={() => { if (mapRef.current) { const b = mapRef.current.getBounds(); fetchPins({ north: b.getNorth(), south: b.getSouth(), east: b.getEast(), west: b.getWest(), zoom: mapRef.current.getZoom() }); } }} />
 
       {/* Incoming Visitors - Right Side */}
       <div className="absolute top-20 right-3 z-[999]">
