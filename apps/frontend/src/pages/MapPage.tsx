@@ -68,19 +68,24 @@ function createPinIcon(
   arrivalTime?: string,  // For "Where I'll Be" pins
   pinOpacity: number = 1.0,  // From API lifecycle calculation
   pinStatus: string = 'active',  // 'active', 'recently_arrived', 'ghost', 'old_ghost'
-  isOwnPin: boolean = false  // Is this the current user's pin?
+  isOwnPin: boolean = false,  // Is this the current user's pin?
+  isBeacon: boolean = false  // Is user in beacon mode?
 ) {
   // If this is a "Where I'll Be" pin, use YELLOW colors (unless it's expired/ghost)
   const isDestination = !!arrivalTime;
   const isExpiredPin = pinStatus === 'ghost' || pinStatus === 'old_ghost' || pinStatus === 'recently_arrived';
   
   // Color logic:
+  // - Beacon mode own pins: bright orange/yellow
   // - Own pins: gray for expired, yellow for future destination, gray for current location
   // - Other users: gray for expired, PINK/PURPLE gradient for active (to stand out!)
   // - Friends: gold ring regardless of ownership
   let colors;
   if (isExpiredPin) {
     colors = { primary: '#9ca3af', secondary: '#6b7280' }; // Gray for all expired pins
+  } else if (isOwnPin && isBeacon) {
+    // Beacon mode - bright orange/yellow to broadcast
+    colors = { primary: '#f97316', secondary: '#eab308' }; // Orange-yellow for beacon
   } else if (isOwnPin) {
     // Your own pins - more muted colors
     colors = isDestination 
@@ -201,7 +206,32 @@ function createPinIcon(
         opacity: ${pinOpacity};
       ">
         ${countdownBadge || ''}
-        ${isActive && !isExpiredPin ? `
+        ${isOwnPin && isBeacon && !isExpiredPin ? `
+          <!-- Beacon Mode: Multiple expanding rings -->
+          <div style="
+            position: absolute;
+            inset: -20px;
+            border-radius: 50%;
+            border: 3px solid #f9731660;
+            animation: beaconRing1 2s ease-out infinite;
+          "></div>
+          <div style="
+            position: absolute;
+            inset: -12px;
+            border-radius: 50%;
+            border: 2px solid #eab30880;
+            animation: beaconRing2 2s ease-out infinite;
+            animation-delay: 0.5s;
+          "></div>
+          <div style="
+            position: absolute;
+            inset: -6px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #f9731640, #eab30840);
+            animation: beaconPulse 1s ease-in-out infinite alternate;
+          "></div>
+        ` : ''}
+        ${isActive && !isExpiredPin && !(isOwnPin && isBeacon) ? `
           <div style="
             position: absolute;
             inset: -4px;
@@ -274,6 +304,18 @@ function createPinIcon(
             0%, 100% { transform: scale(1); opacity: 1; }
             50% { transform: scale(1.15); opacity: 0.9; }
           }
+          @keyframes beaconRing1 {
+            0% { transform: scale(0.8); opacity: 0.8; }
+            100% { transform: scale(2); opacity: 0; }
+          }
+          @keyframes beaconRing2 {
+            0% { transform: scale(0.9); opacity: 0.6; }
+            100% { transform: scale(1.8); opacity: 0; }
+          }
+          @keyframes beaconPulse {
+            0% { transform: scale(1); opacity: 0.6; }
+            100% { transform: scale(1.15); opacity: 0.9; }
+          }
         </style>
       </div>
     `,
@@ -292,6 +334,7 @@ function ClusteredMarkers({
   currentUserId,
   onDeletePin,
   onEditProfile,
+  visibilityLevel,
 }: { 
   pins: any[]; 
   mode: MingleMode;
@@ -299,6 +342,7 @@ function ClusteredMarkers({
   currentUserId: string | undefined;
   onDeletePin: (pinId: string, pinType: 'current' | 'future') => void;
   onEditProfile: () => void;
+  visibilityLevel?: string;
 }) {
   const map = useMap();
   const clusterGroupRef = useRef<L.MarkerClusterGroup | null>(null);
@@ -391,9 +435,10 @@ function ClusteredMarkers({
       const pinOpacity = pin.pinOpacity || 1.0; // From API lifecycle calculation
       const pinStatus = pin.pinStatus || 'active'; // From API
       const isOwnPin = pin.userId === currentUserId;
+      const isBeacon = isOwnPin && visibilityLevel === 'beacon';
       
       const marker = L.marker([pin.latitude, pin.longitude], {
-        icon: createPinIcon(mode, isActive, isGhost, isFriend, pin.arrivalTime, pinOpacity, pinStatus, isOwnPin),
+        icon: createPinIcon(mode, isActive, isGhost, isFriend, pin.arrivalTime, pinOpacity, pinStatus, isOwnPin, isBeacon),
       });
       
       // Create popup content
@@ -1502,6 +1547,7 @@ export default function MapPage() {
           currentUserId={user?.id}
           onDeletePin={handleOpenDeleteDialog}
           onEditProfile={() => navigate('/profile/edit')}
+          visibilityLevel={visibilityLevel}
         />
 
         {/* User location marker */}
