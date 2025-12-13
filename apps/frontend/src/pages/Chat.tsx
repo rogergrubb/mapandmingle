@@ -64,6 +64,7 @@ export function Chat() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const [isOtherUserOnline, setIsOtherUserOnline] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<{
     status: string;
@@ -253,22 +254,28 @@ export function Chat() {
     const file = e.target.files?.[0];
     if (!file || !otherUserId) return;
 
-    // Validate file
-    if (!file.type.startsWith('image/')) {
-      alert('Please select an image file');
+    // File type validation
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
+      setUploadError(`Invalid file type. Please select a JPEG, PNG, GIF, or WebP image.\n\nYour file: ${file.type || 'unknown type'}`);
       return;
     }
-    if (file.size > 5 * 1024 * 1024) {
-      alert('Image must be less than 5MB');
+    
+    // File size validation (10MB max to match backend)
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    if (file.size > maxSize) {
+      const sizeMB = (file.size / (1024 * 1024)).toFixed(1);
+      setUploadError(`Image is too large (${sizeMB}MB).\n\nMaximum size: 10MB\n\nTry compressing your image or choosing a smaller one.`);
       return;
     }
 
     setIsUploadingImage(true);
+    setUploadError(null);
     try {
       // Upload to S3
       const formData = new FormData();
       formData.append('file', file);
-      formData.append('type', 'message');
+      formData.append('folder', 'messages');
       
       const uploadResponse: any = await api.post('/api/upload', formData);
       const imageUrl = uploadResponse.url || uploadResponse.fileUrl;
@@ -284,10 +291,26 @@ export function Chat() {
         const data: Message[] = await api.get(`/api/messages/conversation/${otherUserId}`);
         setMessages(data);
         scrollToBottom();
+      } else {
+        throw new Error('Upload succeeded but no URL returned');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to upload image:', error);
-      alert('Failed to send image. Please try again.');
+      // Extract error message from response
+      const errorMsg = error?.response?.data?.error 
+        || error?.response?.data?.message 
+        || error?.message 
+        || 'Unknown error';
+      
+      if (errorMsg.includes('file type')) {
+        setUploadError(`Invalid file type.\n\nAllowed: JPEG, PNG, GIF, WebP`);
+      } else if (errorMsg.includes('too large') || errorMsg.includes('Maximum')) {
+        setUploadError(`Image is too large.\n\nMaximum size: 10MB`);
+      } else if (errorMsg.includes('Unauthorized')) {
+        setUploadError(`Please log in again to send images.`);
+      } else {
+        setUploadError(`Failed to send image.\n\n${errorMsg}\n\nPlease try again.`);
+      }
     } finally {
       setIsUploadingImage(false);
       if (fileInputRef.current) {
@@ -754,6 +777,36 @@ export function Chat() {
         <div ref={messagesEndRef} />
       </div>
 
+      {/* Upload Error Toast */}
+      {uploadError && (
+        <div className="absolute bottom-20 left-4 right-4 bg-red-50 border border-red-200 rounded-xl p-4 shadow-lg animate-in slide-in-from-bottom duration-200 z-50">
+          <div className="flex items-start gap-3">
+            <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
+              <svg className="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+            </div>
+            <div className="flex-1">
+              <h4 className="font-semibold text-red-800 text-sm">Image Upload Failed</h4>
+              <p className="text-red-600 text-sm mt-1 whitespace-pre-line">{uploadError}</p>
+            </div>
+            <button 
+              onClick={() => setUploadError(null)}
+              className="text-red-400 hover:text-red-600 p-1"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          <div className="mt-3 pt-3 border-t border-red-200">
+            <p className="text-xs text-red-500">
+              <strong>Supported formats:</strong> JPEG, PNG, GIF, WebP • <strong>Max size:</strong> 10MB
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Input */}
       <form onSubmit={handleSendMessage} className="bg-white border-t p-3">
         <div className="flex items-center gap-2">
@@ -761,7 +814,7 @@ export function Chat() {
           <input
             ref={fileInputRef}
             type="file"
-            accept="image/*"
+            accept="image/jpeg,image/png,image/gif,image/webp"
             onChange={handleImageSelect}
             className="hidden"
           />
