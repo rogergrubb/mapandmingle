@@ -129,7 +129,9 @@ model User {
   circleMemberships CircleMember[]
   trips             Trip[]           @relation("UserTrips")
   checkIns          CheckIn[]        @relation("UserCheckIns")
-  emergencyAlerts   EmergencyAlert[] @relation("UserEmergencies")
+  emergencyAlerts   EmergencyAlert[]
+  emergencyContacts EmergencyContact[] @relation("UserEmergencyContacts")
+  linkedAsEmergencyContact EmergencyContact[] @relation("LinkedEmergencyContact")
   createdArrivalAlerts  ArrivalAlert[]   @relation("CreatedArrivalAlerts")
   watchedByAlerts       ArrivalAlert[]   @relation("WatchedArrivalAlerts")
 }
@@ -323,6 +325,72 @@ model Profile {
 }
 
 // ============================================================================
+// SAFETY - EMERGENCY CONTACTS
+// ============================================================================
+
+model EmergencyContact {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation("UserEmergencyContacts", fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Contact Info
+  name        String   @db.VarChar(100)
+  phone       String?  @db.VarChar(20)  // E.164 format
+  email       String?  @db.VarChar(255)
+  relationship String? @db.VarChar(50)  // spouse, parent, sibling, friend, etc.
+  
+  // Notification Preferences
+  notifyViaCall   Boolean @default(true)   // Auto-dial on emergency
+  notifyViaSms    Boolean @default(true)   // Send SMS on emergency
+  notifyViaApp    Boolean @default(false)  // In-app notification (if they have account)
+  notifyViaEmail  Boolean @default(true)   // Send email on emergency
+  
+  // Linked User (if they have MapMingle account)
+  linkedUserId String?
+  linkedUser   User?   @relation("LinkedEmergencyContact", fields: [linkedUserId], references: [id], onDelete: SetNull)
+  
+  // Priority (order of contact)
+  priority    Int      @default(1)  // 1 = primary, 2 = secondary, etc.
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([userId])
+  @@index([linkedUserId])
+}
+
+model EmergencyAlert {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Location at time of alert
+  latitude    Float
+  longitude   Float
+  locationName String?  // Reverse geocoded address
+  
+  // Alert details
+  alertType   String   @default("manual")  // manual, fall_detected, sos_held, inactivity
+  message     String?  @db.VarChar(500)
+  batteryLevel Int?
+  
+  // Status tracking
+  status      String   @default("active")  // active, acknowledged, resolved, false_alarm
+  resolvedAt  DateTime?
+  resolvedBy  String?  // userId who resolved it
+  
+  // Notifications sent
+  notificationsSent Json?  // Array of {contactId, method, sentAt, status}
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+// ============================================================================
 // SAFETY - CIRCLES (Family Groups)
 // ============================================================================
 
@@ -471,26 +539,6 @@ model CheckIn {
 // ============================================================================
 // SAFETY - EMERGENCY ALERTS (Panic Button)
 // ============================================================================
-
-model EmergencyAlert {
-  id          String    @id @default(cuid())
-  userId      String
-  latitude    Float
-  longitude   Float
-  batteryLevel Int?
-  message     String?   @db.VarChar(500)
-  voiceNoteUrl String?  // S3 URL for recorded message
-  status      String    @default("active") // active, acknowledged, resolved, false_alarm
-  resolvedAt  DateTime?
-  resolvedBy  String?   // User who marked it resolved
-  createdAt   DateTime  @default(now())
-
-  user        User      @relation("UserEmergencies", fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@index([status])
-  @@index([createdAt])
-}
 
 // ============================================================================
 // PINS (MISSED CONNECTIONS)
