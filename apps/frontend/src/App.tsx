@@ -43,6 +43,7 @@ import PrivacyPolicyPage from './pages/legal/PrivacyPolicy';
 import { AdminReports } from './pages/admin/AdminReports';
 import ProfileInterestsSetup from './components/ProfileInterestsSetup';
 import SafetyDashboard from './pages/SafetyDashboard';
+import EmergencySetupPage from './pages/EmergencySetupPage';
 import CirclesPage from './pages/CirclesPage';
 import StartTripPage from './pages/StartTripPage';
 import TripPage from './pages/TripPage';
@@ -135,6 +136,7 @@ function App() {
           <Route path="/admin/reports" element={<AdminReports />} />
           {/* Safety Routes */}
           <Route path="/safety" element={<SafetyDashboard />} />
+          <Route path="/safety/emergency-setup" element={<EmergencySetupPage />} />
           <Route path="/circles" element={<CirclesPage />} />
           <Route path="/circles/create" element={<CirclesPage />} />
           <Route path="/trip" element={<TripPage />} />
