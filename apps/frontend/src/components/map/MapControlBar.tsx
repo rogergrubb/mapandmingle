@@ -106,7 +106,7 @@ const visibilityConfig: Record<VisibilityLevel, {
   discoverable: {
     icon: Globe,
     label: 'Discoverable',
-    shortLabel: 'Open',
+    shortLabel: 'Visible',
     color: 'text-purple-600',
     bgColor: 'bg-purple-100 border-purple-400',
     description: 'Visible to all',
