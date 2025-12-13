@@ -503,17 +503,20 @@ model CheckIn {
 // ============================================================================
 
 model EmergencyAlert {
-  id          String    @id @default(cuid())
-  userId      String
-  latitude    Float
-  longitude   Float
-  batteryLevel Int?
-  message     String?   @db.VarChar(500)
-  voiceNoteUrl String?  // S3 URL for recorded message
-  status      String    @default("active") // active, acknowledged, resolved, false_alarm
-  resolvedAt  DateTime?
-  resolvedBy  String?   // User who marked it resolved
-  createdAt   DateTime  @default(now())
+  id               String    @id @default(cuid())
+  userId           String
+  latitude         Float
+  longitude        Float
+  locationName     String?   // Reverse geocoded location name
+  batteryLevel     Int?
+  message          String?   @db.VarChar(500)
+  voiceNoteUrl     String?   // S3 URL for recorded message
+  alertType        String    @default("manual") // manual, fall_detected, sos_held, inactivity, test
+  status           String    @default("active") // active, acknowledged, resolved, false_alarm
+  resolvedAt       DateTime?
+  resolvedBy       String?   // User who marked it resolved
+  notificationsSent Json?    // Array of {contactId, method, sentAt, status}
+  createdAt        DateTime  @default(now())
 
   user        User      @relation("UserEmergencies", fields: [userId], references: [id], onDelete: Cascade)
 
