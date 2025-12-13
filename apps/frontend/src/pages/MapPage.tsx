@@ -921,6 +921,9 @@ export default function MapPage() {
   const [pinSuccessMessage, setPinSuccessMessage] = useState('');
   const [isPlacementMode, setIsPlacementMode] = useState(false);
   const [placementType, setPlacementType] = useState<'here' | 'there' | null>(null);
+  // Location choice modal for "Where I'm At"
+  const [showLocationChoiceModal, setShowLocationChoiceModal] = useState(false);
+
   const [isPopupOpen, setIsPopupOpen] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showTimePickerModal, setShowTimePickerModal] = useState(false);
@@ -1103,16 +1106,24 @@ export default function MapPage() {
     }
   };
 
+  // Show location choice modal when "Where I'm At" is clicked
   const handleDropPin = async () => {
-    if (!userPosition) {
-      // GPS not available - fall back to manual placement
-      setPlacementType('here');
-      setIsPlacementMode(true);
-      return;
-    }
-
     if (!isAuthenticated) {
       navigate('/login');
+      return;
+    }
+    // Show modal to let user choose between GPS and manual placement
+    setShowLocationChoiceModal(true);
+  };
+
+  // Handle GPS-based pin creation
+  const handleUseGPS = async () => {
+    setShowLocationChoiceModal(false);
+    
+    if (!userPosition) {
+      // GPS not available - fall back to manual
+      setPlacementType('here');
+      setIsPlacementMode(true);
       return;
     }
 
@@ -1123,10 +1134,10 @@ export default function MapPage() {
         longitude: userPosition[1],
       });
       
-      haptic.confirm(); // Haptic feedback on pin drop
+      haptic.confirm();
       setPinSuccessMessage("You're checked in here.");
       setPinCreationSuccess(true);
-      haptic.microPulse(); // Haptic for toast
+      haptic.microPulse();
       setTimeout(() => setPinCreationSuccess(false), 3000);
       
       // Refresh pins
@@ -1155,6 +1166,14 @@ export default function MapPage() {
     } finally {
       setCreatingPin(false);
     }
+  };
+
+  
+  // Handle manual pin placement choice
+  const handleManualPlacement = () => {
+    setShowLocationChoiceModal(false);
+    setPlacementType('here');
+    setIsPlacementMode(true);
   };
 
   // Handler for "Where I'll Be" or manual placement - drop pin at selected location
