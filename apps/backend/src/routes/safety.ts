@@ -425,13 +425,13 @@ safetyRoutes.post('/block/:userId', async (c) => {
     const blockerId = c.req.header('x-user-id');
     if (!blockerId) return c.json({ error: 'Unauthorized' }, 401);
 
-    const blockedId = c.req.param('userId');
-    if (blockerId === blockedId) {
+    const blockedUserId = c.req.param('userId');
+    if (blockerId === blockedUserId) {
       return c.json({ error: 'Cannot block yourself' }, 400);
     }
 
     await prisma.block.create({
-      data: { blockerId, blockedId }
+      data: { blockerId, blockedUserId }
     });
 
     return c.json({ success: true });
@@ -449,10 +449,10 @@ safetyRoutes.delete('/block/:userId', async (c) => {
     const blockerId = c.req.header('x-user-id');
     if (!blockerId) return c.json({ error: 'Unauthorized' }, 401);
 
-    const blockedId = c.req.param('userId');
+    const blockedUserId = c.req.param('userId');
 
     await prisma.block.deleteMany({
-      where: { blockerId, blockedId }
+      where: { blockerId, blockedUserId }
     });
 
     return c.json({ success: true });
@@ -470,7 +470,7 @@ safetyRoutes.get('/blocks', async (c) => {
     const blocks = await prisma.block.findMany({
       where: { blockerId: userId },
       include: {
-        blocked: {
+        blockedUser: {
           select: {
             id: true,
             name: true,
@@ -483,9 +483,9 @@ safetyRoutes.get('/blocks', async (c) => {
 
     return c.json({ 
       blocks: blocks.map(b => ({
-        id: b.blockedId,
-        name: b.blocked.displayName || b.blocked.name,
-        image: b.blocked.image,
+        id: b.blockedUserId,
+        name: b.blockedUser.displayName || b.blockedUser.name,
+        image: b.blockedUser.image,
         blockedAt: b.createdAt,
       }))
     });
@@ -500,7 +500,7 @@ safetyRoutes.post('/report', async (c) => {
     const reporterId = c.req.header('x-user-id');
     if (!reporterId) return c.json({ error: 'Unauthorized' }, 401);
 
-    const { reportedUserId, reason, details, pinId, eventId, eventCommentId, messageId } = await c.req.json();
+    const { reportedUserId, reason, details, eventId, eventCommentId } = await c.req.json();
 
     if (!reportedUserId || !reason) {
       return c.json({ error: 'User ID and reason required' }, 400);
@@ -511,11 +511,9 @@ safetyRoutes.post('/report', async (c) => {
         reporterId,
         reportedUserId,
         reason,
-        details,
-        pinId,
-        eventId,
-        eventCommentId,
-        messageId,
+        description: details || null,
+        eventId: eventId || null,
+        eventCommentId: eventCommentId || null,
       }
     });
 
@@ -525,3 +523,4 @@ safetyRoutes.post('/report', async (c) => {
     return c.json({ error: 'Failed to create report' }, 500);
   }
 });
+
