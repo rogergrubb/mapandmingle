@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Loader, Info } from 'lucide-react';
 import { useMapStore } from '../stores/mapStore';
 import { useAuthStore } from '../stores/authStore';
-import { MapControlBar, type MingleMode, type DistanceFilter } from '../components/map/MapControlBar';
+import { MapControlBar, type MingleMode, type DistanceFilter, type VisibilityLevel } from '../components/map/MapControlBar';
 import { PresenceButtonRow } from '../components/map/PresenceButtonRow';
 import { TimePickerModal } from '../components/map/TimePickerModal';
 import { LegendModal } from '../components/map/LegendModal';
@@ -14,7 +14,7 @@ import { IncomingVisitors } from '../components/map/IncomingVisitors';
 import WelcomeCard from '../components/WelcomeCard';
 import haptic from '../lib/haptics';
 import ProfileInterestsSetup from '../components/ProfileInterestsSetup';
-import { VisibilityQuickToggle, VisibilityLevel } from '../components/privacy/VisibilitySlider';
+// VisibilityLevel now imported from MapControlBar
 import api from '../lib/api';
 import { formatCountdown } from '../utils/countdown';
 import 'leaflet/dist/leaflet.css';
@@ -1438,26 +1438,18 @@ export default function MapPage() {
 
 
 
-      {/* Top Control Bar with Visibility + Stats */}
+      {/* Top Control Bar with Looking For + Visibility */}
       <MapControlBar
         currentMode={currentMode}
         onModeChange={handleModeChange}
         onMyLocation={handleCenterOnUser}
-        isVisible={isVisible}
-        onVisibilityToggle={handleVisibilityToggle}
         liveNow={viewportStats.liveNow}
         inView={viewportStats.activeToday}
         onRefresh={handleRefresh}
         isRefreshing={isRefreshing}
+        visibilityLevel={visibilityLevel}
+        onVisibilityChange={handleVisibilityLevelChange}
       />
-
-      {/* 5-Level Visibility Slider - Positioned below top bar */}
-      <div className="absolute top-16 left-3 z-[1001]">
-        <VisibilityQuickToggle
-          value={visibilityLevel}
-          onChange={handleVisibilityLevelChange}
-        />
-      </div>
 
       {/* Legend Info Button - Top Right */}
       <button
