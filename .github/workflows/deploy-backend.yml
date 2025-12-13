@@ -37,7 +37,7 @@ jobs:
             --memory 512Mi \
             --timeout 300 \
             --port 8080 \
-            --set-env-vars="NODE_ENV=production,DATABASE_URL=${{ secrets.DATABASE_URL }},JWT_SECRET=${{ secrets.JWT_SECRET }},RESEND_API_KEY=${{ secrets.RESEND_API_KEY }},GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }},GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }},GOOGLE_REDIRECT_URI=https://mapandmingle-api-416214751432.us-west1.run.app/api/auth/google/callback,FRONTEND_URL=https://mapandmingle.vercel.app"
+            --set-env-vars="NODE_ENV=production,DATABASE_URL=${{ secrets.DATABASE_URL }},JWT_SECRET=${{ secrets.JWT_SECRET }},RESEND_API_KEY=${{ secrets.RESEND_API_KEY }},GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }},GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }},GOOGLE_REDIRECT_URI=https://mapandmingle-api-416214751432.us-west1.run.app/api/auth/google/callback,FRONTEND_URL=https://www.mapandmingle.com"
           
       - name: Deployment Complete
         run: |
