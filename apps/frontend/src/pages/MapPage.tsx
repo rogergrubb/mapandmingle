@@ -1578,6 +1578,72 @@ export default function MapPage() {
         onClose={() => setShowLegend(false)}
       />
 
+
+      {/* Location Choice Modal for "Where I'm At" */}
+      {showLocationChoiceModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[9999] p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full overflow-hidden animate-in fade-in zoom-in duration-200">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-pink-500 to-purple-600 px-6 py-4">
+              <h3 className="text-xl font-bold text-white text-center">Where I'm At</h3>
+              <p className="text-white/80 text-sm text-center mt-1">How would you like to set your location?</p>
+            </div>
+            
+            {/* Options */}
+            <div className="p-6 space-y-3">
+              {/* GPS Option */}
+              <button
+                onClick={handleUseGPS}
+                className="w-full flex items-center gap-4 p-4 rounded-xl border-2 border-gray-200 hover:border-pink-400 hover:bg-pink-50 transition-all group"
+              >
+                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-green-400 to-emerald-500 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
+                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                </div>
+                <div className="flex-1 text-left">
+                  <div className="font-semibold text-gray-900">Use My Location</div>
+                  <div className="text-sm text-gray-500">Auto-detect via GPS</div>
+                </div>
+                <svg className="w-5 h-5 text-gray-400 group-hover:text-pink-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+              
+              {/* Manual Option */}
+              <button
+                onClick={handleManualPlacement}
+                className="w-full flex items-center gap-4 p-4 rounded-xl border-2 border-gray-200 hover:border-purple-400 hover:bg-purple-50 transition-all group"
+              >
+                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-400 to-pink-500 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
+                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122" />
+                  </svg>
+                </div>
+                <div className="flex-1 text-left">
+                  <div className="font-semibold text-gray-900">Drop Pin on Map</div>
+                  <div className="text-sm text-gray-500">Tap to place manually</div>
+                </div>
+                <svg className="w-5 h-5 text-gray-400 group-hover:text-purple-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+            </div>
+            
+            {/* Cancel */}
+            <div className="px-6 pb-6">
+              <button
+                onClick={() => setShowLocationChoiceModal(false)}
+                className="w-full py-3 text-gray-500 hover:text-gray-700 font-medium transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Delete Pin Confirmation */}
       <ConfirmDialog
         isOpen={deleteDialog.isOpen}
