@@ -1,4 +1,4 @@
-// Emergency Safety Routes v2.0 - Emergency Contacts & Alerts
+// Emergency Safety Routes v2.0
 import { Hono } from 'hono';
 import { prisma, broadcastToUser } from '../index';
 
