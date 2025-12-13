@@ -400,15 +400,6 @@ export function VisibilityQuickToggle({
           <ChevronDown className={`w-4 h-4 transition-transform ${showMenu ? 'rotate-180' : ''}`} />
         </button>
 
-        {/* Info Button - Always visible */}
-        <button
-          onClick={() => setShowInfoModal(true)}
-          className="p-2 bg-white/90 border-2 border-gray-200 rounded-full shadow-lg hover:scale-110 transition-all hover:border-purple-300 hover:bg-purple-50"
-          title="What do these levels mean?"
-        >
-          <Info className="w-4 h-4 text-gray-500 hover:text-purple-500" />
-        </button>
-
         {/* Dropdown Menu */}
         {showMenu && (
           <>
