@@ -574,6 +574,142 @@ pinRoutes.get('/global-stats', async (c) => {
     return c.json({ liveNow: 0, activeThisMonth: 0 });
   }
 });
+
+// GET /api/pins/incoming - Get people coming to an area (future pins)
+// This shows travelers/visitors arriving in the viewer's area soon
+pinRoutes.get('/incoming', async (c) => {
+  try {
+    const query = c.req.query();
+    const north = parseFloat(query.north || '90');
+    const south = parseFloat(query.south || '-90');
+    const east = parseFloat(query.east || '180');
+    const west = parseFloat(query.west || '-180');
+    const days = parseInt(query.days || '7'); // Default: show arrivals in next 7 days
+    
+    const now = new Date();
+    const futureDate = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
+    
+    // Find future pins in this area arriving within the timeframe
+    const incomingPins = await prisma.pin.findMany({
+      where: {
+        pinType: 'future',
+        arrivalTime: {
+          gte: now, // Not yet arrived
+          lte: futureDate, // Within the requested timeframe
+        },
+        latitude: { gte: south, lte: north },
+        longitude: { gte: west, lte: east },
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            image: true,
+            bio: true,
+            interests: true,
+            profile: {
+              select: {
+                avatar: true,
+                displayName: true,
+                bio: true,
+                lookingFor: true,
+                homeCity: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: { arrivalTime: 'asc' }, // Soonest arrivals first
+      take: 50,
+    });
+    
+    // Get viewer's connections to show relationship status
+    const viewerId = c.req.header('X-User-Id') || null;
+    let viewerConnections = new Map<string, string>();
+    
+    if (viewerId) {
+      const connections = await prisma.connection.findMany({
+        where: {
+          OR: [
+            { requesterId: viewerId },
+            { addresseeId: viewerId },
+          ],
+          status: 'accepted',
+        },
+        select: {
+          requesterId: true,
+          addresseeId: true,
+        },
+      });
+      
+      for (const conn of connections) {
+        const otherId = conn.requesterId === viewerId ? conn.addresseeId : conn.requesterId;
+        viewerConnections.set(otherId, 'connected');
+      }
+    }
+    
+    // Format response with arrival countdown and user details
+    const visitors = incomingPins.map(pin => {
+      const arrivalTime = new Date(pin.arrivalTime!);
+      const hoursUntilArrival = Math.max(0, (arrivalTime.getTime() - now.getTime()) / (1000 * 60 * 60));
+      const daysUntilArrival = Math.floor(hoursUntilArrival / 24);
+      const remainingHours = Math.floor(hoursUntilArrival % 24);
+      
+      // Determine urgency level for UI styling
+      let urgency: 'imminent' | 'soon' | 'upcoming' | 'later' = 'later';
+      if (hoursUntilArrival <= 2) urgency = 'imminent';
+      else if (hoursUntilArrival <= 24) urgency = 'soon';
+      else if (daysUntilArrival <= 2) urgency = 'upcoming';
+      
+      return {
+        id: pin.id,
+        userId: pin.userId,
+        latitude: pin.latitude,
+        longitude: pin.longitude,
+        description: pin.description,
+        arrivalTime: arrivalTime.toISOString(),
+        countdown: {
+          days: daysUntilArrival,
+          hours: remainingHours,
+          totalHours: Math.round(hoursUntilArrival),
+          urgency,
+          label: daysUntilArrival > 0 
+            ? `${daysUntilArrival}d ${remainingHours}h`
+            : `${remainingHours}h`,
+        },
+        user: {
+          id: pin.user.id,
+          name: pin.user.profile?.displayName || pin.user.name || 'Anonymous',
+          avatar: pin.user.profile?.avatar || pin.user.image,
+          bio: pin.user.profile?.bio || pin.user.bio,
+          interests: pin.user.interests || [],
+          lookingFor: pin.user.profile?.lookingFor || [],
+          homeCity: pin.user.profile?.homeCity || null,
+          isConnected: viewerConnections.has(pin.userId),
+        },
+      };
+    });
+    
+    // Group by timeframe for easier UI rendering
+    const grouped = {
+      today: visitors.filter(v => v.countdown.totalHours <= 24),
+      tomorrow: visitors.filter(v => v.countdown.totalHours > 24 && v.countdown.totalHours <= 48),
+      thisWeek: visitors.filter(v => v.countdown.totalHours > 48),
+    };
+    
+    return c.json({
+      total: visitors.length,
+      visitors,
+      grouped,
+      viewArea: { north, south, east, west },
+    });
+  } catch (error) {
+    console.error('Error fetching incoming visitors:', error);
+    return c.json({ error: 'Failed to fetch incoming visitors' }, 500);
+  }
+});
+
 pinRoutes.get('/mine', async (c) => {
   try {
     let userId = c.req.header('X-User-Id');
