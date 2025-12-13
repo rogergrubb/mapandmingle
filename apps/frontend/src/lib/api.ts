@@ -1,6 +1,6 @@
 import axios, { AxiosRequestConfig } from 'axios';
 
-const API_URL = import.meta.env.VITE_API_URL || 'https://mapandmingle-api-416214751432.us-west1.run.app';
+const API_URL = import.meta.env.VITE_API_URL || 'https://mapandmingle-api-492171901610.us-west1.run.app';
 
 // Create axios instance
 const axiosInstance = axios.create({
