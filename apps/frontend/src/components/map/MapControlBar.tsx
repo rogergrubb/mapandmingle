@@ -131,7 +131,7 @@ const visibilityConfig: Record<VisibilityLevel, {
   },
 };
 
-export default function MapControlBar({
+function MapControlBar({
   currentMode,
   onModeChange,
   onMyLocation,
@@ -381,9 +381,9 @@ export default function MapControlBar({
               className="relative w-9 h-9 rounded-full bg-white/90 backdrop-blur-sm shadow-md flex items-center justify-center hover:shadow-lg transition-all hover:scale-105 active:scale-95 overflow-hidden"
               title="My Profile"
             >
-              {user?.image ? (
+              {user?.avatar ? (
                 <img 
-                  src={user.image} 
+                  src={user.avatar} 
                   alt="Profile" 
                   className="w-full h-full object-cover rounded-full"
                 />
@@ -402,3 +402,7 @@ export default function MapControlBar({
     </>
   );
 }
+
+// Named export for backwards compatibility
+export { MapControlBar };
+export default MapControlBar;
