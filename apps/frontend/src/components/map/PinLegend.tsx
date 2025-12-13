@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../lib/api';
+import { Trash2, X } from 'lucide-react';
 
 interface UserPin {
   id: string;
@@ -18,15 +19,23 @@ interface GlobalStats {
   activeThisMonth: number;
 }
 
+interface PinLegendProps {
+  onPinClick?: (pin: UserPin) => void;
+  onPinDeleted?: () => void;
+}
+
 /**
  * PinLegend - Dynamic visual guide showing YOUR pins + global mingler stats
  * Shows "Where I'm At" + multiple "Where I'll Be" with actual countdowns
+ * Clickable to navigate to pins, with delete functionality
  */
 
-export function PinLegend() {
+export function PinLegend({ onPinClick, onPinDeleted }: PinLegendProps) {
   const [myPins, setMyPins] = useState<UserPin[]>([]);
   const [globalStats, setGlobalStats] = useState<GlobalStats>({ liveNow: 0, activeThisMonth: 0 });
   const [loading, setLoading] = useState(true);
+  const [deletingPinId, setDeletingPinId] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
 
   useEffect(() => {
     fetchMyPins();
@@ -61,6 +70,33 @@ export function PinLegend() {
     } catch (err) {
       console.error('Failed to fetch global stats:', err);
     }
+  };
+
+  const handleDeletePin = async (pinId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (confirmDelete === pinId) {
+      // Second click - actually delete
+      setDeletingPinId(pinId);
+      try {
+        await api.delete(`/api/pins/${pinId}`);
+        setMyPins(prev => prev.filter(p => p.id !== pinId));
+        onPinDeleted?.();
+      } catch (err) {
+        console.error('Failed to delete pin:', err);
+      } finally {
+        setDeletingPinId(null);
+        setConfirmDelete(null);
+      }
+    } else {
+      // First click - show confirm
+      setConfirmDelete(pinId);
+      // Auto-reset after 3 seconds
+      setTimeout(() => setConfirmDelete(null), 3000);
+    }
+  };
+
+  const handlePinClick = (pin: UserPin) => {
+    onPinClick?.(pin);
   };
 
   const formatCountdown = (arrivalTime: string) => {
@@ -126,8 +162,8 @@ export function PinLegend() {
     padding: '10px 8px',
     boxShadow: '0 8px 32px rgba(0, 0, 0, 0.12)',
     border: '1px solid rgba(255, 255, 255, 0.8)',
-    minWidth: '90px',
-    maxWidth: '110px',
+    minWidth: '100px',
+    maxWidth: '120px',
     maxHeight: '70vh',
     overflowY: 'auto',
   };
@@ -147,70 +183,79 @@ export function PinLegend() {
     fontWeight: 600,
     color: '#9ca3af',
     marginBottom: '4px',
-    letterSpacing: '0.2px',
+    textTransform: 'uppercase',
+    letterSpacing: '0.3px',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '2px',
   };
 
   const itemStyle: React.CSSProperties = {
     display: 'flex',
     alignItems: 'center',
-    gap: '4px',
-    marginBottom: '6px',
-  };
-
-  const iconStyle: React.CSSProperties = {
-    width: '20px',
-    height: '20px',
-    borderRadius: '50%',
-    border: '2px solid white',
-    flexShrink: 0,
+    gap: '8px',
+    cursor: 'pointer',
+    padding: '4px',
+    borderRadius: '8px',
+    transition: 'background 0.2s',
     position: 'relative',
   };
 
+  const iconStyle: React.CSSProperties = {
+    width: '24px',
+    height: '24px',
+    borderRadius: '50%',
+    position: 'relative',
+    flexShrink: 0,
+  };
+
   const textStyle: React.CSSProperties = {
-    fontSize: '8px',
+    fontSize: '9px',
     fontWeight: 600,
-    color: '#374151',
+    color: '#1f2937',
     lineHeight: 1.2,
   };
 
   const subtextStyle: React.CSSProperties = {
     fontSize: '7px',
-    color: '#9ca3af',
-    fontWeight: 500,
-  };
-
-  const dividerStyle: React.CSSProperties = {
-    borderTop: '1px solid #e5e7eb',
-    paddingTop: '6px',
-    marginTop: '6px',
+    color: '#6b7280',
+    marginTop: '1px',
   };
 
   const emptyStyle: React.CSSProperties = {
-    fontSize: '7px',
+    fontSize: '8px',
     color: '#9ca3af',
-    fontStyle: 'italic',
     textAlign: 'center',
+    fontStyle: 'italic',
     padding: '4px 0',
   };
 
-  const badgeStyle: React.CSSProperties = {
-    fontSize: '6px',
-    fontWeight: 700,
-    padding: '2px 3px',
-    borderRadius: '4px',
-    border: '1px solid white',
-    color: 'white',
-    display: 'inline-block',
+  const dividerStyle: React.CSSProperties = {
+    marginTop: '8px',
+    paddingTop: '8px',
+    borderTop: '1px solid rgba(0, 0, 0, 0.08)',
   };
 
-  const noticeStyle: React.CSSProperties = {
-    marginTop: '12px',
-    paddingTop: '12px',
-    borderTop: '1px solid #e5e7eb',
-    fontSize: '9px',
-    color: '#9ca3af',
-    textAlign: 'center',
-    lineHeight: 1.4,
+  const badgeStyle: React.CSSProperties = {
+    color: 'white',
+    padding: '2px 6px',
+    borderRadius: '8px',
+    fontWeight: 600,
+  };
+
+  const deleteButtonStyle: React.CSSProperties = {
+    position: 'absolute',
+    right: '2px',
+    top: '50%',
+    transform: 'translateY(-50%)',
+    padding: '3px',
+    borderRadius: '4px',
+    border: 'none',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    transition: 'all 0.2s',
   };
 
   return (
@@ -232,7 +277,12 @@ export function PinLegend() {
             <div>
               <div style={sectionTitleStyle}>📍 WHERE I'M AT</div>
               {currentPin ? (
-                <div style={itemStyle}>
+                <div 
+                  style={itemStyle}
+                  onClick={() => handlePinClick(currentPin)}
+                  onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(236, 72, 153, 0.1)'}
+                  onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                >
                   <div
                     style={{
                       ...iconStyle,
@@ -251,7 +301,7 @@ export function PinLegend() {
                       transform: 'translate(-50%, -50%)',
                     }} />
                   </div>
-                  <div>
+                  <div style={{ flex: 1 }}>
                     <div style={textStyle}>Current Location</div>
                     <div style={subtextStyle}>
                       {currentPin.ageHours < 1 
@@ -262,6 +312,24 @@ export function PinLegend() {
                       }
                     </div>
                   </div>
+                  {/* Delete button */}
+                  <button
+                    style={{
+                      ...deleteButtonStyle,
+                      background: confirmDelete === currentPin.id ? '#ef4444' : '#f3f4f6',
+                      color: confirmDelete === currentPin.id ? 'white' : '#6b7280',
+                    }}
+                    onClick={(e) => handleDeletePin(currentPin.id, e)}
+                    title={confirmDelete === currentPin.id ? 'Click again to confirm' : 'Delete pin'}
+                  >
+                    {deletingPinId === currentPin.id ? (
+                      <div style={{ width: 12, height: 12, border: '2px solid', borderRadius: '50%', borderTopColor: 'transparent', animation: 'spin 1s linear infinite' }} />
+                    ) : confirmDelete === currentPin.id ? (
+                      <X size={12} />
+                    ) : (
+                      <Trash2 size={12} />
+                    )}
+                  </button>
                 </div>
               ) : (
                 <div style={emptyStyle}>Not checked in</div>
@@ -271,11 +339,17 @@ export function PinLegend() {
             {/* Where I'll Be Section */}
             <div style={dividerStyle}>
               <div style={sectionTitleStyle}>
-                🗓️ WHERE I'LL BE ({futurePins.length}/2)
+                🗓️ WHERE I'LL BE ({futurePins.length}/5)
               </div>
               {futurePins.length > 0 ? (
                 futurePins.map((pin, index) => (
-                  <div key={pin.id} style={{ ...itemStyle, marginBottom: index === futurePins.length - 1 ? 0 : 10 }}>
+                  <div 
+                    key={pin.id} 
+                    style={{ ...itemStyle, marginBottom: index === futurePins.length - 1 ? 0 : 10 }}
+                    onClick={() => handlePinClick(pin)}
+                    onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(234, 179, 8, 0.1)'}
+                    onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                  >
                     <div
                       style={{
                         ...iconStyle,
@@ -321,6 +395,24 @@ export function PinLegend() {
                         }
                       </div>
                     </div>
+                    {/* Delete button */}
+                    <button
+                      style={{
+                        ...deleteButtonStyle,
+                        background: confirmDelete === pin.id ? '#ef4444' : '#f3f4f6',
+                        color: confirmDelete === pin.id ? 'white' : '#6b7280',
+                      }}
+                      onClick={(e) => handleDeletePin(pin.id, e)}
+                      title={confirmDelete === pin.id ? 'Click again to confirm' : 'Delete pin'}
+                    >
+                      {deletingPinId === pin.id ? (
+                        <div style={{ width: 12, height: 12, border: '2px solid', borderRadius: '50%', borderTopColor: 'transparent', animation: 'spin 1s linear infinite' }} />
+                      ) : confirmDelete === pin.id ? (
+                        <X size={12} />
+                      ) : (
+                        <Trash2 size={12} />
+                      )}
+                    </button>
                   </div>
                 ))
               ) : (
@@ -409,6 +501,13 @@ export function PinLegend() {
           </div>
         </div>
       </div>
+      
+      {/* CSS for spinner animation */}
+      <style>{`
+        @keyframes spin {
+          to { transform: translateY(-50%) rotate(360deg); }
+        }
+      `}</style>
     </div>
   );
 }
